@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.databinding.FragmentDashboardBinding
 
 class DashboardFragment : Fragment() {
 

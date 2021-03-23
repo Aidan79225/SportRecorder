@@ -3,7 +3,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@+id/navigation_home">
+    app:startDestination="@+id/navigation_diet">
+
+    <fragment
+        android:id="@+id/navigation_diet"
+        android:name="com.crazystudio.sportrecorder.ui.diet.DietFragment"
+        android:label="@string/title_home"
+        tools:layout="@layout/fragment_diet" />
 
     <fragment
         android:id="@+id/navigation_home"
