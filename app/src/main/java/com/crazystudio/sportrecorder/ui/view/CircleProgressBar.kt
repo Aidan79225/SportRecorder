@@ -11,9 +11,18 @@ import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.util.dpToPx
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
-    var progress = 25
+    var progress = 20
 
     private val widthPx = context.dpToPx(20f)
+
+    val rect by lazy {
+        RectF(
+            widthPx,
+            widthPx,
+            width.toFloat() - widthPx,
+            width.toFloat() - widthPx
+        )
+    }
 
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -37,15 +46,8 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             return
         }
 
-        val width = canvas.width
-        val height = canvas.height
-        canvas.drawCircle(width / 2f, height / 2f, width / 2 - widthPx, backgroundPaint)
+        canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
 
-        val rect = RectF(
-            widthPx,
-            widthPx,
-            width.toFloat() - widthPx,
-            height.toFloat() - widthPx)
         val angle = 360f * progress / 100
         canvas.drawArc(rect, -90f, angle, false, progressPaint)
     }
