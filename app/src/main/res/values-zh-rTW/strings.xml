@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SportRecorder</string>
+    <string name="diet_elapsed_time">已過時間</string>
+</resources>

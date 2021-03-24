@@ -3,15 +3,32 @@
     xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@color/bg_black"
     >
-    
-    <TextView
-        android:id="@+id/intermittent_text_view"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="00:00:00"
-        android:textSize="100sp"
-        />
+        android:layout_marginTop="200dp"
+        android:orientation="vertical"
+        android:gravity="center">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/diet_elapsed_time"
+            android:textColor="@color/text_green"
+            android:textSize="24sp"
+            />
+
+
+        <TextView
+            android:id="@+id/intermittent_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00:00"
+            android:textSize="48sp"
+            android:textColor="@color/text_green"
+            />
+    </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/create_eat_time_float_action_button"
@@ -22,6 +39,8 @@
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="20dp"
         android:src="@drawable/ic_baseline_add_24"
+        android:tint="@color/bg_black"
+        android:backgroundTint="@color/text_green"
         />
 
 </RelativeLayout>
