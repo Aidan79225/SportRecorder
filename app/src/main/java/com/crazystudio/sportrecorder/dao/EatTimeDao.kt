@@ -8,7 +8,7 @@ import com.crazystudio.sportrecorder.entity.EatTime
 
 @Dao
 interface EatTimeDao {
-    @Query("SELECT * FROM ${EatTime.tableName} LIMIT 1")
+    @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC LIMIT 1")
     fun liveLast(): LiveData<List<EatTime>>
 
     @Insert
