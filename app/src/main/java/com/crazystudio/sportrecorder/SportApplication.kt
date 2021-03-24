@@ -9,6 +9,7 @@ class SportApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        application = this
         db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "database-name"
@@ -17,5 +18,6 @@ class SportApplication : Application() {
 
     companion object {
         lateinit var db: AppDatabase
+        lateinit var application: Application
     }
 }

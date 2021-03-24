@@ -5,4 +5,7 @@
     <string name="title_notifications">Notifications</string>
 
     <string name="diet_elapsed_time">Elapsed time</string>
+    <string name="diet_status_eating">Eating</string>
+    <string name="diet_status_success">Success</string>
+    <string name="diet_status_fasting">Fasting</string>
 </resources>

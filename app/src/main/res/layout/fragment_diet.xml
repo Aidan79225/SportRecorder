@@ -1,39 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
-    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    >
-    <com.crazystudio.sportrecorder.ui.view.CircleProgressBar
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/bg_black"
+    android:orientation="vertical">
+    <RelativeLayout
+        android:id="@+id/status_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="75dp"
-        />
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="200dp"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:background="@color/transparent">
+        android:layout_marginTop="75dp">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <com.crazystudio.sportrecorder.ui.view.CircleProgressBar
+            android:id="@+id/circular_progress_bar"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/diet_elapsed_time"
-            android:textSize="24sp"
             />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@color/transparent">
 
+            <TextView
+                android:id="@+id/status_text_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/diet_elapsed_time"
+                android:textSize="24sp"
+                />
+
+
+            <TextView
+                android:id="@+id/intermittent_text_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00:00"
+                android:textSize="48sp"
+                />
+        </LinearLayout>
+    </RelativeLayout>
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/status_container"
+        android:layout_centerHorizontal="true"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_round_black2"
+        android:layout_marginTop="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
         <TextView
-            android:id="@+id/intermittent_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="00:00:00"
-            android:textSize="48sp"
+            android:text="16"
+            android:textSize="18sp"
+            android:textColor="@color/grey_1"
+            android:background="@color/transparent"/>
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:srcCompat="@drawable/ic_baseline_edit_24"
+            android:background="@color/transparent"
+            android:layout_marginStart="5dp"
             />
     </LinearLayout>
-
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/create_eat_time_float_action_button"
@@ -45,7 +88,7 @@
         android:layout_marginBottom="20dp"
         android:src="@drawable/ic_baseline_add_24"
         android:tint="@color/bg_black"
-        android:backgroundTint="@color/text_green"
+        android:backgroundTint="@color/light_green"
         />
 
 </RelativeLayout>

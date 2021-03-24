@@ -2,20 +2,24 @@ package com.crazystudio.sportrecorder.ui.view
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.SweepGradient
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.util.dpToPx
+import kotlin.math.cos
+import kotlin.math.sin
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
-    var progress = 20
+    var progress = 20.0
 
     private val widthPx = context.dpToPx(20f)
 
-    val rect by lazy {
+    private val rect by lazy {
         RectF(
             widthPx,
             widthPx,
@@ -27,7 +31,17 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = widthPx
-        color = ContextCompat.getColor(context, R.color.text_green)
+        color = ContextCompat.getColor(context, R.color.light_green)
+    }
+
+    private val progressPointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = ContextCompat.getColor(context, R.color.light_green)
+    }
+
+    private val progressTipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = ContextCompat.getColor(context, R.color.grey_1)
     }
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -46,9 +60,39 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             return
         }
 
+
         canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
 
-        val angle = 360f * progress / 100
-        canvas.drawArc(rect, -90f, angle, false, progressPaint)
+        val angle = Math.toDegrees(Math.PI * 2) * progress / 100
+        canvas.drawArc(rect, -90f, angle.toFloat(), false, progressPaint)
+
+        if (progress >= 100) {
+            return
+        }
+        canvas.drawCircle(
+            (width / 2f),
+            (width / 2f + (width-widthPx*2) / -2f),
+            widthPx / 2f,
+            progressPointPaint)
+
+        canvas.drawCircle(
+            (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
+            (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
+            widthPx / 2f,
+            progressPointPaint)
+
+        canvas.drawCircle(
+            (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
+            (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
+            widthPx / 3.25f,
+            progressTipPaint)
+
+    }
+
+    fun updateColor(colorResId: Int) {
+        val color = ContextCompat.getColor(context, colorResId)
+        progressPaint.color = color
+        progressPointPaint.color = color
+        requestLayout()
     }
 }
