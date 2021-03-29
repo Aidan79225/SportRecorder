@@ -49,6 +49,7 @@
         </LinearLayout>
     </RelativeLayout>
     <LinearLayout
+        android:id="@+id/diet_info_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/status_container"
@@ -62,6 +63,7 @@
         android:paddingEnd="12dp">
 
         <TextView
+            android:id="@+id/diet_info_text_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="16"

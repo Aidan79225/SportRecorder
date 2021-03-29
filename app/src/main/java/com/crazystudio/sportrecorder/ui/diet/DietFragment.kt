@@ -20,18 +20,20 @@ class DietFragment: BaseFragment(R.layout.fragment_diet) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         FragmentDietBinding.bind(view).apply {
-            fun updateTime(eatTime: EatTime) {
-                var remainTime = System.currentTimeMillis() - eatTime.time
+            fun updateTime(eatTime: Pair<EatTime, EatTime>) {
+                var remainTime = System.currentTimeMillis() - eatTime.first.time
                 val preference = SharedPreferenceUtils.getDietPreference()
-                val target = preference.getInt(Constants.DIET_TIME_INTERVAL, 16)
-                val progress = min(100.0, remainTime * 100.0 / TimeUnit.HOURS.toMillis(target.toLong()))
+                val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
+                val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
+                val progress = min(100.0, remainTime * 100.0 / TimeUnit.HOURS.toMillis((fastingHours + eatingHours).toLong()))
+
                 circularProgressBar.progress = progress
                 when {
-                    remainTime < TimeUnit.HOURS.toMillis(6) -> {
+                    remainTime < TimeUnit.HOURS.toMillis(eatingHours) -> {
                         statusTextView.text = getString(R.string.diet_status_eating)
                         circularProgressBar.updateColor(R.color.dark_green)
                     }
-                    remainTime > TimeUnit.HOURS.toMillis(target.toLong()) -> {
+                    remainTime > TimeUnit.HOURS.toMillis((fastingHours + eatingHours)) -> {
                         statusTextView.text = getString(R.string.diet_status_success)
                         circularProgressBar.updateColor(R.color.light_green)
                     }
@@ -41,13 +43,13 @@ class DietFragment: BaseFragment(R.layout.fragment_diet) {
                     }
                 }
 
-
+                remainTime -= TimeUnit.HOURS.toMillis(eatingHours)
                 val hours = TimeUnit.MILLISECONDS.toHours(remainTime)
                 remainTime -= TimeUnit.HOURS.toMillis(hours)
                 val mins = TimeUnit.MILLISECONDS.toMinutes(remainTime)
                 remainTime -= TimeUnit.MINUTES.toMillis(mins)
                 val ses = TimeUnit.MILLISECONDS.toSeconds(remainTime)
-                intermittentTextView.text = "%02d:%02d:%02d".format(hours, mins, ses)
+                intermittentTextView.text = getString(R.string.diet_time_format).format(hours, mins, ses)
             }
 
             createEatTimeFloatActionButton.setOnClickListener {
@@ -55,20 +57,14 @@ class DietFragment: BaseFragment(R.layout.fragment_diet) {
             }
 
             viewModel.lastEatTimeLiveData.observe(viewLifecycleOwner) {
-                if (it.isEmpty()) {
-                    return@observe
-                }
-                updateTime(it[0])
+                updateTime(it)
             }
 
             lifecycleScope.launch {
                 while (true) {
                     delay(TimeUnit.SECONDS.toMillis(1))
                     val eatTimeList = viewModel.lastEatTimeLiveData.value ?: continue
-                    if (eatTimeList.isEmpty()) {
-                        continue
-                    }
-                    updateTime(eatTimeList[0])
+                    updateTime(eatTimeList)
                 }
             }
         }

@@ -9,3 +9,4 @@ object SharedPreferenceUtils {
         return SportApplication.application.getSharedPreferences("diet_preference", Context.MODE_PRIVATE)
     }
 }
+
