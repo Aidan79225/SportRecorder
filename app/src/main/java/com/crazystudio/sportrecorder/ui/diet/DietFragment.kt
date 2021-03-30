@@ -14,6 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 import kotlin.math.min
 
 class DietFragment : BaseFragment(R.layout.fragment_diet) {
@@ -31,16 +32,18 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 val ses = TimeUnit.MILLISECONDS.toSeconds(temp)
                 return getString(R.string.diet_time_format).format(hours, mins, ses)
             }
+
             fun updateTime(eatTime: Pair<EatTime, EatTime>) {
                 val remainTime = System.currentTimeMillis() - eatTime.first.time
                 val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
+                val lastEatingTimeMillis = max(TimeUnit.HOURS.toMillis(eatingHours), eatTime.second.time - eatTime.first.time)
                 val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
-                val totalTime = TimeUnit.HOURS.toMillis((fastingHours + eatingHours))
+                val totalTime = TimeUnit.HOURS.toMillis(fastingHours) + lastEatingTimeMillis
 
                 val progress = min(100.0, remainTime * 100.0 / totalTime)
                 circularProgressBar.progress = progress
                 when {
-                    remainTime < TimeUnit.HOURS.toMillis(eatingHours) -> {
+                    remainTime < lastEatingTimeMillis -> {
                         statusTextView.text = getString(R.string.diet_status_eating)
                     }
                     remainTime > totalTime -> {

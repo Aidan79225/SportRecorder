@@ -16,7 +16,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
-    var progress = 50.0
+    var progress = 0.0
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     private val widthPx = context.dpToPx(20f)
 
@@ -92,14 +96,14 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             canvas.drawArc(rect, -90f, angle.toFloat(), false, progressPaint)
 
             canvas.drawCircle(
-                (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
-                (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
+                (width / 2f + (width - widthPx * 2) / 2f * cos(Math.toRadians(angle - 90.0))).toFloat(),
+                (width / 2f + (width - widthPx * 2) / 2f * sin(Math.toRadians(angle - 90.0))).toFloat(),
                 widthPx / 2f,
                 progressEndPointPaint)
 
             canvas.drawCircle(
                 (width / 2f),
-                (width / 2f + (width-widthPx*2) / -2f),
+                (width / 2f + (width - widthPx * 2) / -2f),
                 widthPx / 2f,
                 progressStartPointPaint)
 
