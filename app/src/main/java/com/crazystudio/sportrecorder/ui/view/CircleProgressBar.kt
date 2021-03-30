@@ -3,8 +3,10 @@ package com.crazystudio.sportrecorder.ui.view
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.SweepGradient
 import android.util.AttributeSet
 import android.view.View
@@ -15,7 +17,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
-    var progress = 20.0
+    var progress = 90.0
 
     private val widthPx = context.dpToPx(20f)
 
@@ -27,16 +29,17 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             width.toFloat() - widthPx
         )
     }
+    var shader: Shader? = null
 
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = widthPx
-        color = ContextCompat.getColor(context, R.color.light_green)
+//        color = ContextCompat.getColor(context, R.color.light_green)
         strokeCap = Paint.Cap.ROUND
     }
 
     private val progressTipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
+        style = Paint.Style.FILL_AND_STROKE
         color = ContextCompat.getColor(context, R.color.grey_1)
     }
 
@@ -55,6 +58,23 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
         if (canvas == null) {
             return
         }
+        if (shader == null) {
+            shader = SweepGradient(
+                width / 2f,
+                width / 2f,
+                intArrayOf(
+                    ContextCompat.getColor(context, R.color.dark_green),
+                    ContextCompat.getColor(context, R.color.light_green)
+                ),
+                null
+            ).apply {
+                setLocalMatrix(Matrix().apply {
+                    setRotate(-90f, width / 2f, width / 2f)
+                })
+            }
+
+            progressPaint.shader = shader
+        }
 
 
         canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
@@ -67,14 +87,15 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
         }
 
         canvas.drawCircle(
-            (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
-            (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
+            (width / 2f + (width - widthPx * 2) / 2f * cos(Math.toRadians(angle - 90.0))).toFloat(),
+            (width / 2f + (width - widthPx * 2) / 2f * sin(Math.toRadians(angle - 90.0))).toFloat(),
             widthPx / 3.25f,
             progressTipPaint)
 
     }
 
     fun updateColor(colorResId: Int) {
+        return
         val color = ContextCompat.getColor(context, colorResId)
         progressPaint.color = color
         requestLayout()
