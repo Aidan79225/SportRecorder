@@ -32,11 +32,7 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
         style = Paint.Style.STROKE
         strokeWidth = widthPx
         color = ContextCompat.getColor(context, R.color.light_green)
-    }
-
-    private val progressPointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = ContextCompat.getColor(context, R.color.light_green)
+        strokeCap = Paint.Cap.ROUND
     }
 
     private val progressTipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -69,17 +65,6 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
         if (progress >= 100) {
             return
         }
-        canvas.drawCircle(
-            (width / 2f),
-            (width / 2f + (width-widthPx*2) / -2f),
-            widthPx / 2f,
-            progressPointPaint)
-
-        canvas.drawCircle(
-            (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
-            (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
-            widthPx / 2f,
-            progressPointPaint)
 
         canvas.drawCircle(
             (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
@@ -92,7 +77,6 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
     fun updateColor(colorResId: Int) {
         val color = ContextCompat.getColor(context, colorResId)
         progressPaint.color = color
-        progressPointPaint.color = color
         requestLayout()
     }
 }
