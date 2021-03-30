@@ -31,15 +31,12 @@ class DietFragment: BaseFragment(R.layout.fragment_diet) {
                 when {
                     remainTime < TimeUnit.HOURS.toMillis(eatingHours) -> {
                         statusTextView.text = getString(R.string.diet_status_eating)
-                        circularProgressBar.updateColor(R.color.dark_green)
                     }
                     remainTime > TimeUnit.HOURS.toMillis((fastingHours + eatingHours)) -> {
                         statusTextView.text = getString(R.string.diet_status_success)
-                        circularProgressBar.updateColor(R.color.light_green)
                     }
                     else -> {
                         statusTextView.text = getString(R.string.diet_status_fasting)
-                        circularProgressBar.updateColor(R.color.light_green)
                     }
                 }
 

@@ -2,7 +2,6 @@ package com.crazystudio.sportrecorder.ui.view
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
@@ -17,7 +16,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
-    var progress = 90.0
+    var progress = 50.0
 
     private val widthPx = context.dpToPx(20f)
 
@@ -34,8 +33,16 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = widthPx
-//        color = ContextCompat.getColor(context, R.color.light_green)
-        strokeCap = Paint.Cap.ROUND
+    }
+
+    private val progressStartPointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = ContextCompat.getColor(context, R.color.dark_green)
+    }
+
+    private val progressEndPointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = ContextCompat.getColor(context, R.color.light_green)
     }
 
     private val progressTipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -66,7 +73,7 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
                     ContextCompat.getColor(context, R.color.dark_green),
                     ContextCompat.getColor(context, R.color.light_green)
                 ),
-                null
+                floatArrayOf(0f, 1f)
             ).apply {
                 setLocalMatrix(Matrix().apply {
                     setRotate(-90f, width / 2f, width / 2f)
@@ -74,30 +81,34 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             }
 
             progressPaint.shader = shader
+            progressEndPointPaint.shader = shader
+        }
+
+        if (progress > 99) {
+            canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, progressPaint)
+        } else {
+            val angle = Math.toDegrees(Math.PI * 2) * progress / 100
+            canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
+            canvas.drawArc(rect, -90f, angle.toFloat(), false, progressPaint)
+            canvas.drawCircle(
+                (width / 2f),
+                (width / 2f + (width-widthPx*2) / -2f),
+                widthPx / 2f,
+                progressStartPointPaint)
+
+            canvas.drawCircle(
+                (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
+                (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
+                widthPx / 2f,
+                progressEndPointPaint)
+
+            canvas.drawCircle(
+                (width / 2f + (width - widthPx * 2) / 2f * cos(Math.toRadians(angle - 90.0))).toFloat(),
+                (width / 2f + (width - widthPx * 2) / 2f * sin(Math.toRadians(angle - 90.0))).toFloat(),
+                widthPx / 3.25f,
+                progressTipPaint)
         }
 
 
-        canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
-
-        val angle = Math.toDegrees(Math.PI * 2) * progress / 100
-        canvas.drawArc(rect, -90f, angle.toFloat(), false, progressPaint)
-
-        if (progress >= 100) {
-            return
-        }
-
-        canvas.drawCircle(
-            (width / 2f + (width - widthPx * 2) / 2f * cos(Math.toRadians(angle - 90.0))).toFloat(),
-            (width / 2f + (width - widthPx * 2) / 2f * sin(Math.toRadians(angle - 90.0))).toFloat(),
-            widthPx / 3.25f,
-            progressTipPaint)
-
-    }
-
-    fun updateColor(colorResId: Int) {
-        return
-        val color = ContextCompat.getColor(context, colorResId)
-        progressPaint.color = color
-        requestLayout()
     }
 }
