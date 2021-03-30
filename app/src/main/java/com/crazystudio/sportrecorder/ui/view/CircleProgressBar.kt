@@ -90,17 +90,18 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, a
             val angle = Math.toDegrees(Math.PI * 2) * progress / 100
             canvas.drawCircle(width / 2f, width / 2f, width / 2 - widthPx, backgroundPaint)
             canvas.drawArc(rect, -90f, angle.toFloat(), false, progressPaint)
-            canvas.drawCircle(
-                (width / 2f),
-                (width / 2f + (width-widthPx*2) / -2f),
-                widthPx / 2f,
-                progressStartPointPaint)
 
             canvas.drawCircle(
                 (width / 2f + (width-widthPx*2) / 2f * cos(Math.toRadians(angle-90.0))).toFloat(),
                 (width / 2f + (width-widthPx*2) / 2f * sin(Math.toRadians(angle-90.0))).toFloat(),
                 widthPx / 2f,
                 progressEndPointPaint)
+
+            canvas.drawCircle(
+                (width / 2f),
+                (width / 2f + (width-widthPx*2) / -2f),
+                widthPx / 2f,
+                progressStartPointPaint)
 
             canvas.drawCircle(
                 (width / 2f + (width - widthPx * 2) / 2f * cos(Math.toRadians(angle - 90.0))).toFloat(),

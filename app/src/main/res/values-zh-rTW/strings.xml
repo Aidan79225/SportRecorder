@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SportRecorder</string>
-    <string name="diet_elapsed_time">已過時間</string>
+    <string name="diet_remaining_time">剩餘時間</string>
     <string name="diet_status_eating">進食中</string>
     <string name="diet_status_fasting">斷食中</string>
     <string name="diet_status_success">成功</string>
+    <string name="diet_fasting_time">已禁食時間</string>
 </resources>
