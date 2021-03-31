@@ -29,32 +29,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="24sp"
-                android:visibility="gone"
                 />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/diet_remaining_time"
-                android:textColor="@color/grey_1"
-                android:textSize="24sp"
-                />
-
-
-            <TextView
-                android:id="@+id/intermittent_text_view"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="00:00:00"
-                android:textSize="48sp"
-                />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:text="@string/diet_fasting_time"
                 android:textColor="@color/grey_1"
-                android:textSize="18sp"
+                android:textSize="24sp"
                 />
 
 
@@ -63,7 +46,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="00:00:00"
-                android:textSize="36sp"
+                android:textSize="48sp"
                 />
         </LinearLayout>
     </RelativeLayout>
