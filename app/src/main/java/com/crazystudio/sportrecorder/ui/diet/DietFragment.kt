@@ -36,27 +36,32 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             fun updateTime(eatTime: Pair<EatTime, EatTime>) {
                 val remainTime = System.currentTimeMillis() - eatTime.first.time
                 val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
-                val lastEatingTimeMillis = max(TimeUnit.HOURS.toMillis(eatingHours), eatTime.second.time - eatTime.first.time)
+                val eatingTimeMillis = TimeUnit.HOURS.toMillis(eatingHours)
+
                 val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
                 val fastingTimeMillis = TimeUnit.HOURS.toMillis(fastingHours)
-                val totalTime = fastingTimeMillis + lastEatingTimeMillis
                 val fastingTime = System.currentTimeMillis() - eatTime.second.time
 
-                val progress = min(100.0, fastingTime * 100.0 / fastingTimeMillis)
+                val progress = min(100.0, remainTime * 100.0 / (fastingTimeMillis + max(eatingTimeMillis, eatTime.second.time - eatTime.first.time)))
                 circularProgressBar.progress = progress
+
                 when {
-                    remainTime < lastEatingTimeMillis -> {
+                    remainTime < eatingTimeMillis -> {
                         statusTextView.text = getString(R.string.diet_status_eating)
+                        timerTextView.text = getTimeString(eatingTimeMillis - remainTime)
+                        dietPromptTextView.setText(R.string.diet_remaining_time)
                     }
                     fastingTime > fastingTimeMillis -> {
                         statusTextView.text = getString(R.string.diet_status_success)
+                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
+                        dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                     else -> {
                         statusTextView.text = getString(R.string.diet_status_fasting)
+                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
+                        dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                 }
-
-                fastingTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
             }
 
             createEatTimeFloatActionButton.setOnClickListener {
