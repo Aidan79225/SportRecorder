@@ -9,13 +9,14 @@ import android.graphics.Shader
 import android.graphics.SweepGradient
 import android.util.AttributeSet
 import android.view.View
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.util.dpToPx
 import kotlin.math.cos
 import kotlin.math.sin
 
-class CircleProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
+class CircleProgressBar(context: Context, attrs: AttributeSet) : LinearLayout(context, attrs) {
     var progress = 0.0
         set(value) {
             field = value

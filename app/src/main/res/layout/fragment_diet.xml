@@ -15,14 +15,10 @@
             android:id="@+id/circular_progress_bar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            />
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="@color/transparent">
+            android:background="@color/transparent"
+            >
 
             <TextView
                 android:id="@+id/status_text_view"
@@ -49,7 +45,9 @@
                 android:text="00:00:00"
                 android:textSize="48sp"
                 />
-        </LinearLayout>
+
+        </com.crazystudio.sportrecorder.ui.view.CircleProgressBar>
+
     </RelativeLayout>
     <LinearLayout
         android:id="@+id/diet_info_container"
