@@ -2,8 +2,11 @@ package com.crazystudio.sportrecorder.ui.diet
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentDietBinding
 import com.crazystudio.sportrecorder.entity.EatTime
@@ -18,9 +21,10 @@ import kotlin.math.max
 import kotlin.math.min
 
 class DietFragment : BaseFragment(R.layout.fragment_diet) {
-    private val viewModel by viewModels<DietViewModel>()
+    private val viewModel by activityViewModels<DietViewModel>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         FragmentDietBinding.bind(view).apply {
             val preference = SharedPreferenceUtils.getDietPreference()
             fun getTimeString(timestamp: Long): String {
@@ -64,13 +68,30 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 }
             }
 
+            fun updateInfo() {
+                val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
+                val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
+                dietInfoTextView.text = "%d : %d".format(fastingHours, eatingHours)
+            }
+
             createEatTimeFloatActionButton.setOnClickListener {
                 viewModel.createEatTime()
             }
-
+            dietInfoContainer.setOnClickListener {
+                findNavController().navigate(DietFragmentDirections.gotoSelectFastingTypeFragment())
+            }
             viewModel.lastEatTimeLiveData.observe(viewLifecycleOwner) {
                 updateTime(it)
             }
+
+            viewModel.selectFastingItemLiveData.observe(viewLifecycleOwner) {
+                preference.edit().apply {
+                    putLong(Constants.DIET_EATING_TIME_INTERVAL, it.eatingHours)
+                    putLong(Constants.DIET_FASTING_TIME_INTERVAL, it.fastingHours)
+                }.apply()
+                updateInfo()
+            }
+            updateInfo()
 
             lifecycleScope.launch {
                 while (true) {

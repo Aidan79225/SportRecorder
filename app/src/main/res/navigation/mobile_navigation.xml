@@ -9,7 +9,24 @@
         android:id="@+id/navigation_diet"
         android:name="com.crazystudio.sportrecorder.ui.diet.DietFragment"
         android:label="@string/title_home"
-        tools:layout="@layout/fragment_diet" />
+        tools:layout="@layout/fragment_diet" >
+        <action
+            android:id="@+id/goto_select_fasting_type_fragment"
+            app:destination="@+id/select_fasting_type_fragment"
+            app:enterAnim="@anim/slide_in"
+            app:exitAnim="@anim/fade_out"
+            app:popEnterAnim="@anim/fade_in"
+            app:popExitAnim="@anim/slide_out"
+            />
+    </fragment>
+
+    <fragment
+        android:id="@+id/select_fasting_type_fragment"
+        android:name="com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeFragment"
+        tools:layout="@layout/fragment_select_fasting_type"
+        >
+
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_home"
