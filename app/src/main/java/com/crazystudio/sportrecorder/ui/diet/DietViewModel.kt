@@ -7,6 +7,7 @@ import androidx.room.Room
 import com.crazystudio.sportrecorder.SportApplication
 
 import com.crazystudio.sportrecorder.entity.EatTime
+import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingItem
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -14,6 +15,8 @@ class DietViewModel: ViewModel() {
     private val eatTimeDao = SportApplication.db.eatTimeDao()
 
     val lastEatTimeLiveData = MutableLiveData<Pair<EatTime, EatTime>>()
+
+    val selectFastingItemLiveData = MutableLiveData<SelectFastingItem>()
 
     init {
         viewModelScope.launch {
