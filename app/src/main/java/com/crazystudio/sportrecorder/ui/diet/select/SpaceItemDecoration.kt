@@ -11,14 +11,5 @@ class SpaceItemDecoration(private val spacePx: Int, private val spanCount: Int):
         outRect.left = spacePx
         outRect.bottom = spacePx
         outRect.right = spacePx
-        if (itemPosition % spanCount == 0) {
-            outRect.left += spacePx
-        }
-        if (itemPosition % spanCount == spanCount-1) {
-            outRect.right += spacePx
-        }
-        if (itemPosition < spanCount) {
-            outRect.top += spacePx
-        }
     }
 }

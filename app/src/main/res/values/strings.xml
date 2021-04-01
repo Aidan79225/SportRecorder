@@ -11,8 +11,10 @@
     <string name="diet_status_success">Success</string>
     <string name="diet_status_fasting">Fasting</string>
 
+    <string name="diet_fasting_type_title">Fasting type</string>
+    <string name="diet_fasting_type_trainee">Trainee</string>
     <string name="diet_fasting_type_normal">Normal</string>
-    <string name="diet_fasting_type_advance">Advance</string>
+    <string name="diet_fasting_type_expert">Expert</string>
     <string name="diet_fasting_type_master">Master</string>
     <string name="diet_fasting_type_monk">Monk</string>
 </resources>

@@ -4,35 +4,66 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.databinding.ItemSelectFastingTypeBinding
+import com.crazystudio.sportrecorder.databinding.ItemFastingTypeDefaultBinding
 
-class SelectFastingTypeAdapter(private val data: List<SelectFastingItem>, private val clickListener: FastingItemClickListener): RecyclerView.Adapter<SelectFastingViewHolder>() {
+class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListener): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    private val data =  mutableListOf<FastingItem>()
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SelectFastingViewHolder {
-        return SelectFastingViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_select_fasting_type, parent, false))
+    val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+        override fun getSpanSize(position: Int): Int {
+            return data[position].spanSize
+        }
     }
 
-    override fun onBindViewHolder(holder: SelectFastingViewHolder, position: Int) {
-        holder.onBind(data[position])
-        holder.itemView.setOnClickListener {
-            clickListener.onClick(data[position])
+    fun setData(data: List<FastingItem>) {
+        this.data.clear()
+        this.data.addAll(data)
+        notifyDataSetChanged()
+    }
+
+    override fun getItemViewType(position: Int): Int {
+        return when(data[position]) {
+            FastingItem.TitleFastingItem -> R.layout.item_fasting_type_title
+            FastingItem.AddFastingItem -> R.layout.item_fasting_type_add
+            else -> R.layout.item_fasting_type_default
+        }
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when(viewType) {
+            R.layout.item_fasting_type_title -> TitleViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
+            R.layout.item_fasting_type_add -> AddViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
+            else -> DefaultFastingViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when(holder) {
+            is DefaultFastingViewHolder -> {
+                val data = data[position] as? FastingItem.DefaultFastingItem ?: return
+                holder.onBind(data)
+                holder.itemView.setOnClickListener {
+                    clickListener.onClick(data)
+                }
+            }
         }
     }
 
     override fun getItemCount() = data.size
 
     interface FastingItemClickListener {
-        fun onClick(data: SelectFastingItem)
+        fun onClick(data: FastingItem.DefaultFastingItem)
     }
 }
+class TitleViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
+class AddViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
+class DefaultFastingViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
+    private val binding = ItemFastingTypeDefaultBinding.bind(itemView)
 
-class SelectFastingViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
-    private val binding = ItemSelectFastingTypeBinding.bind(itemView)
-
-    fun onBind(data: SelectFastingItem) {
+    fun onBind(data: FastingItem.DefaultFastingItem) {
         binding.apply {
             root.setBackgroundColor(ContextCompat.getColor(itemView.context, data.backgroundColorResId))
             nameTextView.setText(data.nameResId)
@@ -41,9 +72,15 @@ class SelectFastingViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
     }
 }
 
-data class SelectFastingItem(
-    val nameResId: Int,
-    val fastingHours: Long,
-    val eatingHours: Long,
-    val backgroundColorResId: Int
-)
+sealed class FastingItem(val spanSize: Int) {
+    object TitleFastingItem: FastingItem(2)
+    data class DefaultFastingItem(
+        val nameResId: Int,
+        val fastingHours: Long,
+        val eatingHours: Long,
+        val backgroundColorResId: Int
+    ): FastingItem(1)
+
+    object AddFastingItem: FastingItem(1)
+
+}

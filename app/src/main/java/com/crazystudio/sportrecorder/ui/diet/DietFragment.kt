@@ -6,6 +6,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentDietBinding
@@ -37,6 +38,7 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 return getString(R.string.diet_time_format).format(hours, mins, ses)
             }
 
+
             fun updateTime(eatTime: Pair<EatTime, EatTime>) {
                 val remainTime = System.currentTimeMillis() - eatTime.first.time
                 val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
@@ -46,7 +48,7 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 val fastingTimeMillis = TimeUnit.HOURS.toMillis(fastingHours)
                 val fastingTime = System.currentTimeMillis() - eatTime.second.time
 
-                val progress = min(100.0, remainTime * 100.0 / (fastingTimeMillis + max(eatingTimeMillis, eatTime.second.time - eatTime.first.time)))
+                val progress = min(100.0, fastingTime * 100.0 / fastingTimeMillis)
                 circularProgressBar.progress = progress
 
                 when {
@@ -66,6 +68,11 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                         dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                 }
+            }
+
+            fun updateTime() {
+                val eatTimeList = viewModel.lastEatTimeLiveData.value ?: return
+                updateTime(eatTimeList)
             }
 
             fun updateInfo() {
@@ -90,14 +97,14 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                     putLong(Constants.DIET_FASTING_TIME_INTERVAL, it.fastingHours)
                 }.apply()
                 updateInfo()
+                updateTime()
             }
             updateInfo()
 
             lifecycleScope.launch {
                 while (true) {
                     delay(TimeUnit.SECONDS.toMillis(1))
-                    val eatTimeList = viewModel.lastEatTimeLiveData.value ?: continue
-                    updateTime(eatTimeList)
+                    updateTime()
                 }
             }
         }
