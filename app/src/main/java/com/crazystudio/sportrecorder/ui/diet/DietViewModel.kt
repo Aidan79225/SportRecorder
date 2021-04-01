@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class DietViewModel: ViewModel() {
-    private val eatTimeDao = SportApplication.db.eatTimeDao()
+    private val eatTimeDao = SportApplication.db.getEatTimeDao()
 
     val lastEatTimeLiveData = MutableLiveData<Pair<EatTime, EatTime>>()
 

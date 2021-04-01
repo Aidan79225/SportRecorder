@@ -1,16 +1,15 @@
 package com.crazystudio.sportrecorder.ui.diet.select
 
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.map
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.SportApplication
 
 class SelectFastingTypeViewModel: ViewModel() {
-    val selectFastingItemLiveData = MutableLiveData<List<FastingItem>>()
-    init {
-        update()
-    }
-    private fun update() {
-        selectFastingItemLiveData.value = listOf(
+    private val fastingTypeDao = SportApplication.db.getFastingTypeDao()
+
+    val selectFastingItemLiveData = fastingTypeDao.liveLast(10).map {
+        return@map mutableListOf(
             FastingItem.TitleFastingItem,
             FastingItem.DefaultFastingItem(
                 R.string.diet_fasting_type_trainee,
@@ -39,9 +38,14 @@ class SelectFastingTypeViewModel: ViewModel() {
                 47,
                 1,
                 R.color.google_red
-            ),
-            FastingItem.AddFastingItem
-        )
+            )
+        ).apply {
+            addAll(it.map {
+                FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours)
+            })
+            add(FastingItem.AddFastingItem)
+        }
     }
+
 
 }

@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.ui.diet
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -22,12 +23,14 @@ import kotlin.math.max
 import kotlin.math.min
 
 class DietFragment : BaseFragment(R.layout.fragment_diet) {
-    private val viewModel by activityViewModels<DietViewModel>()
+    private val viewModel by viewModels<DietViewModel>()
+    private val preference = SharedPreferenceUtils.getDietPreference()
+    private lateinit var onSharedPreferenceChangeListener: SharedPreferences.OnSharedPreferenceChangeListener
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         FragmentDietBinding.bind(view).apply {
-            val preference = SharedPreferenceUtils.getDietPreference()
+
             fun getTimeString(timestamp: Long): String {
                 var temp = timestamp
                 val hours = TimeUnit.MILLISECONDS.toHours(temp)
@@ -93,7 +96,11 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             viewModel.lastEatTimeLiveData.observe(viewLifecycleOwner) {
                 updateTime(it)
             }
-
+            onSharedPreferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                updateInfo()
+                updateTime()
+            }
+            preference.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
             viewModel.selectFastingItemLiveData.observe(viewLifecycleOwner) {
                 preference.edit().apply {
                     putLong(Constants.DIET_EATING_TIME_INTERVAL, it.eatingHours)
@@ -112,5 +119,10 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             }
         }
 
+    }
+
+    override fun onDestroyView() {
+        preference.unregisterOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
+        super.onDestroyView()
     }
 }

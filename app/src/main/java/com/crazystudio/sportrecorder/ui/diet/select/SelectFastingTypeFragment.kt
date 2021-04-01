@@ -2,18 +2,17 @@ package com.crazystudio.sportrecorder.ui.diet.select
 
 import android.os.Bundle
 import android.view.View
-import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentSelectFastingTypeBinding
 import com.crazystudio.sportrecorder.ui.base.BaseFragment
-import com.crazystudio.sportrecorder.ui.diet.DietViewModel
+import com.crazystudio.sportrecorder.util.Constants
+import com.crazystudio.sportrecorder.util.SharedPreferenceUtils
 import com.crazystudio.sportrecorder.util.dpToPx
 
 class SelectFastingTypeFragment : BaseFragment(R.layout.fragment_select_fasting_type) {
-    private val activityViewModel by activityViewModels<DietViewModel>()
     private val viewModel by viewModels<SelectFastingTypeViewModel>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -22,8 +21,11 @@ class SelectFastingTypeFragment : BaseFragment(R.layout.fragment_select_fasting_
 
             val selectFastingTypeAdapter = SelectFastingTypeAdapter(
                 object : SelectFastingTypeAdapter.FastingItemClickListener {
-                    override fun onClick(data: FastingItem.DefaultFastingItem) {
-                        activityViewModel.selectFastingItemLiveData.value = data
+                    override fun onClick(fastingHours: Long, eatingHours: Long) {
+                        val preferenceEdit = SharedPreferenceUtils.getDietPreference().edit()
+                        preferenceEdit.putLong(Constants.DIET_FASTING_TIME_INTERVAL, fastingHours)
+                        preferenceEdit.putLong(Constants.DIET_EATING_TIME_INTERVAL, eatingHours)
+                        preferenceEdit.apply()
                         findNavController().popBackStack()
                     }
                 },

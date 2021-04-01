@@ -3,9 +3,9 @@ package com.crazystudio.sportrecorder
 import android.app.Application
 import androidx.room.Room
 import com.crazystudio.sportrecorder.database.AppDatabase
+import com.crazystudio.sportrecorder.database.Migrations
 
 class SportApplication : Application() {
-
 
     override fun onCreate() {
         super.onCreate()
@@ -13,7 +13,9 @@ class SportApplication : Application() {
         db = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "database-name"
-        ).build()
+        ).apply {
+            Migrations.getMigrations().forEach { addMigrations(it) }
+        }.build()
     }
 
     companion object {
