@@ -9,8 +9,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.ItemFastingTypeDefaultBinding
 
-class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListener): RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-    private val data =  mutableListOf<FastingItem>()
+class SelectFastingTypeAdapter(
+    private val clickListener: FastingItemClickListener,
+    private val createFastingClickListener: CreateFastingClickListener
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private val data = mutableListOf<FastingItem>()
 
     val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
         override fun getSpanSize(position: Int): Int {
@@ -25,7 +29,7 @@ class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListen
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when(data[position]) {
+        return when (data[position]) {
             FastingItem.TitleFastingItem -> R.layout.item_fasting_type_title
             FastingItem.AddFastingItem -> R.layout.item_fasting_type_add
             else -> R.layout.item_fasting_type_default
@@ -33,7 +37,7 @@ class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListen
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return when(viewType) {
+        return when (viewType) {
             R.layout.item_fasting_type_title -> TitleViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
             R.layout.item_fasting_type_add -> AddViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
             else -> DefaultFastingViewHolder(LayoutInflater.from(parent.context).inflate(viewType, parent, false))
@@ -41,12 +45,17 @@ class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListen
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when(holder) {
+        when (holder) {
             is DefaultFastingViewHolder -> {
                 val data = data[position] as? FastingItem.DefaultFastingItem ?: return
                 holder.onBind(data)
                 holder.itemView.setOnClickListener {
                     clickListener.onClick(data)
+                }
+            }
+            is AddViewHolder -> {
+                holder.itemView.setOnClickListener {
+                    createFastingClickListener.onClick()
                 }
             }
         }
@@ -57,10 +66,16 @@ class SelectFastingTypeAdapter(private val clickListener: FastingItemClickListen
     interface FastingItemClickListener {
         fun onClick(data: FastingItem.DefaultFastingItem)
     }
+
+    interface CreateFastingClickListener {
+        fun onClick()
+    }
 }
-class TitleViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
-class AddViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
-class DefaultFastingViewHolder(itemView: View): RecyclerView.ViewHolder(itemView) {
+
+class TitleViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+class AddViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+class DefaultFastingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+
     private val binding = ItemFastingTypeDefaultBinding.bind(itemView)
 
     fun onBind(data: FastingItem.DefaultFastingItem) {
@@ -73,14 +88,14 @@ class DefaultFastingViewHolder(itemView: View): RecyclerView.ViewHolder(itemView
 }
 
 sealed class FastingItem(val spanSize: Int) {
-    object TitleFastingItem: FastingItem(2)
+    object TitleFastingItem : FastingItem(2)
     data class DefaultFastingItem(
         val nameResId: Int,
         val fastingHours: Long,
         val eatingHours: Long,
         val backgroundColorResId: Int
-    ): FastingItem(1)
+    ) : FastingItem(1)
 
-    object AddFastingItem: FastingItem(1)
+    object AddFastingItem : FastingItem(1)
 
 }

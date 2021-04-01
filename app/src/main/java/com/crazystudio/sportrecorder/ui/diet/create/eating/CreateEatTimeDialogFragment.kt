@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.diet
+package com.crazystudio.sportrecorder.ui.diet.create.eating
 
 import android.os.Bundle
 import android.view.LayoutInflater

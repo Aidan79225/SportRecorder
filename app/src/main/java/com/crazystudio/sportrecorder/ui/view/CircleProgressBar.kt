@@ -17,7 +17,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class CircleProgressBar(context: Context, attrs: AttributeSet) : LinearLayout(context, attrs) {
-    var progress = 0.0
+    var progress = 75.0
         set(value) {
             field = value
             invalidate()

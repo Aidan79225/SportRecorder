@@ -12,7 +12,7 @@ import com.crazystudio.sportrecorder.ui.base.BaseFragment
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.util.dpToPx
 
-class SelectFastingTypeFragment: BaseFragment(R.layout.fragment_select_fasting_type) {
+class SelectFastingTypeFragment : BaseFragment(R.layout.fragment_select_fasting_type) {
     private val activityViewModel by activityViewModels<DietViewModel>()
     private val viewModel by viewModels<SelectFastingTypeViewModel>()
 
@@ -20,12 +20,19 @@ class SelectFastingTypeFragment: BaseFragment(R.layout.fragment_select_fasting_t
         super.onViewCreated(view, savedInstanceState)
         FragmentSelectFastingTypeBinding.bind(view).apply {
 
-            val selectFastingTypeAdapter = SelectFastingTypeAdapter(object : SelectFastingTypeAdapter.FastingItemClickListener {
-                override fun onClick(data: FastingItem.DefaultFastingItem) {
-                    activityViewModel.selectFastingItemLiveData.value = data
-                    findNavController().popBackStack()
+            val selectFastingTypeAdapter = SelectFastingTypeAdapter(
+                object : SelectFastingTypeAdapter.FastingItemClickListener {
+                    override fun onClick(data: FastingItem.DefaultFastingItem) {
+                        activityViewModel.selectFastingItemLiveData.value = data
+                        findNavController().popBackStack()
+                    }
+                },
+                object : SelectFastingTypeAdapter.CreateFastingClickListener {
+                    override fun onClick() {
+                        findNavController().navigate(SelectFastingTypeFragmentDirections.gotoCreateFastingTypeFragment())
+                    }
                 }
-            })
+            )
 
             viewModel.selectFastingItemLiveData.observe(viewLifecycleOwner, {
                 selectFastingTypeAdapter.setData(it)
