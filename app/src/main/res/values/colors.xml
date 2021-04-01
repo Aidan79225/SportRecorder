@@ -2,6 +2,8 @@
 <resources>
     <color name="bg_black">#2B2B2B</color>
     <color name="bg_black2">#3d3d3d</color>
+    <color name="bg_black_transparent_25">#40000000</color>
+    <color name="bg_white_transparent_25">#40FFFFFF</color>
     <color name="light_green">#38D69F</color>
     <color name="dark_green">#177252</color>
     <color name="grey_1">#cccccc</color>

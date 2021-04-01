@@ -53,16 +53,19 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
 
                 when {
                     remainTime < eatingTimeMillis -> {
+                        statusImageView.setImageResource(R.drawable.ic_baseline_fastfood_24)
                         statusTextView.text = getString(R.string.diet_status_eating)
                         timerTextView.text = getTimeString(eatingTimeMillis - remainTime)
                         dietPromptTextView.setText(R.string.diet_remaining_time)
                     }
                     fastingTime > fastingTimeMillis -> {
+                        statusImageView.setImageResource(R.drawable.ic_baseline_no_food_24)
                         statusTextView.text = getString(R.string.diet_status_success)
                         timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
                         dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                     else -> {
+                        statusImageView.setImageResource(R.drawable.ic_baseline_no_food_24)
                         statusTextView.text = getString(R.string.diet_status_fasting)
                         timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
                         dietPromptTextView.setText(R.string.diet_fasting_time)
