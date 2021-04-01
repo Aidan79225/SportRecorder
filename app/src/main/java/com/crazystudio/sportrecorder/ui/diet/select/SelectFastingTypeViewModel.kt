@@ -14,30 +14,25 @@ class SelectFastingTypeViewModel: ViewModel() {
             FastingItem.DefaultFastingItem(
                 R.string.diet_fasting_type_trainee,
                 14,
-                10,
-                R.color.google_green
+                10
             ),
             FastingItem.DefaultFastingItem(
                 R.string.diet_fasting_type_normal,
                 16,
-                8,
-                R.color.google_blue
+                8
             ),
             FastingItem.DefaultFastingItem(
                 R.string.diet_fasting_type_expert,
                 20,
-                4,
-                R.color.light_green
+                4
             ),
             FastingItem.DefaultFastingItem(R.string.diet_fasting_type_master,
                 23,
-                1,
-                R.color.google_yellow
+                1
             ),
             FastingItem.DefaultFastingItem(R.string.diet_fasting_type_monk,
                 47,
-                1,
-                R.color.google_red
+                1
             )
         ).apply {
             addAll(it.map {

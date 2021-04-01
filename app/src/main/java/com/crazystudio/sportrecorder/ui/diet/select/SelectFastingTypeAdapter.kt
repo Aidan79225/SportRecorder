@@ -17,6 +17,13 @@ class SelectFastingTypeAdapter(
 
     private val data = mutableListOf<FastingItem>()
 
+    private val backgroundColors = listOf(
+        R.color.google_red,
+        R.color.google_blue,
+        R.color.google_yellow,
+        R.color.google_green,
+    )
+
     val spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
         override fun getSpanSize(position: Int): Int {
             return data[position].spanSize
@@ -52,6 +59,7 @@ class SelectFastingTypeAdapter(
             is DefaultFastingViewHolder -> {
                 val data = data[position] as? FastingItem.DefaultFastingItem ?: return
                 holder.onBind(data)
+                holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, backgroundColors[position % backgroundColors.size]))
                 holder.itemView.setOnClickListener {
                     clickListener.onClick(data.fastingHours, data.eatingHours)
                 }
@@ -64,6 +72,7 @@ class SelectFastingTypeAdapter(
             is CustomViewHolder -> {
                 val data = data[position] as? FastingItem.CustomFastingItem ?: return
                 holder.onBind(data)
+                holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.context, backgroundColors[position % backgroundColors.size]))
                 holder.itemView.setOnClickListener {
                     clickListener.onClick(data.fastingHours, data.eatingHours)
                 }
@@ -89,7 +98,6 @@ class DefaultFastingViewHolder(itemView: View) : RecyclerView.ViewHolder(itemVie
 
     fun onBind(data: FastingItem.DefaultFastingItem) {
         binding.apply {
-            root.setBackgroundColor(ContextCompat.getColor(itemView.context, data.backgroundColorResId))
             nameTextView.setText(data.nameResId)
             timeTextView.text = "%d : %d".format(data.fastingHours, data.eatingHours)
         }
@@ -112,8 +120,7 @@ sealed class FastingItem(val spanSize: Int) {
     data class DefaultFastingItem(
         val nameResId: Int,
         val fastingHours: Long,
-        val eatingHours: Long,
-        val backgroundColorResId: Int
+        val eatingHours: Long
     ) : FastingItem(1)
 
     data class CustomFastingItem(
