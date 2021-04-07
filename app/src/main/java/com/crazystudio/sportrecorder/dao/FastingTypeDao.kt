@@ -15,4 +15,7 @@ interface FastingTypeDao {
     @Query("SELECT * FROM ${FastingType.tableName} ORDER BY timestamp DESC LIMIT :limit")
     fun liveLast(limit: Int): LiveData<List<FastingType>>
 
+    @Query("SELECT * FROM ${FastingType.tableName} WHERE eating_hours = :eatingHours AND fasting_hours = :fastingHours ORDER BY timestamp DESC LIMIT 1")
+    suspend fun findByHours(fastingHours: Long, eatingHours: Long): List<FastingType>
+
 }

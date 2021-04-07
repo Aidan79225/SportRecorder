@@ -48,14 +48,17 @@
         android:id="@+id/fasting_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="65dp"
         android:text="16"
         android:layout_gravity="end|center_vertical"
+        android:gravity="end|center_vertical"
         android:textSize="18sp"
         android:layout_column="2"
         android:layout_row="0"
         />
 
     <ImageView
+        android:id="@+id/fasting_image_view"
         android:layout_width="36dp"
         android:layout_height="36dp"
         app:srcCompat="@drawable/ic_baseline_arrow_drop_down"
@@ -69,6 +72,8 @@
         android:id="@+id/eating_text_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="65dp"
+        android:gravity="end|center_vertical"
         android:text="8"
         android:layout_gravity="end|center_vertical"
         android:textSize="18sp"
@@ -77,6 +82,7 @@
         />
 
     <ImageView
+        android:id="@+id/eating_image_view"
         android:layout_width="36dp"
         android:layout_height="36dp"
         app:srcCompat="@drawable/ic_baseline_arrow_drop_down"

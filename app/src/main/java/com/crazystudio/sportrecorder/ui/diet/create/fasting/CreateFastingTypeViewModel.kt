@@ -4,12 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.SportApplication
 import com.crazystudio.sportrecorder.entity.FastingType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CreateFastingTypeViewModel: ViewModel() {
     private val fastingTypeDao = SportApplication.db.getFastingTypeDao()
 
-    fun createCustomFastingType(fastingHours: Long, eatingHours: Long) = viewModelScope.launch {
+    suspend fun createCustomFastingType(fastingHours: Long, eatingHours: Long): Boolean = withContext(Dispatchers.Default) {
+        if (fastingTypeDao.findByHours(fastingHours, eatingHours).isNotEmpty()) {
+            return@withContext false
+        }
         fastingTypeDao.insert(
             FastingType(
                 fastingHours = fastingHours,
@@ -17,5 +22,6 @@ class CreateFastingTypeViewModel: ViewModel() {
                 timestamp = System.currentTimeMillis()
             )
         )
+        return@withContext true
     }
 }

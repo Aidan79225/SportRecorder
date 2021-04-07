@@ -17,4 +17,6 @@
     <string name="diet_fasting_type_expert">Expert</string>
     <string name="diet_fasting_type_master">Master</string>
     <string name="diet_fasting_type_monk">Monk</string>
+
+    <string name="diet_fasting_type_create_duplicate">Skip it, you already have the same fasting type!</string>
 </resources>

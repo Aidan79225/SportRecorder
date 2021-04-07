@@ -35,7 +35,7 @@ class DietViewModel: ViewModel() {
             if (t.isEmpty()) {
                 break
             }
-            if (pre.time - t[0].time > TimeUnit.HOURS.toMillis(6)) {
+            if (pre.time - t[0].time > TimeUnit.HOURS.toMillis(8)) {
                 break
             }
             pre = t[0]
