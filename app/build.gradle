@@ -4,6 +4,7 @@ plugins {
     id 'kotlin-kapt'
     id 'kotlin-android-extensions'
     id 'androidx.navigation.safeargs.kotlin'
+    id 'dagger.hilt.android.plugin'
 }
 
 android {
@@ -73,4 +74,17 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
+    implementation 'com.google.dagger:hilt-android:2.33-beta'
+    kapt 'com.google.dagger:hilt-compiler:2.33-beta'
+
+    androidTestImplementation  'com.google.dagger:hilt-android-testing:2.33-beta'
+    kaptAndroidTest 'com.google.dagger:hilt-compiler:2.33-beta'
+
+    testImplementation 'com.google.dagger:hilt-android-testing:2.33-beta'
+    kaptTest 'com.google.dagger:hilt-compiler:2.33-beta'
+}
+
+kapt {
+    correctErrorTypes true
 }
