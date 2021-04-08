@@ -17,6 +17,7 @@ class CreateFastingTypeViewModel: ViewModel() {
         if (fastingTypeDao.findByHours(fastingHours, eatingHours).isNotEmpty()) {
             return@withContext false
         }
+
         val isDefaultContains = FastingItem.defaultFastingItems.map {
             if (it is FastingItem.DefaultFastingItem) {
                 return@map it.fastingHours == fastingHours && it.eatingHours == eatingHours
