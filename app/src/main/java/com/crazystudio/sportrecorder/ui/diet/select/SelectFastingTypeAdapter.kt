@@ -129,5 +129,32 @@ sealed class FastingItem(val spanSize: Int) {
     ) : FastingItem(1)
 
     object AddFastingItem : FastingItem(1)
-
+    companion object {
+        val defaultFastingItems = listOf(
+            TitleFastingItem,
+            DefaultFastingItem(
+                R.string.diet_fasting_type_trainee,
+                14,
+                10
+            ),
+            DefaultFastingItem(
+                R.string.diet_fasting_type_normal,
+                16,
+                8
+            ),
+            DefaultFastingItem(
+                R.string.diet_fasting_type_expert,
+                20,
+                4
+            ),
+            DefaultFastingItem(R.string.diet_fasting_type_master,
+                23,
+                1
+            ),
+            DefaultFastingItem(R.string.diet_fasting_type_monk,
+                47,
+                1
+            )
+        )
+    }
 }
