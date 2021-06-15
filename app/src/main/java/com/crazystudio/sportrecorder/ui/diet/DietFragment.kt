@@ -3,28 +3,27 @@ package com.crazystudio.sportrecorder.ui.diet
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
-import androidx.core.content.ContextCompat
-import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.FragmentNavigatorExtras
 import androidx.navigation.fragment.findNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentDietBinding
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.base.BaseFragment
 import com.crazystudio.sportrecorder.util.Constants
-import com.crazystudio.sportrecorder.util.SharedPreferenceUtils
+import com.crazystudio.sportrecorder.util.DietPreference
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.sql.Timestamp
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
+import javax.inject.Inject
 import kotlin.math.min
 
+@AndroidEntryPoint
 class DietFragment : BaseFragment(R.layout.fragment_diet) {
     private val viewModel by viewModels<DietViewModel>()
-    private val preference = SharedPreferenceUtils.getDietPreference()
+    @Inject lateinit var dietPreference: DietPreference
+
     private lateinit var onSharedPreferenceChangeListener: SharedPreferences.OnSharedPreferenceChangeListener
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -44,10 +43,10 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
 
             fun updateTime(eatTime: Pair<EatTime, EatTime>) {
                 val remainTime = System.currentTimeMillis() - eatTime.first.time
-                val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
+                val eatingHours = dietPreference.preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
                 val eatingTimeMillis = TimeUnit.HOURS.toMillis(eatingHours)
 
-                val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
+                val fastingHours = dietPreference.preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
                 val fastingTimeMillis = TimeUnit.HOURS.toMillis(fastingHours)
                 val fastingTime = System.currentTimeMillis() - eatTime.second.time
 
@@ -82,8 +81,8 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             }
 
             fun updateInfo() {
-                val eatingHours = preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
-                val fastingHours = preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
+                val eatingHours = dietPreference.preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
+                val fastingHours =dietPreference.preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
                 dietInfoTextView.text = "%d : %d".format(fastingHours, eatingHours)
             }
 
@@ -100,9 +99,9 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 updateInfo()
                 updateTime()
             }
-            preference.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
+            dietPreference.preference.registerOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
             viewModel.selectFastingItemLiveData.observe(viewLifecycleOwner) {
-                preference.edit().apply {
+                dietPreference.preference.edit().apply {
                     putLong(Constants.DIET_EATING_TIME_INTERVAL, it.eatingHours)
                     putLong(Constants.DIET_FASTING_TIME_INTERVAL, it.fastingHours)
                 }.apply()
@@ -122,7 +121,7 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
     }
 
     override fun onDestroyView() {
-        preference.unregisterOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
+        dietPreference.preference.unregisterOnSharedPreferenceChangeListener(onSharedPreferenceChangeListener)
         super.onDestroyView()
     }
 }

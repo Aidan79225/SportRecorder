@@ -4,15 +4,17 @@ import android.content.Context
 import androidx.room.Room
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
+import com.crazystudio.sportrecorder.util.DietPreference
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-class DatabaseModule {
+object DatabaseModule {
     @Provides
     fun provideAppDatabase(@ApplicationContext applicationContext: Context): AppDatabase {
         return Room.databaseBuilder(
@@ -21,5 +23,11 @@ class DatabaseModule {
         ).apply {
             Migrations.getMigrations().forEach { addMigrations(it) }
         }.build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDietPreference(@ApplicationContext applicationContext: Context): DietPreference {
+        return DietPreference(applicationContext)
     }
 }

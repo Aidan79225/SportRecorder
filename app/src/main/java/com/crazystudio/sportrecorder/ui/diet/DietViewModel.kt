@@ -3,15 +3,18 @@ package com.crazystudio.sportrecorder.ui.diet
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.crazystudio.sportrecorder.SportApplication
+import com.crazystudio.sportrecorder.database.AppDatabase
 
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
-class DietViewModel: ViewModel() {
-    private val eatTimeDao = SportApplication.db.getEatTimeDao()
+@HiltViewModel
+class DietViewModel @Inject constructor(val db: AppDatabase): ViewModel() {
+    private val eatTimeDao = db.getEatTimeDao()
 
     val lastEatTimeLiveData = MutableLiveData<Pair<EatTime, EatTime>>()
 

@@ -1,17 +1,17 @@
 package com.crazystudio.sportrecorder.ui.diet.create.fasting
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.crazystudio.sportrecorder.SportApplication
+import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.entity.FastingType
-import com.crazystudio.sportrecorder.ui.diet.select.DefaultFastingViewHolder
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class CreateFastingTypeViewModel: ViewModel() {
-    private val fastingTypeDao = SportApplication.db.getFastingTypeDao()
+@HiltViewModel
+class CreateFastingTypeViewModel @Inject constructor(val db: AppDatabase): ViewModel() {
+    private val fastingTypeDao = db.getFastingTypeDao()
 
     suspend fun createCustomFastingType(fastingHours: Long, eatingHours: Long): Boolean = withContext(Dispatchers.Default) {
         if (fastingTypeDao.findByHours(fastingHours, eatingHours).isNotEmpty()) {

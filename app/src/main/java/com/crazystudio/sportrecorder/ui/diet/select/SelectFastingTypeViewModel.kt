@@ -2,11 +2,13 @@ package com.crazystudio.sportrecorder.ui.diet.select
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.map
-import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.SportApplication
+import com.crazystudio.sportrecorder.database.AppDatabase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class SelectFastingTypeViewModel: ViewModel() {
-    private val fastingTypeDao = SportApplication.db.getFastingTypeDao()
+@HiltViewModel
+class SelectFastingTypeViewModel @Inject constructor(val db: AppDatabase): ViewModel() {
+    private val fastingTypeDao = db.getFastingTypeDao()
 
     val selectFastingItemLiveData = fastingTypeDao.liveLast(10).map {
         return@map FastingItem.defaultFastingItems.toMutableList().apply {

@@ -9,11 +9,15 @@ import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentSelectFastingTypeBinding
 import com.crazystudio.sportrecorder.ui.base.BaseFragment
 import com.crazystudio.sportrecorder.util.Constants
-import com.crazystudio.sportrecorder.util.SharedPreferenceUtils
+import com.crazystudio.sportrecorder.util.DietPreference
 import com.crazystudio.sportrecorder.util.dpToPx
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SelectFastingTypeFragment : BaseFragment(R.layout.fragment_select_fasting_type) {
     private val viewModel by viewModels<SelectFastingTypeViewModel>()
+    @Inject lateinit var dietPreference: DietPreference
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -22,7 +26,7 @@ class SelectFastingTypeFragment : BaseFragment(R.layout.fragment_select_fasting_
             val selectFastingTypeAdapter = SelectFastingTypeAdapter(
                 object : SelectFastingTypeAdapter.FastingItemClickListener {
                     override fun onClick(fastingHours: Long, eatingHours: Long) {
-                        val preferenceEdit = SharedPreferenceUtils.getDietPreference().edit()
+                        val preferenceEdit = dietPreference.preference.edit()
                         preferenceEdit.putLong(Constants.DIET_FASTING_TIME_INTERVAL, fastingHours)
                         preferenceEdit.putLong(Constants.DIET_EATING_TIME_INTERVAL, eatingHours)
                         preferenceEdit.apply()
