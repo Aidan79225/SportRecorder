@@ -16,8 +16,10 @@ import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentCreateFastingTypeBinding
 import com.crazystudio.sportrecorder.databinding.ItemFastingTypeTitleBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class CreateFastingTypeFragment: BottomSheetDialogFragment() {
     private val viewModel by viewModels<CreateFastingTypeViewModel>()
     private lateinit var bind: FragmentCreateFastingTypeBinding

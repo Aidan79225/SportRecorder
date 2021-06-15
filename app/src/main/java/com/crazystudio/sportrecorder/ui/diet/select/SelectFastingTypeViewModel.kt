@@ -18,6 +18,4 @@ class SelectFastingTypeViewModel @Inject constructor(val db: AppDatabase): ViewM
             add(FastingItem.AddFastingItem)
         }
     }
-
-
 }
