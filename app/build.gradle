@@ -15,6 +15,12 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile rootProject.file('release.keystore')
+            storePassword 'aa555051'
+            keyAlias 'Sport Recorder'
+            keyPassword 'aa555051'
+        }
     }
     compileSdkVersion 30
     buildToolsVersion "30.0.2"
