@@ -88,17 +88,31 @@
             />
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/create_eat_time_float_action_button"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="20dp"
-        android:src="@drawable/ic_baseline_add_24"
-        android:tint="@color/bg_black"
-        android:backgroundTint="@color/light_green"
-        />
+        android:orientation="vertical">
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_baseline_add_24"
+            android:tint="@color/bg_black"
+            android:backgroundTint="@color/light_green"
+            android:visibility="gone"
+            />
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/create_eat_time_float_action_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_baseline_add_24"
+            android:tint="@color/bg_black"
+            android:backgroundTint="@color/light_green"
+            />
+    </LinearLayout>
 
 </RelativeLayout>
