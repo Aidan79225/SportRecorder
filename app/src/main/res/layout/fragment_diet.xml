@@ -9,7 +9,7 @@
         android:id="@+id/status_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="75dp">
+        android:layout_marginTop="10dp">
 
         <com.crazystudio.sportrecorder.ui.view.CircleProgressBar
             android:id="@+id/circular_progress_bar"
@@ -85,6 +85,59 @@
             app:srcCompat="@drawable/ic_baseline_edit_24"
             android:background="@color/transparent"
             android:layout_marginStart="5dp"
+            />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_below="@+id/diet_info_container"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:gravity="center"
+        android:layout_height="150dp">
+
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_1"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_2"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_3"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_4"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_5"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_6"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
+            />
+
+        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
+            android:id="@+id/vertical_bar_7"
+            android:layout_width="20dp"
+            android:layout_height="match_parent"
+            android:layout_margin="10dp"
             />
     </LinearLayout>
 
