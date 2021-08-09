@@ -95,6 +95,15 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             viewModel.lastEatTimeLiveData.observe(viewLifecycleOwner) {
                 updateTime(it)
             }
+            viewModel.historyLiveData.observe(viewLifecycleOwner) {
+                verticalBar1.progress = it[0]
+                verticalBar2.progress = it[1]
+                verticalBar3.progress = it[2]
+                verticalBar4.progress = it[3]
+                verticalBar5.progress = it[4]
+                verticalBar6.progress = it[5]
+                verticalBar7.progress = it[6]
+            }
             onSharedPreferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
                 updateInfo()
                 updateTime()
