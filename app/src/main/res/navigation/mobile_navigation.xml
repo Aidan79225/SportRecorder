@@ -25,7 +25,7 @@
             />
     </fragment>
 
-    <fragment
+    <dialog
         android:id="@+id/select_fasting_type_fragment"
         android:name="com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeFragment"
         tools:layout="@layout/fragment_select_fasting_type"
@@ -34,7 +34,7 @@
             android:id="@+id/goto_create_fasting_type_fragment"
             app:destination="@+id/create_fasting_type_fragment"
             />
-    </fragment>
+    </dialog>
 
     <dialog
         android:id="@+id/create_fasting_type_fragment"
