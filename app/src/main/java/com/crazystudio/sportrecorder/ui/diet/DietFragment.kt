@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlin.math.max
 import kotlin.math.min
 
 @AndroidEntryPoint
@@ -45,14 +46,14 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             }
 
 
-            fun updateTime(eatTime: Pair<EatTime, EatTime>) {
-                val remainTime = System.currentTimeMillis() - eatTime.first.time
+            fun updateTime(eatTime: Pair<Long, Long>) {
+                val remainTime = System.currentTimeMillis() - eatTime.first
                 val eatingHours = dietPreference.preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
                 val eatingTimeMillis = TimeUnit.HOURS.toMillis(eatingHours)
 
                 val fastingHours = dietPreference.preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
                 val fastingTimeMillis = TimeUnit.HOURS.toMillis(fastingHours)
-                val fastingTime = System.currentTimeMillis() - eatTime.second.time
+                val fastingTime = Calendar.getInstance().timeInMillis - min(eatTime.second, Calendar.getInstance().timeInMillis)
 
                 val progress = min(100.0, fastingTime * 100.0 / fastingTimeMillis)
                 circularProgressBar.progress = progress
@@ -67,13 +68,13 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                     fastingTime > fastingTimeMillis -> {
                         statusImageView.setImageResource(R.drawable.ic_baseline_no_food_24)
                         statusTextView.text = getString(R.string.diet_status_success)
-                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
+                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second)
                         dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                     else -> {
                         statusImageView.setImageResource(R.drawable.ic_baseline_no_food_24)
                         statusTextView.text = getString(R.string.diet_status_fasting)
-                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second.time)
+                        timerTextView.text = getTimeString(System.currentTimeMillis() - eatTime.second)
                         dietPromptTextView.setText(R.string.diet_fasting_time)
                     }
                 }
@@ -91,7 +92,8 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             }
 
             createEatTimeFloatActionButton.setOnClickListener {
-                viewModel.createEatTime()
+                findNavController().navigate(DietFragmentDirections.gotoCreateEatingFragment())
+//                viewModel.createEatTime()
             }
             dietInfoContainer.setOnClickListener {
                 findNavController().navigate(DietFragmentDirections.gotoSelectFastingTypeFragment())

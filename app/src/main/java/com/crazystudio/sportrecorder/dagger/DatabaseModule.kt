@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.dagger
 import android.content.Context
 import androidx.room.Room
 import com.crazystudio.sportrecorder.dao.EatTimeDao
+import com.crazystudio.sportrecorder.dao.FastingTypeDao
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
 import com.crazystudio.sportrecorder.util.DietPreference
@@ -37,5 +38,11 @@ object DatabaseModule {
     @Singleton
     fun provideEatTimeDao(appDatabase: AppDatabase): EatTimeDao {
         return appDatabase.getEatTimeDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFastingTypeDao(appDatabase: AppDatabase): FastingTypeDao {
+        return appDatabase.getFastingTypeDao()
     }
 }

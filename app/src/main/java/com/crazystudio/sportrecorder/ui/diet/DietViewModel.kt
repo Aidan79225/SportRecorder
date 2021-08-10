@@ -9,6 +9,7 @@ import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.text.DateFormatSymbols
 import java.util.*
@@ -19,48 +20,22 @@ import kotlin.math.min
 
 @HiltViewModel
 class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): ViewModel() {
-    val lastEatTimeLiveData = MutableLiveData<Pair<EatTime, EatTime>>()
+    val lastEatTimeLiveData = MutableLiveData<Pair<Long, Long>>()
 
     val historyLiveData = MutableLiveData<List<Pair<Long, Float>>>()
 
     val selectFastingItemLiveData = MutableLiveData<FastingItem.DefaultFastingItem>()
 
     init {
+
         viewModelScope.launch {
-            updateEatingTime()
             findHistory()
         }
     }
 
-    private suspend fun updateEatingTime() {
-        val last = eatTimeDao.findLast()
-        if (last.isEmpty()) {
-            return
-        }
-        lastEatTimeLiveData.value = getTimeInterval(last[0])
-    }
-
-    private suspend fun getTimeInterval(last: EatTime): Pair<EatTime, EatTime> {
-        var pre = last
-        while (true) {
-            val t = eatTimeDao.findLastByTime(pre.time)
-            if (t.isEmpty()) {
-                break
-            }
-            if (pre.time - t[0].time > TimeUnit.HOURS.toMillis(8)) {
-                break
-            }
-            pre = t[0]
-        }
-        return Pair(pre, last)
-    }
-
     private suspend fun findHistory() {
         val before = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 8)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+            set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)+1)
         }.timeInMillis
 
         val after = Calendar.getInstance().apply {
@@ -71,30 +46,34 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-        val data = eatTimeDao.findByTimeInterval(before, after)
-        val timeInterval = mergeInterval(data)
+        eatTimeDao.flowByTimeInterval(before, after).collect { data ->
+            val timeInterval = mergeInterval(data)
+            if (timeInterval.isNotEmpty()) {
+                lastEatTimeLiveData.value = timeInterval.last()
+            }
+            (0..4).map { i ->
+                val before = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i-1)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
 
-        (0..4).map { i ->
-            val before = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i-1)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
+                val after = Calendar.getInstance().apply {
+                    set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
 
-            val after = Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i)
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
-
-            before to effectiveProgress(timeInterval, before, after)
-        }.let {
-            historyLiveData.value = it.asReversed()
+                before to effectiveProgress(timeInterval, before, after)
+            }.let {
+                historyLiveData.value = it.asReversed()
+            }
         }
+
 
     }
 
@@ -110,12 +89,12 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
                 if (end.time + eight > it.time) {
                     end = it
                 } else {
-                    add(Pair(start.time, max(end.time, start.time+eight)))
+                    add(Pair(start.time, end.time))
                     start = it
                     end = it
                 }
             }
-            add(Pair(start.time, max(end.time, start.time+eight)))
+            add(Pair(start.time, end.time))
         }
     }
 
@@ -131,13 +110,4 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
 
         return 1.0f - (sum / (after-before).toFloat())
     }
-
-    fun createEatTime() {
-        viewModelScope.launch {
-            eatTimeDao.insert(EatTime(time = Calendar.getInstance().timeInMillis))
-            updateEatingTime()
-            findHistory()
-        }
-    }
-
 }

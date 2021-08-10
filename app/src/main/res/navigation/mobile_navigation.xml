@@ -18,6 +18,11 @@
             app:popEnterAnim="@anim/fade_in"
             app:popExitAnim="@anim/slide_out"
             />
+
+        <action
+            android:id="@+id/goto_create_eating_fragment"
+            app:destination="@+id/create_eating_time_fragment"
+            />
     </fragment>
 
     <fragment
@@ -35,6 +40,14 @@
         android:id="@+id/create_fasting_type_fragment"
         android:name="com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeFragment"
         tools:layout="@layout/fragment_create_fasting_type"
+        >
+
+    </dialog>
+
+    <dialog
+        android:id="@+id/create_eating_time_fragment"
+        android:name="com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeDialogFragment"
+        tools:layout="@layout/fragment_create_eat_time"
         >
 
     </dialog>
