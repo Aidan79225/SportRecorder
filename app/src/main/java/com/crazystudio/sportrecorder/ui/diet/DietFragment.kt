@@ -93,7 +93,6 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
 
             createEatTimeFloatActionButton.setOnClickListener {
                 findNavController().navigate(DietFragmentDirections.gotoCreateEatingFragment())
-//                viewModel.createEatTime()
             }
             dietInfoContainer.setOnClickListener {
                 findNavController().navigate(DietFragmentDirections.gotoSelectFastingTypeFragment())

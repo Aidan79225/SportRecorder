@@ -21,6 +21,6 @@ class MainActivity : AppCompatActivity() {
         val navView: BottomNavigationView = findViewById(R.id.nav_view)
         val navController = findNavController(R.id.nav_host_fragment)
         navView.setupWithNavController(navController)
-        navView.visibility = View.GONE
+//        navView.visibility = View.GONE
     }
 }

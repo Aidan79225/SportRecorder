@@ -79,6 +79,7 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
 
     private fun mergeInterval(data: List<EatTime>): List<Pair<Long, Long>> {
         val eight = TimeUnit.HOURS.toMillis(8)
+        val four = TimeUnit.HOURS.toMillis(4)
         return mutableListOf<Pair<Long, Long>>().apply{
             if (data.isEmpty()) {
                 return@apply
@@ -89,12 +90,12 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
                 if (end.time + eight > it.time) {
                     end = it
                 } else {
-                    add(Pair(start.time, end.time))
+                    add(Pair(start.time, max(end.time, start.time + four)))
                     start = it
                     end = it
                 }
             }
-            add(Pair(start.time, end.time))
+            add(Pair(start.time, max(end.time, start.time + four)))
         }
     }
 
