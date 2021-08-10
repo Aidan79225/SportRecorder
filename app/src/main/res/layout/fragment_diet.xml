@@ -1,147 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/bg_black"
-    android:orientation="vertical">
-    <RelativeLayout
-        android:id="@+id/status_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp">
+    >
 
-        <com.crazystudio.sportrecorder.ui.view.CircleProgressBar
-            android:id="@+id/circular_progress_bar"
+    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/bg_black"
+        >
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:background="@color/bg_black"
             android:gravity="center"
-            android:background="@color/transparent"
-            >
+            android:orientation="vertical">
 
-            <ImageView
-                android:id="@+id/status_image_view"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                app:srcCompat="@drawable/ic_baseline_fastfood_24"
-                />
 
-            <TextView
-                android:id="@+id/status_text_view"
+            <RelativeLayout
+                android:id="@+id/status_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp">
+
+                <com.crazystudio.sportrecorder.ui.view.CircleProgressBar
+                    android:id="@+id/circular_progress_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@color/transparent"
+                    >
+
+                    <ImageView
+                        android:id="@+id/status_image_view"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        app:srcCompat="@drawable/ic_baseline_fastfood_24"
+                        />
+
+                    <TextView
+                        android:id="@+id/status_text_view"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="24sp"
+                        />
+
+                    <TextView
+                        android:id="@+id/diet_prompt_text_view"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/diet_fasting_time"
+                        android:textColor="@color/grey_1"
+                        android:textSize="24sp"
+                        />
+
+
+                    <TextView
+                        android:id="@+id/timer_text_view"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="00:00:00"
+                        android:textSize="48sp"
+                        />
+
+                </com.crazystudio.sportrecorder.ui.view.CircleProgressBar>
+
+            </RelativeLayout>
+            <LinearLayout
+                android:id="@+id/diet_info_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="24sp"
-                />
 
-            <TextView
-                android:id="@+id/diet_prompt_text_view"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_round_black2"
                 android:layout_marginTop="10dp"
-                android:text="@string/diet_fasting_time"
-                android:textColor="@color/grey_1"
-                android:textSize="24sp"
-                />
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
 
+                <TextView
+                    android:id="@+id/diet_info_text_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="16"
+                    android:textSize="18sp"
+                    android:textColor="@color/grey_1"
+                    android:background="@color/transparent"/>
 
-            <TextView
-                android:id="@+id/timer_text_view"
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:srcCompat="@drawable/ic_baseline_edit_24"
+                    android:background="@color/transparent"
+                    android:layout_marginStart="5dp"
+                    />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/diet_date_info_container"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:gravity="center"
+                android:layout_height="wrap_content">
+
+            </LinearLayout>
+
+            <View
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="00:00:00"
-                android:textSize="48sp"
+                android:layout_height="100dp"
+
                 />
 
-        </com.crazystudio.sportrecorder.ui.view.CircleProgressBar>
-
-    </RelativeLayout>
+        </LinearLayout>
+    </ScrollView>
     <LinearLayout
-        android:id="@+id/diet_info_container"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/status_container"
-        android:layout_centerHorizontal="true"
-        android:orientation="horizontal"
-        android:background="@drawable/bg_round_black2"
-        android:layout_marginTop="10dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp">
-
-        <TextView
-            android:id="@+id/diet_info_text_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="16"
-            android:textSize="18sp"
-            android:textColor="@color/grey_1"
-            android:background="@color/transparent"/>
-
-        <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:srcCompat="@drawable/ic_baseline_edit_24"
-            android:background="@color/transparent"
-            android:layout_marginStart="5dp"
-            />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_below="@+id/diet_info_container"
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:gravity="center"
-        android:layout_height="150dp">
-
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_1"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_2"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_3"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_4"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_5"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_6"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-
-        <com.crazystudio.sportrecorder.ui.view.VerticalProgressBar
-            android:id="@+id/vertical_bar_7"
-            android:layout_width="20dp"
-            android:layout_height="match_parent"
-            android:layout_margin="10dp"
-            />
-    </LinearLayout>
-
-    <LinearLayout
+        android:id="@+id/floating_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -167,5 +149,4 @@
             android:backgroundTint="@color/light_green"
             />
     </LinearLayout>
-
 </RelativeLayout>

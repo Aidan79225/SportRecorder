@@ -2,12 +2,14 @@ package com.crazystudio.sportrecorder.ui.diet
 
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentDietBinding
+import com.crazystudio.sportrecorder.databinding.ItemVerticalBarBinding
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.base.BaseFragment
 import com.crazystudio.sportrecorder.util.Constants
@@ -15,6 +17,8 @@ import com.crazystudio.sportrecorder.util.DietPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import kotlin.math.min
@@ -95,14 +99,18 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
             viewModel.lastEatTimeLiveData.observe(viewLifecycleOwner) {
                 updateTime(it)
             }
-            viewModel.historyLiveData.observe(viewLifecycleOwner) {
-                verticalBar1.progress = it[0]
-                verticalBar2.progress = it[1]
-                verticalBar3.progress = it[2]
-                verticalBar4.progress = it[3]
-                verticalBar5.progress = it[4]
-                verticalBar6.progress = it[5]
-                verticalBar7.progress = it[6]
+
+            dietDateInfoContainer.apply {
+                val verticalBars = (0..4).map {
+                    ItemVerticalBarBinding.inflate(LayoutInflater.from(context), this, true)
+                }
+                viewModel.historyLiveData.observe(viewLifecycleOwner) {
+                    val dateFormat = SimpleDateFormat("MM/dd")
+                    for (i in 0..4) {
+                        verticalBars[i].verticalBar.progress = it[i].second
+                        verticalBars[i].dataTextView.text = dateFormat.format(Date(it[i].first))
+                    }
+                }
             }
             onSharedPreferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
                 updateInfo()
