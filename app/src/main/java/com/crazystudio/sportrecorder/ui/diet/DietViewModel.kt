@@ -59,9 +59,6 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
 
     private fun updateHistory(data: List<EatTime>) {
         val timeInterval = mergeIntervalWithFourHours(data)
-        if (timeInterval.isNotEmpty()) {
-            lastEatTimeLiveData.value = timeInterval.last()
-        }
         (0..4).map { i ->
             val before = Calendar.getInstance().apply {
                 set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i-1)
