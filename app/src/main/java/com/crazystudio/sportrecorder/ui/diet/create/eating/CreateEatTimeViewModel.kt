@@ -16,8 +16,13 @@ class CreateEatTimeViewModel @Inject constructor(private val eatTimeDao: EatTime
     val currentCalendar = Calendar.getInstance()
     val calendarLiveData = MutableLiveData(currentCalendar)
 
-    suspend fun createEatingTime() {
-        eatTimeDao.insert(EatTime(time = currentCalendar.timeInMillis))
+    suspend fun createEatingTime(): Boolean {
+        return if (currentCalendar.timeInMillis > Calendar.getInstance().timeInMillis) {
+            false
+        } else {
+            eatTimeDao.insert(EatTime(time = currentCalendar.timeInMillis))
+            true
+        }
     }
 
     fun updateDate(year: Int, month: Int, dayOfMonth: Int) {

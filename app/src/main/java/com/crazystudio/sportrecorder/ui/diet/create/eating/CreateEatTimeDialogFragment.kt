@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.DatePicker
 import android.widget.TimePicker
+import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -63,8 +64,11 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
 
         binding.createTextView.setOnClickListener {
             lifecycleScope.launch {
-                viewModel.createEatingTime()
-                dismiss()
+                if (viewModel.createEatingTime()) {
+                    dismiss()
+                } else {
+                    Toast.makeText(requireContext(), R.string.diet_create_eating_error , Toast.LENGTH_LONG).show()
+                }
             }
         }
 

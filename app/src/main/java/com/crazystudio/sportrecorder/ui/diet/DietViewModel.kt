@@ -4,14 +4,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.dao.EatTimeDao
-import com.crazystudio.sportrecorder.database.AppDatabase
 
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import java.text.DateFormatSymbols
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -47,37 +45,68 @@ class DietViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): Vie
         }.timeInMillis
 
         eatTimeDao.flowByTimeInterval(before, after).collect { data ->
-            val timeInterval = mergeInterval(data)
-            if (timeInterval.isNotEmpty()) {
-                lastEatTimeLiveData.value = timeInterval.last()
-            }
-            (0..4).map { i ->
-                val before = Calendar.getInstance().apply {
-                    set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i-1)
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-
-                val after = Calendar.getInstance().apply {
-                    set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i)
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-
-                before to effectiveProgress(timeInterval, before, after)
-            }.let {
-                historyLiveData.value = it.asReversed()
-            }
+            updateLastEatingTime(data)
+            updateHistory(data)
         }
+    }
 
+    private fun updateLastEatingTime(data: List<EatTime>) {
+        val timeInterval = mergeInterval(data)
+        if (timeInterval.isNotEmpty()) {
+            lastEatTimeLiveData.value = timeInterval.last()
+        }
+    }
 
+    private fun updateHistory(data: List<EatTime>) {
+        val timeInterval = mergeIntervalWithFourHours(data)
+        if (timeInterval.isNotEmpty()) {
+            lastEatTimeLiveData.value = timeInterval.last()
+        }
+        (0..4).map { i ->
+            val before = Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i-1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            val after = Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR)-i)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+
+            before to effectiveProgress(timeInterval, before, after)
+        }.let {
+            historyLiveData.value = it.asReversed()
+        }
     }
 
     private fun mergeInterval(data: List<EatTime>): List<Pair<Long, Long>> {
+        val eight = TimeUnit.HOURS.toMillis(8)
+        return mutableListOf<Pair<Long, Long>>().apply{
+            if (data.isEmpty()) {
+                return@apply
+            }
+            var start = data[0]
+            var end = data[0]
+            data.forEach {
+                if (end.time + eight > it.time) {
+                    end = it
+                } else {
+                    add(Pair(start.time, end.time))
+                    start = it
+                    end = it
+                }
+            }
+            add(Pair(start.time, end.time))
+        }
+    }
+
+    private fun mergeIntervalWithFourHours(data: List<EatTime>): List<Pair<Long, Long>> {
         val eight = TimeUnit.HOURS.toMillis(8)
         val four = TimeUnit.HOURS.toMillis(4)
         return mutableListOf<Pair<Long, Long>>().apply{
