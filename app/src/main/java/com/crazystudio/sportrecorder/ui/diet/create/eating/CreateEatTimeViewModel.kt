@@ -13,7 +13,9 @@ import javax.inject.Inject
 @HiltViewModel
 class CreateEatTimeViewModel @Inject constructor(private val eatTimeDao: EatTimeDao): ViewModel() {
 
-    val currentCalendar = Calendar.getInstance()
+    val currentCalendar = Calendar.getInstance().apply {
+
+    }
     val calendarLiveData = MutableLiveData(currentCalendar)
 
     suspend fun createEatingTime(): Boolean {

@@ -42,6 +42,7 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
             val currentCalendar = viewModel.currentCalendar
             DatePickerDialog(
                 it.context,
+                R.style.DatePicker,
                 { view, year, month, dayOfMonth ->
                     viewModel.updateDate(year, month, dayOfMonth)
                 }, currentCalendar.get(Calendar.YEAR),
