@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.crazystudio.sportrecorder.R
@@ -51,11 +52,15 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
             val currentCalendar = viewModel.currentCalendar
             TimePickerDialog(
                 it.context,
+                R.style.TimeDialogStyle,
                 { view, hourOfDay, minute -> viewModel.updateTime(hourOfDay, minute) },
                 currentCalendar.get(Calendar.HOUR_OF_DAY),
                 currentCalendar.get(Calendar.MINUTE),
                 true
-            ).show()
+            ).apply {
+
+                getView()?.setBackgroundColor(ContextCompat.getColor(it.context, R.color.bg_black))
+            }.show()
         }
 
 

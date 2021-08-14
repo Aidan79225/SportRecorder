@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.dashboard
+package com.crazystudio.sportrecorder.ui.diet.record
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
