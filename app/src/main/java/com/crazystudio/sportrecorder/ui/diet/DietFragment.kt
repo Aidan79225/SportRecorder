@@ -105,10 +105,17 @@ class DietFragment : BaseFragment(R.layout.fragment_diet) {
                 val verticalBars = (0..4).map {
                     ItemVerticalBarBinding.inflate(LayoutInflater.from(context), this, true)
                 }
+                verticalBars.forEach { rootBing ->
+                    rootBing.root.setOnClickListener {
+                        verticalBars.forEach { it.percentTextView.visibility = View.GONE }
+                        rootBing.percentTextView.visibility = View.VISIBLE
+                    }
+                }
                 viewModel.historyLiveData.observe(viewLifecycleOwner) {
                     val dateFormat = SimpleDateFormat("MM/dd")
                     for (i in 0..4) {
                         verticalBars[i].verticalBar.progress = it[i].second
+                        verticalBars[i].percentTextView.text = "${(verticalBars[i].verticalBar.progress*100).toInt()}%"
                         verticalBars[i].dataTextView.text = dateFormat.format(Date(it[i].first))
                     }
                 }

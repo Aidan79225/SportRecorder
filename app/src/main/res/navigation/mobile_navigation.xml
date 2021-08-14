@@ -54,9 +54,9 @@
 
     <fragment
         android:id="@+id/navigation_dashboard"
-        android:name="com.crazystudio.sportrecorder.ui.dashboard.DashboardFragment"
+        android:name="com.crazystudio.sportrecorder.ui.dashboard.DietRecordFragment"
         android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_dashboard" />
+        tools:layout="@layout/fragment_diet_record" />
 
     <fragment
         android:id="@+id/navigation_notifications"

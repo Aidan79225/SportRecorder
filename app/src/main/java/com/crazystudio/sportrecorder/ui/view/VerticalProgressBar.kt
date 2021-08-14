@@ -14,6 +14,7 @@ import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.util.dpToPx
+import com.crazystudio.sportrecorder.util.spToPx
 
 class VerticalProgressBar(context: Context, attrs: AttributeSet) : View(context, attrs) {
     private val widthPx = context.dpToPx(20f)
@@ -43,6 +44,12 @@ class VerticalProgressBar(context: Context, attrs: AttributeSet) : View(context,
     private val backgroundPointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = ContextCompat.getColor(context, R.color.bg_black2)
+    }
+
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        textSize = context.dpToPx(12f)
+        color = ContextCompat.getColor(context, R.color.white)
     }
 
     override fun onDraw(canvas: Canvas?) {
