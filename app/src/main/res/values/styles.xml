@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="DatePicker" parent="Theme.AppCompat.DayNight.Dialog">
+    <style name="DialogStyle" parent="Theme.AppCompat.DayNight.Dialog">
         <item name="colorPrimary">@color/light_green</item>
         <item name="colorPrimaryDark">@color/dark_green</item>
         <item name="colorAccent">@color/bg_black2</item>

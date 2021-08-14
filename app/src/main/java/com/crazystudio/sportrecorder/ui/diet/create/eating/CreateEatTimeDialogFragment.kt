@@ -6,15 +6,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.DatePicker
-import android.widget.TimePicker
 import android.widget.Toast
-import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentCreateEatTimeBinding
-import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -42,7 +38,7 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
             val currentCalendar = viewModel.currentCalendar
             DatePickerDialog(
                 it.context,
-                R.style.DatePicker,
+                R.style.DialogStyle,
                 { view, year, month, dayOfMonth ->
                     viewModel.updateDate(year, month, dayOfMonth)
                 }, currentCalendar.get(Calendar.YEAR),
