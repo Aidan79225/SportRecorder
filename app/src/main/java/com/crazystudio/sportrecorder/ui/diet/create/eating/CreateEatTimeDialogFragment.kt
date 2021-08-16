@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentCreateEatTimeBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -30,39 +31,38 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val adapter = CreateEatTimeAdapter(object : CreateEatTimeClickListener {
+            override fun onDateClickListener() {
+                val currentCalendar = viewModel.currentCalendar
+                DatePickerDialog(
+                    view.context,
+                    R.style.DialogStyle,
+                    { view, year, month, dayOfMonth ->
+                        viewModel.updateDate(year, month, dayOfMonth)
+                    }, currentCalendar.get(Calendar.YEAR),
+                    currentCalendar.get(Calendar.MONTH),
+                    currentCalendar.get(Calendar.DAY_OF_MONTH)
+                ).show()
+            }
+
+            override fun onTimeClickListener() {
+                val currentCalendar = viewModel.currentCalendar
+                TimePickerDialog(
+                    view.context,
+                    R.style.TimeDialogStyle,
+                    { view, hourOfDay, minute -> viewModel.updateTime(hourOfDay, minute) },
+                    currentCalendar.get(Calendar.HOUR_OF_DAY),
+                    currentCalendar.get(Calendar.MINUTE),
+                    true
+                ).apply {
+                    getView()?.setBackgroundColor(ContextCompat.getColor(view.context, R.color.bg_black))
+                }.show()
+            }
+        })
+
         viewModel.calendarLiveData.observe(viewLifecycleOwner) {
-            binding.dateTextView.text = SimpleDateFormat("yyyy/MM/dd").format(it.time)
-            binding.timeTextView.text = SimpleDateFormat("HH:mm").format(it.time)
+            adapter.calendar = it
         }
-
-        binding.dateImageView.setOnClickListener {
-            val currentCalendar = viewModel.currentCalendar
-            DatePickerDialog(
-                it.context,
-                R.style.DialogStyle,
-                { view, year, month, dayOfMonth ->
-                    viewModel.updateDate(year, month, dayOfMonth)
-                }, currentCalendar.get(Calendar.YEAR),
-                currentCalendar.get(Calendar.MONTH),
-                currentCalendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
-        }
-
-        binding.timeImageView.setOnClickListener {
-            val currentCalendar = viewModel.currentCalendar
-            TimePickerDialog(
-                it.context,
-                R.style.TimeDialogStyle,
-                { view, hourOfDay, minute -> viewModel.updateTime(hourOfDay, minute) },
-                currentCalendar.get(Calendar.HOUR_OF_DAY),
-                currentCalendar.get(Calendar.MINUTE),
-                true
-            ).apply {
-
-                getView()?.setBackgroundColor(ContextCompat.getColor(it.context, R.color.bg_black))
-            }.show()
-        }
-
 
         binding.createTextView.setOnClickListener {
             lifecycleScope.launch {
@@ -78,5 +78,10 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
             dismiss()
         }
 
+
+        binding.recyclerView.apply {
+            this.adapter = adapter
+            layoutManager = LinearLayoutManager(view.context)
+        }
     }
 }

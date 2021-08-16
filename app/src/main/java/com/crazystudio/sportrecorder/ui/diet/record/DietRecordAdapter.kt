@@ -16,7 +16,7 @@ class DietRecordAdapter(private val clickListener: DietRecordClickListener): Rec
         }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        return DietRecordViewHolder(ItemDietRecordBinding.inflate(LayoutInflater.from(parent.context)))
+        return DietRecordViewHolder(ItemDietRecordBinding.inflate(LayoutInflater.from(parent.context), parent, false))
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -36,14 +36,17 @@ interface DietRecordClickListener {
 class DietRecordViewHolder(private val binding: ItemDietRecordBinding): RecyclerView.ViewHolder(binding.root) {
     fun onBind(data: EatTime, clickListener: DietRecordClickListener) {
         binding.idTextView.text = data.id.toString()
-        binding.timeTextView.text = dateFormat.format(Date(data.time))
+        binding.dateTextView.text = dateFormat.format(Date(data.time))
+        binding.timeTextView.text = timeFormat.format(Date(data.time))
         binding.root.setOnLongClickListener {
             clickListener.onLongClick(data)
             return@setOnLongClickListener true
         }
+        binding.root.invalidate()
     }
 
     companion object {
         val dateFormat = SimpleDateFormat("yyyy/MM/dd")
+        val timeFormat = SimpleDateFormat("HH:mm")
     }
 }

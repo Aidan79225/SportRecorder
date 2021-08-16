@@ -6,10 +6,25 @@
     android:orientation="horizontal">
     <TextView
         android:id="@+id/id_text_view"
-        android:layout_width="100dp"
+        android:layout_width="50dp"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:padding="10dp"
         android:textSize="14sp"/>
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="@color/bg_black2"/>
+
+    <TextView
+        android:id="@+id/date_text_view"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="14sp"
+        android:padding="10dp"/>
 
     <View
         android:layout_width="1dp"
@@ -21,6 +36,7 @@
         android:layout_width="0dp"
         android:layout_weight="1"
         android:layout_height="wrap_content"
+        android:gravity="center"
         android:textSize="14sp"
         android:padding="10dp"/>
 
