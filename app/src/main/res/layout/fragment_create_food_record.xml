@@ -1,6 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:background="@color/bg_black"
+    android:orientation="vertical"
+    android:padding="20dp">
+    <include
+        android:id="@+id/name_container"
+        layout="@layout/item_food_record_edit_text"
+        />
 
-</RelativeLayout>
+    <include
+        android:id="@+id/carbohydrate_container"
+        layout="@layout/item_food_record_edit_text"
+        />
+
+    <include
+        android:id="@+id/protein_container"
+        layout="@layout/item_food_record_edit_text"
+        />
+
+    <include
+        android:id="@+id/fat_container"
+        layout="@layout/item_food_record_edit_text"
+        />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        >
+
+        <TextView
+            android:id="@+id/cancel_text_view"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_stoke_round_light_green"
+            android:layout_marginTop="20dp"
+            android:layout_gravity="fill_horizontal"
+            android:text="CANCEL"
+            android:gravity="center"
+            android:layout_margin="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            />
+        <TextView
+            android:id="@+id/create_text_view"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_round_light_green"
+            android:layout_marginTop="20dp"
+            android:layout_gravity="fill_horizontal"
+            android:text="CREATE"
+            android:textColor="@color/black"
+            android:gravity="center"
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp"
+            android:layout_margin="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            />
+    </LinearLayout>
+
+</LinearLayout>

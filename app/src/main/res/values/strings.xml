@@ -14,6 +14,14 @@
     <string name="diet_create_eating_date_title">Date</string>
     <string name="diet_create_eating_time_title">Time</string>
     <string name="diet_create_eating_error">You can\'t set time over than current time</string>
+    <string name="diet_create_food_title">Food</string>
+    <string name="diet_food_record_title">Food Record</string>
+
+    <string name="create_food_name">Name</string>
+    <string name="create_food_carbohydrate">Carbohydrate</string>
+    <string name="create_food_protein">Protein</string>
+    <string name="create_food_fat">Fat</string>
+
 
     <string name="diet_fasting_type_title">Fasting type</string>
     <string name="diet_fasting_type_trainee">Trainee</string>

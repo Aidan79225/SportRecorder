@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal">
+    <ImageView
+        android:id="@+id/icon_image_view"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        app:srcCompat="@drawable/ic_baseline_date_range_24"
+        android:layout_margin="10dp"
+        />
+
+    <TextView
+        android:id="@+id/title_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/diet_create_eating_date_title"
+        android:textSize="18sp"
+        android:layout_gravity="center_vertical"
+        />
+
+    <EditText
+        android:id="@+id/content_text_view"
+        android:layout_width="0dp"
+        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:minWidth="65dp"
+        android:text="0.0"
+        android:layout_gravity="end|center_vertical"
+        android:gravity="end|center_vertical"
+        android:textSize="18sp"
+        android:background="@null"
+        android:inputType="number"
+        android:imeOptions="actionDone"
+        />
+
+    <ImageView
+        android:id="@+id/action_image_view"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        app:srcCompat="@drawable/ic_baseline_arrow_drop_down"
+        android:layout_margin="10dp"
+        android:visibility="invisible"
+        />
+</LinearLayout>

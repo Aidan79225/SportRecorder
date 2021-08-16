@@ -10,9 +10,11 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentCreateEatTimeBinding
+import com.crazystudio.sportrecorder.entity.FoodRecord
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -32,7 +34,7 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val adapter = CreateEatTimeAdapter(object : CreateEatTimeClickListener {
-            override fun onDateClickListener() {
+            override fun onDateClick() {
                 val currentCalendar = viewModel.currentCalendar
                 DatePickerDialog(
                     view.context,
@@ -45,7 +47,7 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
                 ).show()
             }
 
-            override fun onTimeClickListener() {
+            override fun onTimeClick() {
                 val currentCalendar = viewModel.currentCalendar
                 TimePickerDialog(
                     view.context,
@@ -58,10 +60,24 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
                     getView()?.setBackgroundColor(ContextCompat.getColor(view.context, R.color.bg_black))
                 }.show()
             }
+
+            override fun onCreateFoodRecordClick() {
+                findNavController().navigate(CreateEatTimeDialogFragmentDirections.gotoCreateFoodRecordFragment())
+            }
+
+            override fun onFoodRecordDeleteClick(foodRecord: FoodRecord) {
+                lifecycleScope.launch {
+                    viewModel.deleteFoodRecord(foodRecord)
+                }
+            }
         })
 
         viewModel.calendarLiveData.observe(viewLifecycleOwner) {
             adapter.calendar = it
+        }
+
+        viewModel.foodRecordLiveData.observe(viewLifecycleOwner) {
+            adapter.data = it
         }
 
         binding.createTextView.setOnClickListener {
@@ -83,5 +99,6 @@ class CreateEatTimeDialogFragment : BottomSheetDialogFragment() {
             this.adapter = adapter
             layoutManager = LinearLayoutManager(view.context)
         }
+
     }
 }

@@ -29,7 +29,7 @@ interface EatTimeDao {
     fun flowByTimeInterval(before: Long, after: Long): Flow<List<EatTime>>
 
     @Insert
-    suspend fun insert(eatTime: EatTime)
+    suspend fun insert(eatTime: EatTime): Long
 
     @Delete
     suspend fun delete(eatTime: EatTime)
