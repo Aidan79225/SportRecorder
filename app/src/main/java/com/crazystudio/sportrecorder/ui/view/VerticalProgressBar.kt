@@ -52,11 +52,8 @@ class VerticalProgressBar(context: Context, attrs: AttributeSet) : View(context,
         color = ContextCompat.getColor(context, R.color.white)
     }
 
-    override fun onDraw(canvas: Canvas?) {
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (canvas == null) {
-            return
-        }
         if (shader == null) {
             shader = LinearGradient(
 
