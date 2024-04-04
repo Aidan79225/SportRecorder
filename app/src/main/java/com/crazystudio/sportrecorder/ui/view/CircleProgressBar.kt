@@ -65,11 +65,8 @@ class CircleProgressBar(context: Context, attrs: AttributeSet) : LinearLayout(co
         super.onMeasure(widthMeasureSpec, widthMeasureSpec)
     }
 
-    override fun onDraw(canvas: Canvas?) {
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        if (canvas == null) {
-            return
-        }
         if (shader == null) {
             shader = SweepGradient(
                 width / 2f,
