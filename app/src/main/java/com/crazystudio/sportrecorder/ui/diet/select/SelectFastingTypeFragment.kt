@@ -8,17 +8,11 @@ import android.view.ViewGroup
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.GridLayoutManager
-import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.databinding.FragmentSelectFastingTypeBinding
-import com.crazystudio.sportrecorder.ui.base.BaseFragment
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import com.crazystudio.sportrecorder.util.Constants
 import com.crazystudio.sportrecorder.util.DietPreference
-import com.crazystudio.sportrecorder.util.dpToPx
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment

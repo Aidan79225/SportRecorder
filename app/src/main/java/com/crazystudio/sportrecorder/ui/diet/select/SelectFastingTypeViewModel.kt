@@ -15,6 +15,6 @@ class SelectFastingTypeViewModel @Inject constructor(val db: AppDatabase): ViewM
     val fastingItemFlow = fastingTypeDao.flowLast(10).map {
         return@map FastingItem.defaultFastingItems + it.map {
             FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours)
-        }
+        }.reversed()
     }
 }
