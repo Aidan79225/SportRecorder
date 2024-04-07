@@ -9,10 +9,10 @@ import androidx.compose.ui.unit.sp
 
 
 fun createTypography(colorScheme: ColorScheme) = Typography(
-    bodyLarge = TextStyle(
+    headlineLarge = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        fontSize = 36.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp,
         color = colorScheme.primary
@@ -20,6 +20,22 @@ fun createTypography(colorScheme: ColorScheme) = Typography(
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp,
+        color = colorScheme.primary
+    ),
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp,
+        color = colorScheme.primary
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
         fontSize = 18.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp,

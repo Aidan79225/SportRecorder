@@ -5,12 +5,17 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.databinding.FragmentSelectFastingTypeBinding
 import com.crazystudio.sportrecorder.ui.base.BaseFragment
+import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import com.crazystudio.sportrecorder.util.Constants
 import com.crazystudio.sportrecorder.util.DietPreference
 import com.crazystudio.sportrecorder.util.dpToPx
@@ -22,45 +27,34 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class SelectFastingTypeFragment : BottomSheetDialogFragment() {
-    private val viewModel by viewModels<SelectFastingTypeViewModel>()
-    @Inject lateinit var dietPreference: DietPreference
-    lateinit var binding: FragmentSelectFastingTypeBinding
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return FragmentSelectFastingTypeBinding.inflate(inflater, container, false).apply {
-            binding = this
-        }.root
-    }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        binding.apply {
-            val selectFastingTypeAdapter = SelectFastingTypeAdapter(
-                object : SelectFastingTypeAdapter.FastingItemClickListener {
-                    override fun onClick(fastingHours: Long, eatingHours: Long) {
-                        val preferenceEdit = dietPreference.preference.edit()
-                        preferenceEdit.putLong(Constants.DIET_FASTING_TIME_INTERVAL, fastingHours)
-                        preferenceEdit.putLong(Constants.DIET_EATING_TIME_INTERVAL, eatingHours)
-                        preferenceEdit.apply()
-                        findNavController().popBackStack()
-                    }
-                },
-                object : SelectFastingTypeAdapter.CreateFastingClickListener {
-                    override fun onClick() {
-                        findNavController().navigate(SelectFastingTypeFragmentDirections.gotoCreateFastingTypeFragment())
-                    }
+    @Inject
+    lateinit var dietPreference: DietPreference
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+
+        return ComposeView(requireContext()).apply {
+            setContent {
+                val vm: SelectFastingTypeViewModel = viewModel()
+                val fastingItem by vm.fastingItemFlow.collectAsState(emptyList())
+                SportRecorderTheme {
+                    SelectFastingTypeScreen(
+                        fastingItem,
+                        {
+                            findNavController().navigate(SelectFastingTypeFragmentDirections.gotoCreateFastingTypeFragment())
+                        },
+                        { fastingHours, eatingHours ->
+                            val preferenceEdit = dietPreference.preference.edit()
+                            preferenceEdit.putLong(Constants.DIET_FASTING_TIME_INTERVAL, fastingHours)
+                            preferenceEdit.putLong(Constants.DIET_EATING_TIME_INTERVAL, eatingHours)
+                            preferenceEdit.apply()
+                            findNavController().popBackStack()
+                        }
+                    )
                 }
-            )
-
-            viewModel.selectFastingItemLiveData.observe(viewLifecycleOwner, {
-                selectFastingTypeAdapter.setData(it)
-            })
-
-            recyclerView.apply {
-                layoutManager = GridLayoutManager(context, 2).apply {
-                    spanSizeLookup = selectFastingTypeAdapter.spanSizeLookup
-                }
-                adapter = selectFastingTypeAdapter
-                addItemDecoration(SpaceItemDecoration(context.dpToPx(10f).toInt(), 2))
             }
         }
     }
