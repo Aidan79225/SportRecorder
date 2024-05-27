@@ -31,7 +31,7 @@ class CreateFastingTypeFragment : BottomSheetDialogFragment() {
                     val eatingHours = eatingTime.toLong()
                     lifecycleScope.launch {
                         if (viewModel.createCustomFastingType(fastingHours, eatingHours)) {
-                        dismiss()
+                            dismiss()
                         } else {
                             Toast.makeText(
                                 requireContext(),

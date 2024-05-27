@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHost
 import androidx.navigation.fragment.findNavController
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import com.crazystudio.sportrecorder.util.Constants
