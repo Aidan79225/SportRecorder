@@ -42,8 +42,6 @@ import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeSheet
 import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
-import com.crazystudio.sportrecorder.ui.diet.create.food.CreateFoodRecordSheet
-import com.crazystudio.sportrecorder.ui.diet.create.food.CreateFoodRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
@@ -51,7 +49,6 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
 import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
 import com.crazystudio.sportrecorder.util.PhotoStorage
-import androidx.navigation.toRoute
 import com.crazystudio.sportrecorder.ui.theme.bg_black2
 import com.crazystudio.sportrecorder.ui.theme.grey_1
 import com.crazystudio.sportrecorder.ui.theme.light_green
@@ -226,23 +223,6 @@ fun AppRoot() {
                             scope.launch { if (vm.createEatingTime()) navController.popBackStack() }
                         },
                     )
-                }
-                bottomSheet<Route.CreateFoodRecord> { entry ->
-                    val args = entry.toRoute<Route.CreateFoodRecord>()
-                    val vm: CreateFoodRecordViewModel = hiltViewModel()
-                    val scope = rememberCoroutineScope()
-                    CreateFoodRecordSheet(onConfirm = { name, carbs, protein, fat ->
-                        scope.launch {
-                            vm.createFoodRecord(
-                                args.eatTimeId.toInt(),
-                                name,
-                                carbs.toFloatOrNull() ?: 0f,
-                                protein.toFloatOrNull() ?: 0f,
-                                fat.toFloatOrNull() ?: 0f,
-                            )
-                            navController.popBackStack()
-                        }
-                    })
                 }
             }
         }
