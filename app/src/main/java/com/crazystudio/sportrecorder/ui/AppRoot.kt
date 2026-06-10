@@ -30,6 +30,8 @@ import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
+import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
@@ -103,7 +105,11 @@ fun AppRoot() {
                         onAddEatTime = { navController.navigate(Route.CreateEatTime) },
                     )
                 }
-                composable<Route.Record> { Text("Record (placeholder)") }
+                composable<Route.Record> {
+                    val vm: DietRecordViewModel = hiltViewModel()
+                    val records by vm.records.collectAsStateWithLifecycle()
+                    RecordScreen(records = records, onDelete = vm::deleteEatTime)
+                }
                 composable<Route.Notifications> { Text("Notifications (placeholder)") }
 
                 bottomSheet<Route.SelectFastingType> {

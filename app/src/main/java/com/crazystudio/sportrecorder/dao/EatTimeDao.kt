@@ -13,6 +13,9 @@ interface EatTimeDao {
     @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC")
     fun liveAll(): LiveData<List<EatTime>>
 
+    @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC")
+    fun flowAll(): Flow<List<EatTime>>
+
     @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC LIMIT 1")
     suspend fun findLast(): List<EatTime>
 

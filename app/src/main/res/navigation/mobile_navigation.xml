@@ -62,11 +62,7 @@
 
     </dialog>
 
-    <fragment
-        android:id="@+id/navigation_dashboard"
-        android:name="com.crazystudio.sportrecorder.ui.diet.record.DietRecordFragment"
-        android:label="@string/title_record"
-        tools:layout="@layout/fragment_diet_record" />
+    <!-- DietRecordFragment removed; Record screen is now a Compose destination -->
 
     <fragment
         android:id="@+id/navigation_notifications"
