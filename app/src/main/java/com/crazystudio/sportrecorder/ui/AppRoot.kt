@@ -43,6 +43,7 @@ import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
 import androidx.navigation.toRoute
 import com.crazystudio.sportrecorder.ui.theme.bg_black2
 import com.crazystudio.sportrecorder.ui.theme.grey_1
@@ -119,7 +120,7 @@ fun AppRoot() {
                     val records by vm.records.collectAsStateWithLifecycle()
                     RecordScreen(records = records, onDelete = vm::deleteEatTime)
                 }
-                composable<Route.Notifications> { Text("Notifications (placeholder)") }
+                composable<Route.Notifications> { NotificationsScreen() }
 
                 bottomSheet<Route.SelectFastingType> {
                     val vm: SelectFastingTypeViewModel = hiltViewModel()
