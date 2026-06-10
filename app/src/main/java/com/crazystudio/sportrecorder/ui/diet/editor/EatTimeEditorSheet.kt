@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.diet.create.eating
+package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -35,8 +35,8 @@ import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
 @Composable
-fun CreateEatTimeSheet(
-    state: CreateEatTimeUiState,
+fun EatTimeEditorSheet(
+    state: EatTimeEditorUiState,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
     onAddPhoto: () -> Unit,
@@ -68,8 +68,8 @@ fun CreateEatTimeSheet(
         )
         // LOCATION row
         val locationText = when (state.locationStatus) {
-            CreateEatTimeUiState.LocationStatus.LOADING -> "Locating…"
-            CreateEatTimeUiState.LocationStatus.AVAILABLE -> state.location?.let {
+            EatTimeEditorUiState.LocationStatus.LOADING -> "Locating…"
+            EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
                 String.format("%.5f, %.5f", it.lat, it.lng)
             } ?: "No location"
             else -> "No location"

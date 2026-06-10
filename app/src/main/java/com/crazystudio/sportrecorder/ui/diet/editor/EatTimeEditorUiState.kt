@@ -1,8 +1,8 @@
-package com.crazystudio.sportrecorder.ui.diet.create.eating
+package com.crazystudio.sportrecorder.ui.diet.editor
 
 import java.util.Calendar
 
-data class CreateEatTimeUiState(
+data class EatTimeEditorUiState(
     val date: Calendar,
     val pendingPhotos: List<String> = emptyList(), // webp file names already written to photosDir
     val location: LatLng? = null,

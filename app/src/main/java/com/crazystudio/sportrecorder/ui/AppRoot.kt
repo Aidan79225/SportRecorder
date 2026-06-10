@@ -38,8 +38,8 @@ import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
-import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeSheet
-import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeViewModel
+import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorSheet
+import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
@@ -116,7 +116,7 @@ fun AppRoot() {
                     DietScreen(
                         state = state,
                         onEditFastingType = { navController.navigate(Route.SelectFastingType) },
-                        onAddEatTime = { navController.navigate(Route.CreateEatTime) },
+                        onAddEatTime = { navController.navigate(Route.EatTimeEditor()) },
                     )
                 }
                 composable<Route.Record> {
@@ -153,8 +153,8 @@ fun AppRoot() {
                         },
                     )
                 }
-                bottomSheet<Route.CreateEatTime> {
-                    val vm: CreateEatTimeViewModel = hiltViewModel()
+                bottomSheet<Route.EatTimeEditor> {
+                    val vm: EatTimeEditorViewModel = hiltViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     val context = LocalContext.current
                     val scope = rememberCoroutineScope()
@@ -183,7 +183,7 @@ fun AppRoot() {
                         )
                     }
 
-                    CreateEatTimeSheet(
+                    EatTimeEditorSheet(
                         state = state,
                         onPickDate = {
                             val cal = vm.currentCalendar

@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.diet.create.eating
+package com.crazystudio.sportrecorder.ui.diet.editor
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -25,7 +25,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
-class CreateEatTimeViewModel @Inject constructor(
+class EatTimeEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val appDatabase: AppDatabase,
     private val eatTimeDao: EatTimeDao,
@@ -35,8 +35,8 @@ class CreateEatTimeViewModel @Inject constructor(
     val currentCalendar: Calendar = Calendar.getInstance()
     private var committed = false
 
-    private val _uiState = MutableStateFlow(CreateEatTimeUiState(date = currentCalendar.clone() as Calendar))
-    val uiState: StateFlow<CreateEatTimeUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(EatTimeEditorUiState(date = currentCalendar.clone() as Calendar))
+    val uiState: StateFlow<EatTimeEditorUiState> = _uiState.asStateFlow()
 
     /** Convert a temp capture file to webp (off the main thread) and stage its file name. */
     fun addCapturedPhoto(tempFile: File) {
@@ -53,21 +53,21 @@ class CreateEatTimeViewModel @Inject constructor(
 
     /** Call once the location permission is granted. */
     fun requestLocation() {
-        _uiState.update { it.copy(locationStatus = CreateEatTimeUiState.LocationStatus.LOADING) }
+        _uiState.update { it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.LOADING) }
         viewModelScope.launch {
             val result = LocationProvider.currentLocation(appContext)
             _uiState.update {
-                if (result == null) it.copy(location = null, locationStatus = CreateEatTimeUiState.LocationStatus.UNAVAILABLE)
+                if (result == null) it.copy(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
                 else it.copy(
-                    location = CreateEatTimeUiState.LatLng(result.first, result.second),
-                    locationStatus = CreateEatTimeUiState.LocationStatus.AVAILABLE,
+                    location = EatTimeEditorUiState.LatLng(result.first, result.second),
+                    locationStatus = EatTimeEditorUiState.LocationStatus.AVAILABLE,
                 )
             }
         }
     }
 
     fun locationDenied() {
-        _uiState.update { it.copy(locationStatus = CreateEatTimeUiState.LocationStatus.UNAVAILABLE) }
+        _uiState.update { it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE) }
     }
 
     suspend fun createEatingTime(): Boolean {
