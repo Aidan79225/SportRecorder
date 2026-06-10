@@ -2,6 +2,8 @@ package com.crazystudio.sportrecorder.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,8 +17,12 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -44,6 +50,7 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
 import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
+import com.crazystudio.sportrecorder.util.PhotoStorage
 import androidx.navigation.toRoute
 import com.crazystudio.sportrecorder.ui.theme.bg_black2
 import com.crazystudio.sportrecorder.ui.theme.grey_1
@@ -154,6 +161,31 @@ fun AppRoot() {
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     val context = LocalContext.current
                     val scope = rememberCoroutineScope()
+
+                    // Hold the pending capture file across the camera launch.
+                    var captureFile by remember { mutableStateOf<java.io.File?>(null) }
+                    val cameraLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.TakePicture()
+                    ) { success ->
+                        val file = captureFile
+                        if (success && file != null) vm.addCapturedPhoto(file)
+                        else file?.delete()
+                        captureFile = null
+                    }
+                    val locationPermLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.RequestMultiplePermissions()
+                    ) { result ->
+                        if (result.values.any { it }) vm.requestLocation() else vm.locationDenied()
+                    }
+                    LaunchedEffect(Unit) {
+                        locationPermLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    }
+
                     CreateEatTimeSheet(
                         state = state,
                         onPickDate = {
@@ -184,16 +216,14 @@ fun AppRoot() {
                                 )
                             }.show()
                         },
-                        onAddFood = {
-                            navController.navigate(Route.CreateFoodRecord(eatTimeId = vm.foodCreateEatTimeId))
+                        onAddPhoto = {
+                            val (file, uri) = PhotoStorage.newCaptureTarget(context)
+                            captureFile = file
+                            cameraLauncher.launch(uri)
                         },
-                        onDeleteFood = { food -> scope.launch { vm.deleteFoodRecord(food) } },
+                        onRemovePhoto = { name -> vm.removePendingPhoto(name) },
                         onConfirm = {
-                            scope.launch {
-                                if (vm.createEatingTime()) {
-                                    navController.popBackStack()
-                                }
-                            }
+                            scope.launch { if (vm.createEatingTime()) navController.popBackStack() }
                         },
                     )
                 }
