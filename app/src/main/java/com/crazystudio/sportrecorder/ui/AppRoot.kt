@@ -1,5 +1,7 @@
 package com.crazystudio.sportrecorder.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -16,7 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -28,6 +32,8 @@ import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
+import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeSheet
+import com.crazystudio.sportrecorder.ui.diet.create.eating.CreateEatTimeViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
@@ -139,7 +145,54 @@ fun AppRoot() {
                         },
                     )
                 }
-                bottomSheet<Route.CreateEatTime> { Text("CreateEatTime (placeholder)") }
+                bottomSheet<Route.CreateEatTime> {
+                    val vm: CreateEatTimeViewModel = hiltViewModel()
+                    val state by vm.uiState.collectAsStateWithLifecycle()
+                    val context = LocalContext.current
+                    val scope = rememberCoroutineScope()
+                    CreateEatTimeSheet(
+                        state = state,
+                        onPickDate = {
+                            val cal = vm.currentCalendar
+                            DatePickerDialog(
+                                context,
+                                R.style.DialogStyle,
+                                { _, year, month, dayOfMonth ->
+                                    vm.updateDate(year, month, dayOfMonth)
+                                },
+                                cal.get(java.util.Calendar.YEAR),
+                                cal.get(java.util.Calendar.MONTH),
+                                cal.get(java.util.Calendar.DAY_OF_MONTH),
+                            ).show()
+                        },
+                        onPickTime = {
+                            val cal = vm.currentCalendar
+                            TimePickerDialog(
+                                context,
+                                R.style.TimeDialogStyle,
+                                { _, hourOfDay, minute -> vm.updateTime(hourOfDay, minute) },
+                                cal.get(java.util.Calendar.HOUR_OF_DAY),
+                                cal.get(java.util.Calendar.MINUTE),
+                                true,
+                            ).apply {
+                                window?.decorView?.setBackgroundColor(
+                                    ContextCompat.getColor(context, R.color.bg_black)
+                                )
+                            }.show()
+                        },
+                        onAddFood = {
+                            navController.navigate(Route.CreateFoodRecord(eatTimeId = vm.foodCreateEatTimeId))
+                        },
+                        onDeleteFood = { food -> scope.launch { vm.deleteFoodRecord(food) } },
+                        onConfirm = {
+                            scope.launch {
+                                if (vm.createEatingTime()) {
+                                    navController.popBackStack()
+                                }
+                            }
+                        },
+                    )
+                }
                 bottomSheet<Route.CreateFoodRecord> { Text("CreateFoodRecord (placeholder)") }
             }
         }

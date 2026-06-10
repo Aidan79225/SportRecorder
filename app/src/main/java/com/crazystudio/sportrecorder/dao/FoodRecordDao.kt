@@ -7,6 +7,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.crazystudio.sportrecorder.entity.FoodRecord
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FoodRecordDao {
@@ -18,6 +19,9 @@ interface FoodRecordDao {
 
     @Query("SELECT * FROM food_record WHERE eat_time_id = :eatTimeId")
     fun liveFoodRecordByEatTimeId(eatTimeId: Int): LiveData<List<FoodRecord>>
+
+    @Query("SELECT * FROM food_record WHERE eat_time_id = :eatTimeId")
+    fun foodRecordByEatTimeIdFlow(eatTimeId: Int): Flow<List<FoodRecord>>
 
     @Query("UPDATE food_record SET eat_time_id = :targetId WHERE eat_time_id = :oldId")
     suspend fun updateEatTimeId(oldId: Int, targetId: Int)
