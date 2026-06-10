@@ -26,6 +26,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.ui.diet.DietScreen
+import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
@@ -92,7 +94,15 @@ fun AppRoot() {
                 startDestination = Route.Diet,
                 modifier = Modifier.fillMaxSize().padding(padding),
             ) {
-                composable<Route.Diet> { Text("Diet (placeholder)") }
+                composable<Route.Diet> {
+                    val vm: DietViewModel = hiltViewModel()
+                    val state by vm.uiState.collectAsStateWithLifecycle()
+                    DietScreen(
+                        state = state,
+                        onEditFastingType = { navController.navigate(Route.SelectFastingType) },
+                        onAddEatTime = { navController.navigate(Route.CreateEatTime) },
+                    )
+                }
                 composable<Route.Record> { Text("Record (placeholder)") }
                 composable<Route.Notifications> { Text("Notifications (placeholder)") }
 
