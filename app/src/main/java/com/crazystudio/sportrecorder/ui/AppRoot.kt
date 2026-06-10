@@ -9,12 +9,16 @@ import androidx.compose.material.navigation.rememberBottomSheetNavigator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
@@ -22,7 +26,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
+import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
+import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.theme.bg_black2
+import com.crazystudio.sportrecorder.ui.theme.grey_1
+import com.crazystudio.sportrecorder.ui.theme.light_green
+import kotlinx.coroutines.launch
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -63,6 +75,13 @@ fun AppRoot() {
                             },
                             icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
                             label = { Text(tab.label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = light_green,
+                                selectedTextColor = light_green,
+                                unselectedIconColor = grey_1,
+                                unselectedTextColor = grey_1,
+                                indicatorColor = bg_black2,
+                            ),
                         )
                     }
                 }
@@ -77,8 +96,33 @@ fun AppRoot() {
                 composable<Route.Record> { Text("Record (placeholder)") }
                 composable<Route.Notifications> { Text("Notifications (placeholder)") }
 
-                bottomSheet<Route.SelectFastingType> { Text("SelectFastingType (placeholder)") }
-                bottomSheet<Route.CreateFastingType> { Text("CreateFastingType (placeholder)") }
+                bottomSheet<Route.SelectFastingType> {
+                    val vm: SelectFastingTypeViewModel = hiltViewModel()
+                    val items by vm.fastingItemFlow.collectAsStateWithLifecycle(emptyList())
+                    SelectFastingTypeScreen(
+                        items,
+                        { navController.navigate(Route.CreateFastingType) },
+                        { fastingHours, eatingHours ->
+                            vm.saveSelection(fastingHours, eatingHours)
+                            navController.popBackStack()
+                        },
+                    )
+                }
+                bottomSheet<Route.CreateFastingType> {
+                    val vm: CreateFastingTypeViewModel = hiltViewModel()
+                    val scope = rememberCoroutineScope()
+                    CreateFastingTypeScreen(
+                        onDismissRequest = { navController.popBackStack() },
+                        onConfirmRequest = { fastingTime, eatingTime ->
+                            val fastingHours = fastingTime.toLong()
+                            val eatingHours = eatingTime.toLong()
+                            scope.launch {
+                                vm.createCustomFastingType(fastingHours, eatingHours)
+                                navController.popBackStack()
+                            }
+                        },
+                    )
+                }
                 bottomSheet<Route.CreateEatTime> { Text("CreateEatTime (placeholder)") }
                 bottomSheet<Route.CreateFoodRecord> { Text("CreateFoodRecord (placeholder)") }
             }
