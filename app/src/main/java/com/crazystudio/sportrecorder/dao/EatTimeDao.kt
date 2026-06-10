@@ -31,6 +31,10 @@ interface EatTimeDao {
     @Query("SELECT * FROM ${EatTime.tableName} WHERE time < :before AND time > :after ORDER BY time ASC")
     fun flowByTimeInterval(before: Long, after: Long): Flow<List<EatTime>>
 
+    @androidx.room.Transaction
+    @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC")
+    fun flowAllWithPhotos(): kotlinx.coroutines.flow.Flow<List<com.crazystudio.sportrecorder.entity.EatTimeWithPhotos>>
+
     @Insert
     suspend fun insert(eatTime: EatTime): Long
 

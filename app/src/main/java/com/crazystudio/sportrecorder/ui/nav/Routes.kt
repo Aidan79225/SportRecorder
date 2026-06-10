@@ -10,5 +10,4 @@ sealed interface Route {
     @Serializable data object SelectFastingType : Route
     @Serializable data object CreateFastingType : Route
     @Serializable data object CreateEatTime : Route
-    @Serializable data class CreateFoodRecord(val eatTimeId: Long) : Route
 }

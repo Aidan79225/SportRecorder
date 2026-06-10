@@ -4,26 +4,34 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.entity.FoodRecord
 import com.crazystudio.sportrecorder.ui.theme.white
+import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
 @Composable
@@ -31,11 +39,12 @@ fun CreateEatTimeSheet(
     state: CreateEatTimeUiState,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
-    onAddFood: () -> Unit,
-    onDeleteFood: (FoodRecord) -> Unit,
+    onAddPhoto: () -> Unit,
+    onRemovePhoto: (String) -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     Column(
         modifier = modifier
             .background(colorResource(id = R.color.bg_black))
@@ -57,23 +66,63 @@ fun CreateEatTimeSheet(
             actionIcon = R.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickTime,
         )
-        // ADD FOOD RECORD (+) row
+        // LOCATION row
+        val locationText = when (state.locationStatus) {
+            CreateEatTimeUiState.LocationStatus.LOADING -> "Locating…"
+            CreateEatTimeUiState.LocationStatus.AVAILABLE -> state.location?.let {
+                String.format("%.5f, %.5f", it.lat, it.lng)
+            } ?: "No location"
+            else -> "No location"
+        }
         HeaderRow(
-            icon = R.drawable.ic_baseline_fastfood_24,
-            title = stringResource(id = R.string.diet_create_food_title),
+            // No dedicated location drawable exists; reuse the date icon per the plan.
+            icon = R.drawable.ic_baseline_date_range_24,
+            title = "Location",
+            content = locationText,
+            actionIcon = R.drawable.ic_baseline_arrow_drop_down,
+            onActionClick = {},
+        )
+        // ADD PHOTO (+) row
+        HeaderRow(
+            icon = R.drawable.ic_baseline_add_24,
+            title = "Add photo",
             content = "",
             actionIcon = R.drawable.ic_baseline_add_24,
-            onActionClick = onAddFood,
+            onActionClick = onAddPhoto,
         )
-        // FOOD rows
-        state.foods.forEach { food ->
-            HeaderRow(
-                icon = R.drawable.ic_baseline_fastfood_24,
-                title = stringResource(id = R.string.diet_food_record_title),
-                content = food.name,
-                actionIcon = R.drawable.ic_baseline_delete_24,
-                onActionClick = { onDeleteFood(food) },
-            )
+        // PHOTO thumbnails
+        if (state.pendingPhotos.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+            ) {
+                items(state.pendingPhotos, key = { it }) { name ->
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(80.dp),
+                    ) {
+                        AsyncImage(
+                            model = PhotoStorage.fileFor(context, name),
+                            contentDescription = name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_baseline_delete_24),
+                            contentDescription = "Remove photo",
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(2.dp)
+                                .size(24.dp)
+                                .clickable { onRemovePhoto(name) },
+                        )
+                    }
+                }
+            }
         }
         // CREATE button
         Button(
