@@ -22,6 +22,15 @@ object Migrations {
                     }
                 }
 
+            },
+            object : Migration(3, 4) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.runInTransaction {
+                        execSQL("ALTER TABLE `eat_time` ADD COLUMN `lat` REAL")
+                        execSQL("ALTER TABLE `eat_time` ADD COLUMN `lng` REAL")
+                        execSQL("CREATE TABLE IF NOT EXISTS `photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `eat_time_id` INTEGER NOT NULL, `file_name` TEXT NOT NULL, `created_at` INTEGER NOT NULL DEFAULT 0)")
+                    }
+                }
             }
         )
     }

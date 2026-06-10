@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.crazystudio.sportrecorder.dao.EatTimeDao
 import com.crazystudio.sportrecorder.dao.FastingTypeDao
 import com.crazystudio.sportrecorder.dao.FoodRecordDao
+import com.crazystudio.sportrecorder.dao.PhotoDao
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
 import com.crazystudio.sportrecorder.util.DietPreference
@@ -51,5 +52,11 @@ object DatabaseModule {
     @Singleton
     fun provideFoodRecordDao(appDatabase: AppDatabase): FoodRecordDao {
         return appDatabase.getFoodRecordDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePhotoDao(appDatabase: AppDatabase): PhotoDao {
+        return appDatabase.getPhotoDao()
     }
 }

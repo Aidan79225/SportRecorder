@@ -11,7 +11,13 @@ data class EatTime(
     val id: Int = 0,
 
     @ColumnInfo(name = "time")
-    val time: Long
+    val time: Long,
+
+    @ColumnInfo(name = "lat")
+    val lat: Double? = null,
+
+    @ColumnInfo(name = "lng")
+    val lng: Double? = null,
 ) {
     companion object {
         const val tableName = "eat_time"
