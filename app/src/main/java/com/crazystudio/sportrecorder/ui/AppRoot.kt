@@ -213,12 +213,23 @@ fun AppRoot() {
                                 )
                             }.show()
                         },
+                        onNoteChange = vm::setNote,
                         onAddPhoto = {
                             val (file, uri) = PhotoStorage.newCaptureTarget(context)
                             captureFile = file
                             cameraLauncher.launch(uri)
                         },
-                        onRemovePhoto = { name -> vm.removePendingPhoto(name) },
+                        onRemovePendingPhoto = vm::removePendingPhoto,
+                        onRemoveExistingPhoto = vm::removeExistingPhoto,
+                        onRecaptureLocation = {
+                            locationPermLauncher.launch(
+                                arrayOf(
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                                )
+                            )
+                        },
+                        onClearLocation = vm::clearLocation,
                         onConfirm = {
                             scope.launch { if (vm.save()) navController.popBackStack() }
                         },
