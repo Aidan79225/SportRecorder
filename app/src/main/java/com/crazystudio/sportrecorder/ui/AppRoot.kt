@@ -122,7 +122,11 @@ fun AppRoot() {
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = hiltViewModel()
                     val records by vm.records.collectAsStateWithLifecycle()
-                    RecordScreen(records = records, onDelete = vm::deleteEatTime)
+                    RecordScreen(
+                        records = records,
+                        onDelete = vm::deleteEatTime,
+                        onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
+                    )
                 }
                 composable<Route.Notifications> { NotificationsScreen() }
 
