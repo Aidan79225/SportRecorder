@@ -56,7 +56,7 @@
 | Hilt / Dagger | `HILT_VERSION` | `2.59.2` | 須 2.59.2（修正 AGP 9 incremental build 與 jetifier 編譯錯誤），非 2.59/2.59.1 |
 | Room | `ROOM_VERSION` | `2.8.4` | 最新 stable，支援 KSP2 / Kotlin 2.x（勿用 alpha 的 3.0） |
 | Navigation（runtime + safe-args） | `NAV_VERSION` | `2.9.8` | safe-args 2.9.7+ 已不需 `android.useAndroidX` 屬性 |
-| Compose BOM | `COMPOSE_BOM` | `2026.06.00` | 與 Kotlin/compiler 版本無關，獨立管控 Compose 函式庫 |
+| Compose BOM | `COMPOSE_BOM` | `2026.05.01` | 與 Kotlin/compiler 版本無關；`2026.06.00` 尚未發布，實作時改用 Google Maven 上最新的 `2026.05.01` |
 | compileSdk / targetSdk | `SDK` | `36` | AGP 9.2 max API 36（36.1 為 preview） |
 | build-tools | `BUILD_TOOLS` | `36.0.0` | AGP 9.2 預設 |
 
@@ -128,21 +128,27 @@ Gradle daemon 仍跑在 JDK 17）。先把「升 Java」這件事獨立完成並
     }
 ```
 
-改成：
+改成（`compileOptions` 留在 `android { }` 內並設為 21；**移除** `android { }` 內的
+`kotlinOptions` 區塊）：
 
 ```groovy
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_21
         targetCompatibility JavaVersion.VERSION_21
     }
-    kotlin {
-        jvmToolchain(21)
-    }
 ```
 
-> 註：在 AGP 8.3（Kotlin 1.9.x）下 `android { kotlin { jvmToolchain(21) } }` 寫法可用。
-> 若此處 DSL 在 8.3 報錯，改用頂層 `kotlin { jvmToolchain(21) }` 並保留 `kotlinOptions`；
-> 最終在 Task 4（Kotlin 2.3）後一定可用頂層 `kotlin { jvmToolchain(21) }`。
+並在 `android { }` 區塊**結束之後**（與 `android` 同層、top-level）新增：
+
+```groovy
+kotlin {
+    jvmToolchain(21)
+}
+```
+
+> 重點：`kotlin { }` 是 top-level extension，**不可**寫在 `android { }` 內。
+> jvmToolchain(21) 會解析到正在執行 Gradle 的 JBR 21（自動偵測），不需額外 toolchain
+> resolver。compileOptions 與 toolchain 兩者都設，語意明確。
 
 - [ ] **Step 2: 用 JDK 21 toolchain 建置驗證**
 
@@ -277,6 +283,14 @@ plugins {
 > Room 的 `room-runtime` / `room-ktx` / `room-compiler` / `room-testing` 都吃同一個
 > `room_version`，改一處即可。compose 相關依賴沿用 BOM 管控、不個別釘版本。
 
+另外（重要，避免 dangling 變數）：因為 Step 2 的新根 `build.gradle` 已移除
+`ext.kotlin_version` 定義，app 內這行會壞掉，必須**一併移除**（AGP 9 內建 Kotlin 會
+自動提供 stdlib，不需手動宣告）：
+
+```groovy
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+```
+
 - [ ] **Step 6: 乾淨建置驗證（JDK 21）**
 
 Run：
@@ -313,6 +327,11 @@ git commit -m "[Build] Upgrade to AGP 9.2 / Gradle 9.4 / Kotlin 2.3 with KSP2, H
 ---
 
 ## Task 5: compileSdk / targetSdk / build-tools 升到 36
+
+> 執行紀錄（2026-06-10）：`compileSdk` 與 `targetSdk` 升到 36 的**建置變更已在 Task 4
+> 內完成**——AGP 9.2 + 新版 Compose 函式庫（material3 1.4.0 等）的 AAR metadata 硬性
+> 要求 compileSdk ≥ 35，無法停在 34。因此本 task 的程式變更已不需再做；**剩下的只有
+> targetSdk 36 的執行期行為驗證**（edge-to-edge / 權限），見下方 Step 3。
 
 AGP 9 預設 `targetSdk = compileSdk`；本 task 明確把兩者都設為 36 並做行為驗證。
 
