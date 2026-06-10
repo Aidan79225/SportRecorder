@@ -175,7 +175,7 @@ fun AppRoot() {
                         if (result.values.any { it }) vm.requestLocation() else vm.locationDenied()
                     }
                     LaunchedEffect(Unit) {
-                        locationPermLauncher.launch(
+                        if (!state.isEditMode) locationPermLauncher.launch(
                             arrayOf(
                                 android.Manifest.permission.ACCESS_FINE_LOCATION,
                                 android.Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -220,7 +220,7 @@ fun AppRoot() {
                         },
                         onRemovePhoto = { name -> vm.removePendingPhoto(name) },
                         onConfirm = {
-                            scope.launch { if (vm.createEatingTime()) navController.popBackStack() }
+                            scope.launch { if (vm.save()) navController.popBackStack() }
                         },
                     )
                 }

@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
@@ -30,15 +31,46 @@ class EatTimeEditorViewModel @Inject constructor(
     private val appDatabase: AppDatabase,
     private val eatTimeDao: EatTimeDao,
     private val photoDao: PhotoDao,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    // Route arg: type-safe route field name "eatTimeId". 0 = create, >0 = edit.
+    private val eatTimeId: Int = savedStateHandle.get<Int>("eatTimeId") ?: 0
+    private val isEditMode: Boolean = eatTimeId > 0
 
     val currentCalendar: Calendar = Calendar.getInstance()
     private var committed = false
+    private val photosToDelete = mutableListOf<Photo>()
 
-    private val _uiState = MutableStateFlow(EatTimeEditorUiState(date = currentCalendar.clone() as Calendar))
+    private val _uiState = MutableStateFlow(
+        EatTimeEditorUiState(date = currentCalendar.clone() as Calendar, isEditMode = isEditMode)
+    )
     val uiState: StateFlow<EatTimeEditorUiState> = _uiState.asStateFlow()
 
-    /** Convert a temp capture file to webp (off the main thread) and stage its file name. */
+    init {
+        if (isEditMode) {
+            viewModelScope.launch {
+                val record = eatTimeDao.findWithPhotosById(eatTimeId) ?: return@launch
+                currentCalendar.timeInMillis = record.eatTime.time
+                val loc = if (record.eatTime.lat != null && record.eatTime.lng != null)
+                    EatTimeEditorUiState.LatLng(record.eatTime.lat, record.eatTime.lng) else null
+                _uiState.update {
+                    it.copy(
+                        date = currentCalendar.clone() as Calendar,
+                        note = record.eatTime.note.orEmpty(),
+                        existingPhotos = record.photos,
+                        location = loc,
+                        locationStatus = if (loc != null)
+                            EatTimeEditorUiState.LocationStatus.AVAILABLE
+                        else EatTimeEditorUiState.LocationStatus.IDLE,
+                    )
+                }
+            }
+        }
+    }
+
+    fun setNote(value: String) = _uiState.update { it.copy(note = value) }
+
     fun addCapturedPhoto(tempFile: File) {
         viewModelScope.launch {
             val name = withContext(Dispatchers.IO) { PhotoStorage.convertToWebp(appContext, tempFile) }
@@ -51,7 +83,13 @@ class EatTimeEditorViewModel @Inject constructor(
         _uiState.update { it.copy(pendingPhotos = it.pendingPhotos - fileName) }
     }
 
-    /** Call once the location permission is granted. */
+    /** Mark an already-saved photo for deletion; actual delete happens on save(). */
+    fun removeExistingPhoto(photo: Photo) {
+        photosToDelete.add(photo)
+        _uiState.update { it.copy(existingPhotos = it.existingPhotos - photo) }
+    }
+
+    /** Re-capture (or first capture) the current location. */
     fun requestLocation() {
         _uiState.update { it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.LOADING) }
         viewModelScope.launch {
@@ -66,22 +104,40 @@ class EatTimeEditorViewModel @Inject constructor(
         }
     }
 
-    fun locationDenied() {
-        _uiState.update { it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE) }
+    fun clearLocation() = _uiState.update {
+        it.copy(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.IDLE)
     }
 
-    suspend fun createEatingTime(): Boolean {
+    fun locationDenied() = _uiState.update {
+        it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
+    }
+
+    /** INSERT (create) or UPDATE (edit) the eat record and reconcile photos. */
+    suspend fun save(): Boolean {
         if (currentCalendar.timeInMillis > Calendar.getInstance().timeInMillis) return false
         val state = _uiState.value
+        val note = state.note.ifBlank { null }
         appDatabase.withTransaction {
-            val eatTimeId = eatTimeDao.insert(
-                EatTime(time = currentCalendar.timeInMillis, lat = state.location?.lat, lng = state.location?.lng)
-            ).toInt()
+            val id: Int = if (isEditMode) {
+                eatTimeDao.update(
+                    EatTime(id = eatTimeId, time = currentCalendar.timeInMillis,
+                        lat = state.location?.lat, lng = state.location?.lng, note = note)
+                )
+                photosToDelete.forEach { photoDao.delete(it) }
+                eatTimeId
+            } else {
+                eatTimeDao.insert(
+                    EatTime(time = currentCalendar.timeInMillis,
+                        lat = state.location?.lat, lng = state.location?.lng, note = note)
+                ).toInt()
+            }
             val now = System.currentTimeMillis()
             state.pendingPhotos.forEach { name ->
-                photoDao.insert(Photo(eatTimeId = eatTimeId, fileName = name, createdAt = now))
+                photoDao.insert(Photo(eatTimeId = id, fileName = name, createdAt = now))
             }
         }
+        // File deletes are not transactional — only after the DB transaction succeeds.
+        photosToDelete.forEach { PhotoStorage.deleteByName(appContext, it.fileName) }
         committed = true
         return true
     }
@@ -99,14 +155,12 @@ class EatTimeEditorViewModel @Inject constructor(
         publishDate()
     }
 
-    private fun publishDate() {
-        _uiState.update { it.copy(date = currentCalendar.clone() as Calendar) }
-    }
+    private fun publishDate() = _uiState.update { it.copy(date = currentCalendar.clone() as Calendar) }
 
     override fun onCleared() {
         super.onCleared()
         if (!committed) {
-            // Sheet dismissed without creating — delete the staged webp files.
+            // Dismissed without saving — delete only the newly-captured (unsaved) files.
             _uiState.value.pendingPhotos.forEach { PhotoStorage.deleteByName(appContext, it) }
         }
     }
