@@ -45,20 +45,25 @@
 
 - [ ] **Step 3: 填入並鎖定版本表**
 
-下面是依目前研究得到的「工作預設值」。若 Step 1–2 查到更精確／更新的版本，以查到的為準並覆寫此表：
+已於 2026-06-10 對官方來源確認的鎖定版本（取代原工作預設值）：
 
-| 用途 | 變數 | 工作預設值 |
-|---|---|---|
-| Gradle wrapper | `GRADLE_VERSION` | `9.4.1` |
-| AGP classpath | `AGP_VERSION` | `9.2.0` |
-| Kotlin (KGP / compose plugin) | `KOTLIN_VERSION` | `2.3.0` |
-| KSP plugin | `KSP_VERSION` | `2.3.0-2.0.2`（依 KSP releases 對齊 Kotlin 2.3 的實際字串） |
-| Hilt / Dagger | `HILT_VERSION` | `2.59` |
-| Room | `ROOM_VERSION` | `2.7.0` |
-| Navigation（runtime + safe-args） | `NAV_VERSION` | `2.9.8` |
-| Compose BOM | `COMPOSE_BOM` | `2026.04.01`（依 BOM mapping 取最新 stable） |
-| compileSdk / targetSdk | `SDK` | `36` |
-| build-tools | `BUILD_TOOLS` | `36.0.0` |
+| 用途 | 變數 | 鎖定版本 | 來源確認重點 |
+|---|---|---|---|
+| Gradle wrapper | `GRADLE_VERSION` | `9.4.1` | AGP 9.2 最低且預設 Gradle |
+| AGP classpath | `AGP_VERSION` | `9.2.0` | 最新 stable |
+| Kotlin (KGP / compose plugin) | `KOTLIN_VERSION` | `2.3.10` | AGP 9.2 內建 Kotlin |
+| KSP plugin | `KSP_VERSION` | `2.3.9` | KSP 2.3.0 起改純 semver、與 Kotlin 版本解耦，跨 Kotlin 2.3.x 通用 |
+| Hilt / Dagger | `HILT_VERSION` | `2.59.2` | 須 2.59.2（修正 AGP 9 incremental build 與 jetifier 編譯錯誤），非 2.59/2.59.1 |
+| Room | `ROOM_VERSION` | `2.8.4` | 最新 stable，支援 KSP2 / Kotlin 2.x（勿用 alpha 的 3.0） |
+| Navigation（runtime + safe-args） | `NAV_VERSION` | `2.9.8` | safe-args 2.9.7+ 已不需 `android.useAndroidX` 屬性 |
+| Compose BOM | `COMPOSE_BOM` | `2026.06.00` | 與 Kotlin/compiler 版本無關，獨立管控 Compose 函式庫 |
+| compileSdk / targetSdk | `SDK` | `36` | AGP 9.2 max API 36（36.1 為 preview） |
+| build-tools | `BUILD_TOOLS` | `36.0.0` | AGP 9.2 預設 |
+
+> 注意：Compose compiler plugin 版本必須等於 Kotlin 版本（`2.3.10`）。KSP `2.3.9` 已與
+> Kotlin 編譯器版本解耦（純 semver），不要寫成舊的 `<kotlin>-<ksp>` 格式。
+> 唯一待現場眼睛確認的點：AGP 9.2 release notes 相容性表的「Kotlin」列是否確為 2.3.10
+> （研究時該列未被完整回讀，但 2.3.10 為一致且最新的結論）。
 
 - [ ] **Step 4: Commit 版本表**
 
@@ -193,15 +198,15 @@ buildscript {
         classpath 'com.android.tools.build:gradle:9.2.0'
         def nav_version = '2.9.8'
         classpath "androidx.navigation:navigation-safe-args-gradle-plugin:$nav_version"
-        classpath 'com.google.dagger:hilt-android-gradle-plugin:2.59'
+        classpath 'com.google.dagger:hilt-android-gradle-plugin:2.59.2'
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
     }
 }
 
 plugins {
-    id 'com.google.devtools.ksp' version '2.3.0-2.0.2' apply false
-    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.0' apply false
+    id 'com.google.devtools.ksp' version '2.3.9' apply false
+    id 'org.jetbrains.kotlin.plugin.compose' version '2.3.10' apply false
 }
 
 allprojects {
@@ -262,12 +267,12 @@ plugins {
 
 把 Hilt、Room、Navigation 版本字串升到 Task 1 鎖定值，並把 compose-bom 升到 `COMPOSE_BOM`：
 
-- `def room_version = "2.6.1"` → `def room_version = "2.7.0"`
-- `'com.google.dagger:hilt-android:2.51.1'` → `'com.google.dagger:hilt-android:2.59'`
-- `ksp 'com.google.dagger:hilt-compiler:2.51.1'` → `ksp 'com.google.dagger:hilt-compiler:2.59'`
+- `def room_version = "2.6.1"` → `def room_version = "2.8.4"`
+- `'com.google.dagger:hilt-android:2.51.1'` → `'com.google.dagger:hilt-android:2.59.2'`
+- `ksp 'com.google.dagger:hilt-compiler:2.51.1'` → `ksp 'com.google.dagger:hilt-compiler:2.59.2'`
 - `'androidx.navigation:navigation-fragment-ktx:2.7.7'` → `...:2.9.8`
 - `'androidx.navigation:navigation-ui-ktx:2.7.7'` → `...:2.9.8`
-- `platform('androidx.compose:compose-bom:2024.04.00')` → `platform('androidx.compose:compose-bom:2026.04.01')`
+- `platform('androidx.compose:compose-bom:2024.04.00')` → `platform('androidx.compose:compose-bom:2026.06.00')`
 
 > Room 的 `room-runtime` / `room-ktx` / `room-compiler` / `room-testing` 都吃同一個
 > `room_version`，改一處即可。compose 相關依賴沿用 BOM 管控、不個別釘版本。
