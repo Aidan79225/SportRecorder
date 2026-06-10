@@ -37,14 +37,6 @@
 
     </dialog>
 
-    <dialog
-        android:id="@+id/create_food_record_fragment"
-        android:name="com.crazystudio.sportrecorder.ui.diet.create.food.CreateFoodRecordDialogFragment"
-        tools:layout="@layout/fragment_create_food_record"
-        >
-
-    </dialog>
-
     <!-- DietRecordFragment removed; Record screen is now a Compose destination -->
 
     <fragment
