@@ -21,6 +21,15 @@ private val DarkColorScheme = darkColorScheme(
     primary = light_green,
     onPrimary = bg_black,
     outline = light_green,
+    surface = bg_black,
+    onSurface = white,
+    surfaceVariant = bg_black2,
+    onSurfaceVariant = white,
+    surfaceContainerLowest = bg_black,
+    surfaceContainerLow = bg_black,
+    surfaceContainer = bg_black,
+    surfaceContainerHigh = bg_black2,
+    surfaceContainerHighest = bg_black2,
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -29,6 +38,15 @@ private val LightColorScheme = lightColorScheme(
     primary = light_green,
     onPrimary = bg_black,
     outline = light_green,
+    surface = bg_black,
+    onSurface = white,
+    surfaceVariant = bg_black2,
+    onSurfaceVariant = white,
+    surfaceContainerLowest = bg_black,
+    surfaceContainerLow = bg_black,
+    surfaceContainer = bg_black,
+    surfaceContainerHigh = bg_black2,
+    surfaceContainerHighest = bg_black2,
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
     surface = Color(0xFFFFFBFE),
