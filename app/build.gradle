@@ -1,9 +1,8 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
     id 'androidx.navigation.safeargs.kotlin'
     id 'dagger.hilt.android.plugin'
-    id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.plugin.compose'
     id 'com.google.devtools.ksp'
 }
 
@@ -23,7 +22,7 @@ android {
             keyPassword 'aa555051'
         }
     }
-    compileSdk 34
+    compileSdk 36
 
     buildFeatures {
         viewBinding true
@@ -33,7 +32,7 @@ android {
     defaultConfig {
         applicationId "com.crazystudio.sportrecorder"
         minSdkVersion 24
-        targetSdkVersion 34
+        targetSdkVersion 36
         versionCode 12
         versionName "0.0.10"
 
@@ -56,9 +55,6 @@ android {
         targetCompatibility JavaVersion.VERSION_21
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.11"
-    }
     namespace 'com.crazystudio.sportrecorder'
 }
 
@@ -68,30 +64,29 @@ kotlin {
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
-    def room_version = "2.6.1"
+    def room_version = "2.8.4"
 
     implementation "androidx.room:room-runtime:$room_version"
     ksp "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
 
     testImplementation "androidx.room:room-testing:$room_version"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.7'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.7.7'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.9.8'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.9.8'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
-    implementation 'com.google.dagger:hilt-android:2.51.1'
-    ksp 'com.google.dagger:hilt-compiler:2.51.1'
+    implementation 'com.google.dagger:hilt-android:2.59.2'
+    ksp 'com.google.dagger:hilt-compiler:2.59.2'
 
-    def composeBom = platform('androidx.compose:compose-bom:2024.04.00')
+    def composeBom = platform('androidx.compose:compose-bom:2026.05.01')
     implementation composeBom
     androidTestImplementation composeBom
 
