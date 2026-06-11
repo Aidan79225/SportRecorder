@@ -41,8 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.entity.EatTime
-import com.crazystudio.sportrecorder.entity.EatTimeWithPhotos
+import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,12 +54,12 @@ private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 @Composable
 @Suppress("LongMethod") // cohesive screen: list + delete dialog + full-screen photo overlay
 fun RecordScreen(
-    records: List<EatTimeWithPhotos>,
-    onDelete: (EatTime) -> Unit,
+    records: List<EatRecord>,
+    onDelete: (EatRecord) -> Unit,
     onEditRecord: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var recordToDelete by remember { mutableStateOf<EatTime?>(null) }
+    var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
     var fullScreenPhoto by remember { mutableStateOf<String?>(null) }
 
     Box(
@@ -73,10 +72,10 @@ fun RecordScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = PaddingValues(12.dp),
         ) {
-            items(records, key = { it.eatTime.id }) { record ->
+            items(records, key = { it.id }) { record ->
                 RecordCard(
                     record = record,
-                    onLongClick = { recordToDelete = record.eatTime },
+                    onLongClick = { recordToDelete = record },
                     onThumbnailClick = { fileName -> fullScreenPhoto = fileName },
                     onEditRecord = onEditRecord,
                 )
@@ -84,14 +83,14 @@ fun RecordScreen(
         }
     }
 
-    recordToDelete?.let { eatTime ->
+    recordToDelete?.let { record ->
         AlertDialog(
             onDismissRequest = { recordToDelete = null },
             title = { Text(text = "Delete") },
             text = { Text(text = "Do you want to delete this record?") },
             confirmButton = {
                 TextButton(onClick = {
-                    onDelete(eatTime)
+                    onDelete(record)
                     recordToDelete = null
                 }) {
                     Text(text = "Yes")
@@ -130,13 +129,12 @@ fun RecordScreen(
 @Composable
 @Suppress("LongMethod") // cohesive card layout: header, note, photo carousel, location
 private fun RecordCard(
-    record: EatTimeWithPhotos,
+    record: EatRecord,
     onLongClick: () -> Unit,
     onThumbnailClick: (String) -> Unit,
     onEditRecord: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val eatTime = record.eatTime
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
@@ -160,12 +158,12 @@ private fun RecordCard(
         ) {
             Column {
                 Text(
-                    text = dateFormat.format(Date(eatTime.time)),
+                    text = dateFormat.format(Date(record.time)),
                     fontSize = 14.sp,
                     color = colorScheme.onSurface,
                 )
                 Text(
-                    text = timeFormat.format(Date(eatTime.time)),
+                    text = timeFormat.format(Date(record.time)),
                     fontSize = 14.sp,
                     color = colorScheme.onSurface,
                 )
@@ -176,14 +174,14 @@ private fun RecordCard(
                 tint = colorScheme.primary,
                 modifier = Modifier
                     .size(24.dp)
-                    .clickable { onEditRecord(eatTime.id) },
+                    .clickable { onEditRecord(record.id) },
             )
         }
 
         // Note
-        if (!eatTime.note.isNullOrBlank()) {
+        if (!record.note.isNullOrBlank()) {
             Text(
-                text = eatTime.note,
+                text = record.note,
                 fontSize = 14.sp,
                 color = colorScheme.onSurface,
             )
@@ -234,9 +232,9 @@ private fun RecordCard(
         }
 
         // Location
-        if (eatTime.lat != null && eatTime.lng != null) {
+        record.location?.let { loc ->
             Text(
-                text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", eatTime.lat, eatTime.lng)}",
+                text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", loc.lat, loc.lng)}",
                 fontSize = 12.sp,
                 color = colorScheme.onSurfaceVariant,
             )
