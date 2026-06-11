@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,11 +34,6 @@ import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.component.CircleProgress
 import com.crazystudio.sportrecorder.ui.component.VerticalProgress
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
-import com.crazystudio.sportrecorder.ui.theme.bg_black
-import com.crazystudio.sportrecorder.ui.theme.bg_black2
-import com.crazystudio.sportrecorder.ui.theme.grey_1
-import com.crazystudio.sportrecorder.ui.theme.light_green
-import com.crazystudio.sportrecorder.ui.theme.white
 
 @Composable
 @Suppress("LongMethod") // cohesive single-screen layout; splitting hurts readability
@@ -47,10 +43,11 @@ fun DietScreen(
     onAddEatTime: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(bg_black),
+            .background(colorScheme.surface),
     ) {
         Column(
             modifier = Modifier
@@ -73,23 +70,23 @@ fun DietScreen(
                     Icon(
                         painter = painterResource(id = state.statusIcon),
                         contentDescription = null,
-                        tint = white,
+                        tint = colorScheme.onSurface,
                         modifier = Modifier.size(36.dp),
                     )
                     Text(
                         text = stringResource(id = state.statusTextRes),
-                        color = white,
+                        color = colorScheme.onSurface,
                         fontSize = 24.sp,
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = stringResource(id = state.promptTextRes),
-                        color = grey_1,
+                        color = colorScheme.onSurfaceVariant,
                         fontSize = 24.sp,
                     )
                     Text(
                         text = state.elapsedText,
-                        color = light_green,
+                        color = colorScheme.primary,
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -97,7 +94,7 @@ fun DietScreen(
                         Text(
                             text = stringResource(state.timeInfoRes, state.timeInfoArg1, state.timeInfoArg2),
                             fontSize = 14.sp,
-                            color = grey_1,
+                            color = colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
@@ -109,20 +106,20 @@ fun DietScreen(
                 modifier = Modifier
                     .padding(top = 10.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(bg_black2)
+                    .background(colorScheme.surfaceContainer)
                     .clickable { onEditFastingType() }
                     .padding(horizontal = 12.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = state.fastingLabel,
-                    color = grey_1,
+                    color = colorScheme.onSurfaceVariant,
                     fontSize = 18.sp,
                 )
                 Icon(
                     painter = painterResource(id = R.drawable.ic_baseline_edit_24),
                     contentDescription = null,
-                    tint = grey_1,
+                    tint = colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(start = 5.dp)
                         .size(18.dp),
@@ -150,7 +147,7 @@ fun DietScreen(
                         )
                         Text(
                             text = DietViewModel.formatHistoryDate(bar.dateMillis),
-                            color = white,
+                            color = colorScheme.onSurface,
                         )
                     }
                 }
@@ -162,8 +159,8 @@ fun DietScreen(
 
         FloatingActionButton(
             onClick = onAddEatTime,
-            containerColor = light_green,
-            contentColor = bg_black,
+            containerColor = colorScheme.primary,
+            contentColor = colorScheme.onPrimary,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 20.dp),

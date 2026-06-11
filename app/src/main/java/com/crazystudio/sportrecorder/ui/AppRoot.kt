@@ -11,6 +11,7 @@ import androidx.compose.material.navigation.ModalBottomSheetLayout
 import androidx.compose.material.navigation.bottomSheet
 import androidx.compose.material.navigation.rememberBottomSheetNavigator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -48,9 +49,6 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
 import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
-import com.crazystudio.sportrecorder.ui.theme.bg_black2
-import com.crazystudio.sportrecorder.ui.theme.grey_1
-import com.crazystudio.sportrecorder.ui.theme.light_green
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 
@@ -95,11 +93,11 @@ fun AppRoot() {
                             icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
                             label = { Text(tab.label) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = light_green,
-                                selectedTextColor = light_green,
-                                unselectedIconColor = grey_1,
-                                unselectedTextColor = grey_1,
-                                indicatorColor = bg_black2,
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
                             ),
                         )
                     }

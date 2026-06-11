@@ -25,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -72,7 +71,7 @@ fun CreateFastingTypeScreen(
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(colorResource(id = R.color.bg_black))
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(20.dp)
                 .padding(top = 10.dp)
         ) {
