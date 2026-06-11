@@ -5,6 +5,8 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import com.crazystudio.sportrecorder.entity.EatTime
 import kotlinx.coroutines.flow.Flow
 
@@ -37,6 +39,13 @@ interface EatTimeDao {
 
     @Insert
     suspend fun insert(eatTime: EatTime): Long
+
+    @Update
+    suspend fun update(eatTime: EatTime)
+
+    @Transaction
+    @Query("SELECT * FROM ${EatTime.tableName} WHERE id = :id LIMIT 1")
+    suspend fun findWithPhotosById(id: Int): com.crazystudio.sportrecorder.entity.EatTimeWithPhotos?
 
     @Delete
     suspend fun delete(eatTime: EatTime)

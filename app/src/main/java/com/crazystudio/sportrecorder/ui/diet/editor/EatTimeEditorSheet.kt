@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.diet.create.eating
+package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,17 +32,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.ui.theme.grey_1
+import com.crazystudio.sportrecorder.ui.theme.light_green
 import com.crazystudio.sportrecorder.ui.theme.white
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
 @Composable
-fun CreateEatTimeSheet(
-    state: CreateEatTimeUiState,
+fun EatTimeEditorSheet(
+    state: EatTimeEditorUiState,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
+    onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
-    onRemovePhoto: (String) -> Unit,
+    onRemovePendingPhoto: (String) -> Unit,
+    onRemoveExistingPhoto: (com.crazystudio.sportrecorder.entity.Photo) -> Unit,
+    onRecaptureLocation: () -> Unit,
+    onClearLocation: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -66,22 +74,79 @@ fun CreateEatTimeSheet(
             actionIcon = R.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickTime,
         )
-        // LOCATION row
+        // NOTE field
+        OutlinedTextField(
+            value = state.note,
+            onValueChange = onNoteChange,
+            label = { Text("Note") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            minLines = 2,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = white,
+                unfocusedTextColor = white,
+                focusedBorderColor = light_green,
+                unfocusedBorderColor = grey_1,
+                focusedLabelColor = light_green,
+                unfocusedLabelColor = grey_1,
+                cursorColor = light_green,
+            ),
+        )
+        // LOCATION row — custom Row with two action icons
         val locationText = when (state.locationStatus) {
-            CreateEatTimeUiState.LocationStatus.LOADING -> "Locating…"
-            CreateEatTimeUiState.LocationStatus.AVAILABLE -> state.location?.let {
+            EatTimeEditorUiState.LocationStatus.LOADING -> "Locating…"
+            EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
                 String.format("%.5f, %.5f", it.lat, it.lng)
             } ?: "No location"
             else -> "No location"
         }
-        HeaderRow(
-            // No dedicated location drawable exists; reuse the date icon per the plan.
-            icon = R.drawable.ic_baseline_date_range_24,
-            title = "Location",
-            content = locationText,
-            actionIcon = R.drawable.ic_baseline_arrow_drop_down,
-            onActionClick = {},
-        )
+        Row(
+            modifier = Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_baseline_date_range_24),
+                contentDescription = "",
+                modifier = Modifier
+                    .padding(10.dp)
+                    .size(36.dp),
+            )
+            Text(
+                text = "Location",
+                color = white,
+                fontSize = 18.sp,
+            )
+            Text(
+                text = locationText,
+                color = white,
+                fontSize = 18.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 10.dp),
+            )
+            // Re-capture location icon (ic_baseline_add_24 — no refresh drawable available)
+            Image(
+                painter = painterResource(id = R.drawable.ic_baseline_add_24),
+                contentDescription = "Re-capture location",
+                modifier = Modifier
+                    .padding(4.dp)
+                    .size(36.dp)
+                    .clickable { onRecaptureLocation() },
+            )
+            // Clear location icon — only shown when location is set
+            if (state.location != null) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_baseline_delete_24),
+                    contentDescription = "Clear location",
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .size(36.dp)
+                        .clickable { onClearLocation() },
+                )
+            }
+        }
         // ADD PHOTO (+) row
         HeaderRow(
             icon = R.drawable.ic_baseline_add_24,
@@ -90,7 +155,41 @@ fun CreateEatTimeSheet(
             actionIcon = R.drawable.ic_baseline_add_24,
             onActionClick = onAddPhoto,
         )
-        // PHOTO thumbnails
+        // EXISTING photos (edit mode)
+        if (state.existingPhotos.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+            ) {
+                items(state.existingPhotos, key = { it.id }) { photo ->
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(80.dp),
+                    ) {
+                        AsyncImage(
+                            model = PhotoStorage.fileFor(context, photo.fileName),
+                            contentDescription = photo.fileName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_baseline_delete_24),
+                            contentDescription = "Remove existing photo",
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(2.dp)
+                                .size(24.dp)
+                                .clickable { onRemoveExistingPhoto(photo) },
+                        )
+                    }
+                }
+            }
+        }
+        // PENDING photos (newly captured)
         if (state.pendingPhotos.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier
@@ -118,13 +217,13 @@ fun CreateEatTimeSheet(
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)
                                 .size(24.dp)
-                                .clickable { onRemovePhoto(name) },
+                                .clickable { onRemovePendingPhoto(name) },
                         )
                     }
                 }
             }
         }
-        // CREATE button
+        // CONFIRM button
         Button(
             modifier = Modifier
                 .fillMaxWidth()
@@ -132,7 +231,7 @@ fun CreateEatTimeSheet(
             onClick = onConfirm,
         ) {
             Text(
-                text = "CREATE",
+                text = if (state.isEditMode) "SAVE" else "CREATE",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
             )

@@ -37,6 +37,13 @@ object Migrations {
                         execSQL("DROP TABLE IF EXISTS `food_record`")
                     }
                 }
+            },
+            object : Migration(5, 6) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.runInTransaction {
+                        execSQL("ALTER TABLE `eat_time` ADD COLUMN `note` TEXT")
+                    }
+                }
             }
         )
     }

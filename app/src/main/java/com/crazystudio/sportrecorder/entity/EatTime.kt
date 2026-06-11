@@ -18,6 +18,9 @@ data class EatTime(
 
     @ColumnInfo(name = "lng")
     val lng: Double? = null,
+
+    @ColumnInfo(name = "note")
+    val note: String? = null,
 ) {
     companion object {
         const val tableName = "eat_time"
