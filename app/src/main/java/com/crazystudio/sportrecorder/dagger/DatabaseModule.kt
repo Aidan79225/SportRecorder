@@ -23,7 +23,8 @@ object DatabaseModule {
     fun provideAppDatabase(@ApplicationContext applicationContext: Context): AppDatabase {
         return Room.databaseBuilder(
             applicationContext,
-            AppDatabase::class.java, "database-name"
+            AppDatabase::class.java,
+            "database-name"
         ).apply {
             Migrations.getMigrations().forEach { addMigrations(it) }
         }.build()

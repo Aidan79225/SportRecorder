@@ -45,15 +45,19 @@ object PhotoStorage {
         val decoded = BitmapFactory.decodeFile(
             tempFile.absolutePath,
             BitmapFactory.Options().apply { inSampleSize = sample },
-        ) ?: throw IllegalStateException("Failed to decode capture: ${tempFile.absolutePath}")
+        ) ?: error("Failed to decode capture: ${tempFile.absolutePath}")
 
         val rotated = applyExifRotation(tempFile, decoded)
         val scaled = scaleToMaxEdge(rotated, MAX_EDGE)
 
         val name = "${UUID.randomUUID()}.webp"
         FileOutputStream(File(photosDir(context), name)).use { out ->
-            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                Bitmap.CompressFormat.WEBP_LOSSY else @Suppress("DEPRECATION") Bitmap.CompressFormat.WEBP
+            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Bitmap.CompressFormat.WEBP_LOSSY
+            } else {
+                @Suppress("DEPRECATION")
+                Bitmap.CompressFormat.WEBP
+            }
             scaled.compress(format, WEBP_QUALITY, out)
         }
         if (scaled !== decoded) scaled.recycle()
@@ -70,7 +74,10 @@ object PhotoStorage {
     private fun sampleSizeFor(w: Int, h: Int, target: Int): Int {
         var sample = 1
         var longEdge = max(w, h)
-        while (longEdge / 2 >= target) { longEdge /= 2; sample *= 2 }
+        while (longEdge / 2 >= target) {
+            longEdge /= 2
+            sample *= 2
+        }
         return sample
     }
 

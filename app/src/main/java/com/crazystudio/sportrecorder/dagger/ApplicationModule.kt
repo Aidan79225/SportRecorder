@@ -1,7 +1,6 @@
 package com.crazystudio.sportrecorder.dagger
 
 import android.content.Context
-import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.util.StringUtils
 import dagger.Module
 import dagger.Provides

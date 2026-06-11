@@ -57,6 +57,7 @@ private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+@Suppress("LongMethod") // cohesive screen: list + delete dialog + full-screen photo overlay
 fun RecordScreen(
     records: List<EatTimeWithPhotos>,
     onDelete: (EatTime) -> Unit,
@@ -131,6 +132,7 @@ fun RecordScreen(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
+@Suppress("LongMethod") // cohesive card layout: header, note, photo carousel, location
 private fun RecordCard(
     record: EatTimeWithPhotos,
     onLongClick: () -> Unit,
@@ -233,7 +235,7 @@ private fun RecordCard(
         // Location
         if (eatTime.lat != null && eatTime.lng != null) {
             Text(
-                text = "📍 ${String.format("%.4f, %.4f", eatTime.lat, eatTime.lng)}",
+                text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", eatTime.lat, eatTime.lng)}",
                 fontSize = 12.sp,
                 color = white,
             )

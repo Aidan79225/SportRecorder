@@ -26,6 +26,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val appDatabase: AppDatabase,
@@ -52,17 +53,22 @@ class EatTimeEditorViewModel @Inject constructor(
             viewModelScope.launch {
                 val record = eatTimeDao.findWithPhotosById(eatTimeId) ?: return@launch
                 currentCalendar.timeInMillis = record.eatTime.time
-                val loc = if (record.eatTime.lat != null && record.eatTime.lng != null)
-                    EatTimeEditorUiState.LatLng(record.eatTime.lat, record.eatTime.lng) else null
+                val loc = if (record.eatTime.lat != null && record.eatTime.lng != null) {
+                    EatTimeEditorUiState.LatLng(record.eatTime.lat, record.eatTime.lng)
+                } else {
+                    null
+                }
                 _uiState.update {
                     it.copy(
                         date = currentCalendar.clone() as Calendar,
                         note = record.eatTime.note.orEmpty(),
                         existingPhotos = record.photos,
                         location = loc,
-                        locationStatus = if (loc != null)
+                        locationStatus = if (loc != null) {
                             EatTimeEditorUiState.LocationStatus.AVAILABLE
-                        else EatTimeEditorUiState.LocationStatus.IDLE,
+                        } else {
+                            EatTimeEditorUiState.LocationStatus.IDLE
+                        },
                     )
                 }
             }
@@ -95,11 +101,17 @@ class EatTimeEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val result = LocationProvider.currentLocation(appContext)
             _uiState.update {
-                if (result == null) it.copy(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
-                else it.copy(
-                    location = EatTimeEditorUiState.LatLng(result.first, result.second),
-                    locationStatus = EatTimeEditorUiState.LocationStatus.AVAILABLE,
-                )
+                if (result == null) {
+                    it.copy(
+                        location = null,
+                        locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE
+                    )
+                } else {
+                    it.copy(
+                        location = EatTimeEditorUiState.LatLng(result.first, result.second),
+                        locationStatus = EatTimeEditorUiState.LocationStatus.AVAILABLE,
+                    )
+                }
             }
         }
     }
@@ -120,15 +132,24 @@ class EatTimeEditorViewModel @Inject constructor(
         appDatabase.withTransaction {
             val id: Int = if (isEditMode) {
                 eatTimeDao.update(
-                    EatTime(id = eatTimeId, time = currentCalendar.timeInMillis,
-                        lat = state.location?.lat, lng = state.location?.lng, note = note)
+                    EatTime(
+                        id = eatTimeId,
+                        time = currentCalendar.timeInMillis,
+                        lat = state.location?.lat,
+                        lng = state.location?.lng,
+                        note = note
+                    )
                 )
                 photosToDelete.forEach { photoDao.delete(it) }
                 eatTimeId
             } else {
                 eatTimeDao.insert(
-                    EatTime(time = currentCalendar.timeInMillis,
-                        lat = state.location?.lat, lng = state.location?.lng, note = note)
+                    EatTime(
+                        time = currentCalendar.timeInMillis,
+                        lat = state.location?.lat,
+                        lng = state.location?.lng,
+                        note = note
+                    )
                 ).toInt()
             }
             val now = System.currentTimeMillis()

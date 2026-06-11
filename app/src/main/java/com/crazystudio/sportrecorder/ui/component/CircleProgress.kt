@@ -59,6 +59,7 @@ fun CircleProgress(
 
 @Preview
 @Composable
+@Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
 private fun CircleProgressPreview() {
     CircleProgress(progress = 70f, modifier = Modifier.size(240.dp))
 }

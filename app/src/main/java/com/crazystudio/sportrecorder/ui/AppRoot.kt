@@ -38,25 +38,26 @@ import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
-import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorSheet
-import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorSheet
+import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
 import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
-import com.crazystudio.sportrecorder.util.PhotoStorage
 import com.crazystudio.sportrecorder.ui.theme.bg_black2
 import com.crazystudio.sportrecorder.ui.theme.grey_1
 import com.crazystudio.sportrecorder.ui.theme.light_green
+import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
 @Composable
+@Suppress("LongMethod") // cohesive single navigation-graph builder; splitting hurts readability
 fun AppRoot() {
     val bottomSheetNavigator = rememberBottomSheetNavigator()
     val navController = rememberNavController(bottomSheetNavigator)
@@ -169,8 +170,11 @@ fun AppRoot() {
                         ActivityResultContracts.TakePicture()
                     ) { success ->
                         val file = captureFile
-                        if (success && file != null) vm.addCapturedPhoto(file)
-                        else file?.delete()
+                        if (success && file != null) {
+                            vm.addCapturedPhoto(file)
+                        } else {
+                            file?.delete()
+                        }
                         captureFile = null
                     }
                     val locationPermLauncher = rememberLauncherForActivityResult(
@@ -179,12 +183,14 @@ fun AppRoot() {
                         if (result.values.any { it }) vm.requestLocation() else vm.locationDenied()
                     }
                     LaunchedEffect(Unit) {
-                        if (!state.isEditMode) locationPermLauncher.launch(
-                            arrayOf(
-                                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                        if (!state.isEditMode) {
+                            locationPermLauncher.launch(
+                                arrayOf(
+                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                                )
                             )
-                        )
+                        }
                     }
 
                     EatTimeEditorSheet(
