@@ -2,7 +2,6 @@ package com.crazystudio.sportrecorder.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
@@ -47,9 +46,6 @@ interface EatTimeDao {
     @Transaction
     @Query("SELECT * FROM ${EatTime.tableName} WHERE id = :id LIMIT 1")
     suspend fun findWithPhotosById(id: Int): com.crazystudio.sportrecorder.entity.EatTimeWithPhotos?
-
-    @Delete
-    suspend fun delete(eatTime: EatTime)
 
     @Query("DELETE FROM ${EatTime.tableName} WHERE id = :id")
     suspend fun deleteById(id: Int)
