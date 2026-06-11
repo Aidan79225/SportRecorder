@@ -49,4 +49,12 @@ class SaveEatRecordUseCaseTest {
         assertEquals(1, repo.saveCount)
         assertEquals(500L, repo.savedRecord?.time)
     }
+
+    @Test fun exactNowTime_isSaved() = runTest {
+        // Guard is `time > now` (strict), so time == now must be accepted (boundary lock).
+        val repo = FakeEatRecordRepository()
+        val ok = SaveEatRecordUseCase(repo)(record(time = 1_000L), emptyList(), emptyList(), now = 1_000L)
+        assertTrue(ok)
+        assertEquals(1, repo.saveCount)
+    }
 }
