@@ -31,11 +31,13 @@ sealed class FastingItem {
                 20,
                 4
             ),
-            DefaultFastingItem(R.string.diet_fasting_type_master,
+            DefaultFastingItem(
+                R.string.diet_fasting_type_master,
                 23,
                 1
             ),
-            DefaultFastingItem(R.string.diet_fasting_type_monk,
+            DefaultFastingItem(
+                R.string.diet_fasting_type_monk,
                 47,
                 1
             )
