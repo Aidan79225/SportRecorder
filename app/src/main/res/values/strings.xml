@@ -36,4 +36,9 @@
     <string name="diet_eat_time_delete_message">Do you want to delete this record?</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+
+    <string name="diet_eating_window">Eating window %1$s – %2$s</string>
+    <string name="diet_fast_target">Ends at %1$s</string>
+    <string name="diet_fast_done">Goal reached</string>
+    <string name="diet_no_record">Add your first meal</string>
 </resources>
