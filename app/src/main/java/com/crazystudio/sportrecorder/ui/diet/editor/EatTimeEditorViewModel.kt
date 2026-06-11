@@ -123,7 +123,7 @@ class EatTimeEditorViewModel @Inject constructor(
             time = currentCalendar.timeInMillis,
             location = state.location?.let { GeoPoint(it.lat, it.lng) },
             note = state.note.ifBlank { null },
-            photos = emptyList(),
+            photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) committed = true
