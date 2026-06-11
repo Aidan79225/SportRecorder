@@ -35,9 +35,8 @@ class DietViewModel @Inject constructor(
     private val dietPreference: DietPreference,
 ) : ViewModel() {
 
-    /** Last merged eating interval (start, end). Null until first DB emission. */
     private data class DietData(
-        val lastEatTime: Pair<Long, Long>?,
+        val eatTimesAsc: List<Long>,
         val history: List<Pair<Long, Float>>,
     )
 
@@ -61,10 +60,10 @@ class DietViewModel @Inject constructor(
         }
     }
 
-    /** DAO history, mapped into last-eat-time + per-day ratios (logic preserved verbatim). */
+    /** DAO history, mapped into ascending eat-time list + per-day ratios. */
     private val dietDataFlow: Flow<DietData> = historyFlow().map { data ->
         DietData(
-            lastEatTime = lastEatingTime(data),
+            eatTimesAsc = data.map { it.time }, // flowByTimeInterval is ORDER BY time ASC
             history = computeHistory(data),
         )
     }
@@ -81,69 +80,62 @@ class DietViewModel @Inject constructor(
     private fun buildState(dietData: DietData): DietUiState {
         val eatingHours = dietPreference.preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, 8)
         val fastingHours = dietPreference.preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, 16)
-
         val fastingLabel = "%d : %d".format(fastingHours, eatingHours)
         val selectedFastingItem = FastingItem.defaultFastingItems.firstOrNull {
             it.fastingHours == fastingHours && it.eatingHours == eatingHours
         }
-
         val history = dietData.history.map { (date, ratio) ->
             DietUiState.HistoryBar(dateMillis = date, ratio = ratio)
         }
 
-        val eatTime = dietData.lastEatTime
-        if (eatTime == null) {
-            return DietUiState(
-                fastingLabel = fastingLabel,
-                history = history,
-                selectedFastingItem = selectedFastingItem,
-            )
-        }
+        val s = DietWindow.compute(
+            eatTimesAsc = dietData.eatTimesAsc,
+            eatingHours = eatingHours,
+            fastingHours = fastingHours,
+            now = System.currentTimeMillis(),
+        )
 
-        val remainTime = System.currentTimeMillis() - eatTime.first
-        val eatingTimeMillis = TimeUnit.HOURS.toMillis(eatingHours)
-        val fastingTimeMillis = TimeUnit.HOURS.toMillis(fastingHours)
-        val fastingTime =
-            Calendar.getInstance().timeInMillis - min(eatTime.second, Calendar.getInstance().timeInMillis)
-
-        val progress = min(100.0, fastingTime * 100.0 / fastingTimeMillis).toFloat()
-
-        val statusIcon: Int
-        val statusTextRes: Int
-        val elapsedText: String
-        val promptTextRes: Int
-        when {
-            remainTime < eatingTimeMillis -> {
-                statusIcon = R.drawable.ic_baseline_fastfood_24
-                statusTextRes = R.string.diet_status_eating
-                elapsedText = formatElapsed(eatingTimeMillis - remainTime)
-                promptTextRes = R.string.diet_remaining_time
-            }
-            fastingTime > fastingTimeMillis -> {
-                statusIcon = R.drawable.ic_baseline_no_food_24
-                statusTextRes = R.string.diet_status_success
-                elapsedText = formatElapsed(System.currentTimeMillis() - eatTime.second)
-                promptTextRes = R.string.diet_fasting_time
-            }
-            else -> {
-                statusIcon = R.drawable.ic_baseline_no_food_24
-                statusTextRes = R.string.diet_status_fasting
-                elapsedText = formatElapsed(System.currentTimeMillis() - eatTime.second)
-                promptTextRes = R.string.diet_fasting_time
-            }
-        }
-
-        return DietUiState(
-            elapsedText = elapsedText,
-            progress = progress,
+        val base = DietUiState(
+            progress = s.ringProgress * 100f,
             fastingLabel = fastingLabel,
             history = history,
             selectedFastingItem = selectedFastingItem,
-            statusIcon = statusIcon,
-            statusTextRes = statusTextRes,
-            promptTextRes = promptTextRes,
+            elapsedText = formatElapsed(s.elapsedMillis),
         )
+
+        return when (s.phase) {
+            DietPhase.IDLE -> base.copy(
+                elapsedText = formatElapsed(0L),
+                statusIcon = R.drawable.ic_baseline_no_food_24,
+                statusTextRes = R.string.diet_status_fasting,
+                promptTextRes = R.string.diet_no_record,
+            )
+            DietPhase.EATING -> base.copy(
+                statusIcon = R.drawable.ic_baseline_fastfood_24,
+                statusTextRes = R.string.diet_status_eating,
+                promptTextRes = R.string.diet_remaining_time,
+                timeInfoRes = R.string.diet_eating_window,
+                timeInfoArg1 = hm(s.windowStart),
+                timeInfoArg2 = hm(s.windowEnd),
+            )
+            DietPhase.FASTING -> base.copy(
+                statusIcon = R.drawable.ic_baseline_no_food_24,
+                statusTextRes = R.string.diet_status_fasting,
+                promptTextRes = R.string.diet_fasting_time,
+                timeInfoRes = R.string.diet_fast_target,
+                timeInfoArg1 = hm(s.fastTargetAt),
+            )
+            DietPhase.SUCCESS -> base.copy(
+                statusIcon = R.drawable.ic_baseline_no_food_24,
+                statusTextRes = R.string.diet_status_success,
+                promptTextRes = R.string.diet_fasting_time,
+                timeInfoRes = R.string.diet_fast_done,
+            )
+        }
     }
+
+    private fun hm(millis: Long?): String =
+        if (millis == null) "" else HM_FORMAT.format(java.util.Date(millis))
 
     private fun formatElapsed(timestamp: Long): String {
         var temp = timestamp
@@ -172,11 +164,6 @@ class DietViewModel @Inject constructor(
         return eatTimeDao.flowByTimeInterval(before, after)
     }
 
-    private fun lastEatingTime(data: List<EatTime>): Pair<Long, Long>? {
-        val timeInterval = mergeInterval(data)
-        return timeInterval.lastOrNull()
-    }
-
     private fun computeHistory(data: List<EatTime>): List<Pair<Long, Float>> {
         val timeInterval = mergeIntervalWithFourHours(data)
         return (0..4).map { i ->
@@ -198,27 +185,6 @@ class DietViewModel @Inject constructor(
 
             before to effectiveProgress(timeInterval, before, after)
         }.asReversed()
-    }
-
-    private fun mergeInterval(data: List<EatTime>): List<Pair<Long, Long>> {
-        val eight = TimeUnit.HOURS.toMillis(8)
-        return mutableListOf<Pair<Long, Long>>().apply {
-            if (data.isEmpty()) {
-                return@apply
-            }
-            var start = data[0]
-            var end = data[0]
-            data.forEach {
-                if (end.time + eight > it.time) {
-                    end = it
-                } else {
-                    add(Pair(start.time, end.time))
-                    start = it
-                    end = it
-                }
-            }
-            add(Pair(start.time, end.time))
-        }
     }
 
     private fun mergeIntervalWithFourHours(data: List<EatTime>): List<Pair<Long, Long>> {
@@ -259,6 +225,7 @@ class DietViewModel @Inject constructor(
 
     companion object {
         val HISTORY_DATE_FORMAT = SimpleDateFormat("MM/dd", Locale.getDefault())
+        private val HM_FORMAT = SimpleDateFormat("HH:mm", Locale.getDefault())
 
         fun formatHistoryDate(dateMillis: Long): String =
             HISTORY_DATE_FORMAT.format(Date(dateMillis))

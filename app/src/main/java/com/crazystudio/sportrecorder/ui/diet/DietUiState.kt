@@ -15,6 +15,9 @@ data class DietUiState(
     @DrawableRes val statusIcon: Int = R.drawable.ic_baseline_fastfood_24,
     @StringRes val statusTextRes: Int = R.string.diet_status_fasting,
     @StringRes val promptTextRes: Int = R.string.diet_fasting_time,
+    val timeInfoRes: Int = 0, // 0 = no time-info line
+    val timeInfoArg1: String = "",
+    val timeInfoArg2: String = "",
 ) {
     data class HistoryBar(val dateMillis: Long, val ratio: Float) // ratio 0f..1f
 }

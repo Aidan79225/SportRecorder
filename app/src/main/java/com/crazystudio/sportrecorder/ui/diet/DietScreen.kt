@@ -93,6 +93,14 @@ fun DietScreen(
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Bold,
                     )
+                    if (state.timeInfoRes != 0) {
+                        Text(
+                            text = stringResource(state.timeInfoRes, state.timeInfoArg1, state.timeInfoArg2),
+                            fontSize = 14.sp,
+                            color = grey_1,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                 }
             }
 
