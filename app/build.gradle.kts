@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -60,6 +61,12 @@ kotlin {
     jvmToolchain(21)
 }
 
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(files("$projectDir/detekt.yml"))
+    baseline = file("$projectDir/detekt-baseline.xml")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -104,4 +111,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    detektPlugins(libs.detekt.formatting)
 }
