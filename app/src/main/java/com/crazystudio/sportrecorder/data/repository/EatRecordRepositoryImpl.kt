@@ -79,10 +79,11 @@ class EatRecordRepositoryImpl @Inject constructor(
 
     override suspend fun delete(recordId: Int) {
         val photos = photoDao.findByEatTimeId(recordId)
-        photos.forEach { PhotoStorage.deleteByName(appContext, it.fileName) }
         appDatabase.withTransaction {
             photoDao.deleteByEatTimeId(recordId)
             eatTimeDao.deleteById(recordId)
         }
+        // File deletes happen only after the DB transaction succeeds (non-transactional).
+        photos.forEach { PhotoStorage.deleteByName(appContext, it.fileName) }
     }
 }

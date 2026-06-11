@@ -15,7 +15,8 @@ object DietHistoryCalculator {
 
     /**
      * Merge ascending eat timestamps into eating intervals: a new interval starts when the gap
-     * from the previous eat exceeds [MERGE_GAP_HOURS]; each interval is at least [MIN_INTERVAL_HOURS] long.
+     * from the previous eat reaches [MERGE_GAP_HOURS] (i.e. the next eat is 8h or more after the previous);
+     * each interval is at least [MIN_INTERVAL_HOURS] long.
      */
     fun mergeIntervals(eatTimesAsc: List<Long>): List<Pair<Long, Long>> {
         if (eatTimesAsc.isEmpty()) return emptyList()
