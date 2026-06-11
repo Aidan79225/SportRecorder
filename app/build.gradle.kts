@@ -30,8 +30,8 @@ android {
         applicationId = "com.crazystudio.sportrecorder"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "0.0.10"
+        versionCode = 13
+        versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -44,6 +44,7 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
