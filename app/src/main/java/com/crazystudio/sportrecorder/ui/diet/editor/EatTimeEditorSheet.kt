@@ -98,7 +98,7 @@ fun EatTimeEditorSheet(
         val locationText = when (state.locationStatus) {
             EatTimeEditorUiState.LocationStatus.LOADING -> "Locating…"
             EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
-                String.format(java.util.Locale.getDefault(), "%.5f, %.5f", it.lat, it.lng)
+                String.format(java.util.Locale.ROOT, "%.5f, %.5f", it.lat, it.lng)
             } ?: "No location"
             else -> "No location"
         }

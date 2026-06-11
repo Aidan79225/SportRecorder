@@ -235,7 +235,7 @@ private fun RecordCard(
         // Location
         if (eatTime.lat != null && eatTime.lng != null) {
             Text(
-                text = "📍 ${String.format(Locale.getDefault(), "%.4f, %.4f", eatTime.lat, eatTime.lng)}",
+                text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", eatTime.lat, eatTime.lng)}",
                 fontSize = 12.sp,
                 color = white,
             )
