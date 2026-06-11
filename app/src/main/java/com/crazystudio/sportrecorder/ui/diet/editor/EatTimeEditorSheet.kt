@@ -39,6 +39,7 @@ import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
 @Composable
+@Suppress("LongMethod", "LongParameterList") // cohesive editor sheet; params are Compose event slots
 fun EatTimeEditorSheet(
     state: EatTimeEditorUiState,
     onPickDate: () -> Unit,
@@ -97,7 +98,7 @@ fun EatTimeEditorSheet(
         val locationText = when (state.locationStatus) {
             EatTimeEditorUiState.LocationStatus.LOADING -> "Locating…"
             EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
-                String.format("%.5f, %.5f", it.lat, it.lng)
+                String.format(java.util.Locale.getDefault(), "%.5f, %.5f", it.lat, it.lng)
             } ?: "No location"
             else -> "No location"
         }

@@ -15,7 +15,9 @@ interface FastingTypeDao {
     fun flowLast(limit: Int): Flow<List<FastingType>>
 
     @Query(
-        "SELECT * FROM ${FastingType.tableName} WHERE eating_hours = :eatingHours AND fasting_hours = :fastingHours ORDER BY timestamp DESC LIMIT 1"
+        "SELECT * FROM ${FastingType.tableName} " +
+            "WHERE eating_hours = :eatingHours AND fasting_hours = :fastingHours " +
+            "ORDER BY timestamp DESC LIMIT 1"
     )
     suspend fun findByHours(fastingHours: Long, eatingHours: Long): List<FastingType>
 }

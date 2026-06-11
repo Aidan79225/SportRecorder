@@ -45,7 +45,7 @@ object PhotoStorage {
         val decoded = BitmapFactory.decodeFile(
             tempFile.absolutePath,
             BitmapFactory.Options().apply { inSampleSize = sample },
-        ) ?: throw IllegalStateException("Failed to decode capture: ${tempFile.absolutePath}")
+        ) ?: error("Failed to decode capture: ${tempFile.absolutePath}")
 
         val rotated = applyExifRotation(tempFile, decoded)
         val scaled = scaleToMaxEdge(rotated, MAX_EDGE)
@@ -75,7 +75,7 @@ object PhotoStorage {
         var sample = 1
         var longEdge = max(w, h)
         while (longEdge / 2 >= target) {
-            longEdge /= 2;
+            longEdge /= 2
             sample *= 2
         }
         return sample

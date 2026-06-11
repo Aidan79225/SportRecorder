@@ -40,6 +40,7 @@ import com.crazystudio.sportrecorder.ui.theme.light_green
 import com.crazystudio.sportrecorder.ui.theme.white
 
 @Composable
+@Suppress("LongMethod") // cohesive single-screen layout; splitting hurts readability
 fun DietScreen(
     state: DietUiState,
     onEditFastingType: () -> Unit,
@@ -169,6 +170,7 @@ fun DietScreen(
 
 @Preview
 @Composable
+@Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
 private fun DietScreenPreview() {
     SportRecorderTheme {
         DietScreen(

@@ -11,6 +11,7 @@ import com.crazystudio.sportrecorder.entity.EatTime
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+@Suppress("TooManyFunctions") // cohesive Room DAO: each function is a distinct query/mutation
 interface EatTimeDao {
     @Query("SELECT * FROM ${EatTime.tableName} ORDER BY time DESC")
     fun liveAll(): LiveData<List<EatTime>>

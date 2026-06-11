@@ -26,6 +26,7 @@ import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val appDatabase: AppDatabase,

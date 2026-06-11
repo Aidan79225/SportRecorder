@@ -50,6 +50,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
+@Suppress("UnusedParameter") // public theme API slot; dynamic-color branch below is intentionally disabled
 fun SportRecorderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+

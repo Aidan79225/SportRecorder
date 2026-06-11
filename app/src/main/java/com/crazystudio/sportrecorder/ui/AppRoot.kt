@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
 @Composable
+@Suppress("LongMethod") // cohesive single navigation-graph builder; splitting hurts readability
 fun AppRoot() {
     val bottomSheetNavigator = rememberBottomSheetNavigator()
     val navController = rememberNavController(bottomSheetNavigator)
