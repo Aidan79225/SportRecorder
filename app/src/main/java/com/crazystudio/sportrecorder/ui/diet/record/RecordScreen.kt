@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,11 +43,6 @@ import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.EatTimeWithPhotos
-import com.crazystudio.sportrecorder.ui.theme.bg_black
-import com.crazystudio.sportrecorder.ui.theme.bg_black2
-import com.crazystudio.sportrecorder.ui.theme.grey_1
-import com.crazystudio.sportrecorder.ui.theme.light_green
-import com.crazystudio.sportrecorder.ui.theme.white
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -70,7 +66,7 @@ fun RecordScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(bg_black)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -115,7 +111,7 @@ fun RecordScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(bg_black)
+                    .background(MaterialTheme.colorScheme.surface)
                     .clickable { fullScreenPhoto = null },
                 contentAlignment = Alignment.Center,
             ) {
@@ -142,12 +138,13 @@ private fun RecordCard(
 ) {
     val eatTime = record.eatTime
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(bg_black2)
+            .background(colorScheme.surfaceContainer)
             .combinedClickable(
                 onClick = {},
                 onLongClick = onLongClick,
@@ -165,18 +162,18 @@ private fun RecordCard(
                 Text(
                     text = dateFormat.format(Date(eatTime.time)),
                     fontSize = 14.sp,
-                    color = white,
+                    color = colorScheme.onSurface,
                 )
                 Text(
                     text = timeFormat.format(Date(eatTime.time)),
                     fontSize = 14.sp,
-                    color = white,
+                    color = colorScheme.onSurface,
                 )
             }
             Icon(
                 painter = painterResource(R.drawable.ic_baseline_edit_24),
                 contentDescription = "Edit",
-                tint = light_green,
+                tint = colorScheme.primary,
                 modifier = Modifier
                     .size(24.dp)
                     .clickable { onEditRecord(eatTime.id) },
@@ -188,7 +185,7 @@ private fun RecordCard(
             Text(
                 text = eatTime.note,
                 fontSize = 14.sp,
-                color = white,
+                color = colorScheme.onSurface,
             )
         }
 
@@ -224,7 +221,11 @@ private fun RecordCard(
                                 .size(8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (index == pagerState.currentPage) light_green else grey_1
+                                    if (index == pagerState.currentPage) {
+                                        colorScheme.primary
+                                    } else {
+                                        colorScheme.onSurfaceVariant
+                                    }
                                 ),
                         )
                     }
@@ -237,7 +238,7 @@ private fun RecordCard(
             Text(
                 text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", eatTime.lat, eatTime.lng)}",
                 fontSize = 12.sp,
-                color = white,
+                color = colorScheme.onSurfaceVariant,
             )
         }
     }

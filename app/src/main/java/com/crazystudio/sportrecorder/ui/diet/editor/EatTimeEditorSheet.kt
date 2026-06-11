@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -32,9 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.ui.theme.grey_1
-import com.crazystudio.sportrecorder.ui.theme.light_green
-import com.crazystudio.sportrecorder.ui.theme.white
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
@@ -54,9 +50,10 @@ fun EatTimeEditorSheet(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier
-            .background(colorResource(id = R.color.bg_black))
+            .background(colorScheme.surface)
             .padding(20.dp)
     ) {
         // DATE row
@@ -85,13 +82,13 @@ fun EatTimeEditorSheet(
                 .padding(vertical = 8.dp),
             minLines = 2,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = white,
-                unfocusedTextColor = white,
-                focusedBorderColor = light_green,
-                unfocusedBorderColor = grey_1,
-                focusedLabelColor = light_green,
-                unfocusedLabelColor = grey_1,
-                cursorColor = light_green,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface,
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.onSurfaceVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                cursorColor = colorScheme.primary,
             ),
         )
         // LOCATION row — custom Row with two action icons
@@ -115,12 +112,12 @@ fun EatTimeEditorSheet(
             )
             Text(
                 text = "Location",
-                color = white,
+                color = colorScheme.onSurface,
                 fontSize = 18.sp,
             )
             Text(
                 text = locationText,
-                color = white,
+                color = colorScheme.onSurface,
                 fontSize = 18.sp,
                 textAlign = TextAlign.End,
                 modifier = Modifier
@@ -261,12 +258,12 @@ private fun HeaderRow(
         )
         Text(
             text = title,
-            color = white,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 18.sp,
         )
         Text(
             text = content,
-            color = white,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = 18.sp,
             textAlign = TextAlign.End,
             modifier = Modifier
