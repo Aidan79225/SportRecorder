@@ -71,10 +71,7 @@ interface EatRecordRepository {
     fun observeInWindow(after: Long, before: Long): Flow<List<EatRecord>> // Diet 歷史 + 當前 window
     suspend fun findById(id: Int): EatRecord?                            // Editor 載入
     suspend fun save(
-        id: Int,                       // 0 = 新增；>0 = 更新
-        time: Long,
-        location: GeoPoint?,
-        note: String?,
+        record: EatRecord,               // id=0 新增、>0 更新；time/location/note 取自此；photos 欄位於 save 忽略
         newPhotoFileNames: List<String>, // 新拍待寫入的 webp 檔名
         removedPhotos: List<EatPhoto>,   // 編輯時要刪的既有照片（rows + 檔案）
     ): Int                              // 回傳 record id
@@ -163,8 +160,9 @@ interface DietSettingsRepository {
   未提交即離開時只刪「新拍未存」的暫存檔）。重構為搬移而非改寫，逐字對照。
 - **DietViewModel 視窗**：歷史 bar 與當前 window 共用同一個 8 天查詢；抽 `DietHistoryCalculator` 時
   須保留 `flowByTimeInterval` 的 ASC 排序語意（`eatTimesAsc`）。
-- **detekt 無 baseline**：新檔需過 detekt（避免 wildcard import、`MagicNumber`、`TooManyFunctions` 視情況
-  以註解說明）。
+- **detekt 無 baseline**：新檔需過 detekt。注意 `MagicNumber` 的 `excludes` 含 `**/ui/**` 但**不含**新的
+  `domain/`/`data/` —— 從 `ui/diet` 搬到 `domain/` 的數字字面值（如 8、4、16）必須改用具名 `const`。
+  `LongParameterList` 在參數達 6 即觸發，故 `save(...)` 收斂為接收 `EatRecord`（3 參數）。避免 wildcard import。
 - **Hilt `@Binds`**：`RepositoryModule` 用 `abstract class` + `@Binds`；勿與既有 `@Provides` object module 混用同一類。
 - **照片 seam**：`PhotoStorage.fileFor` 仍在 Composable 內以 `LocalContext` 呼叫——維持不變，僅資料型別換 domain。
 
