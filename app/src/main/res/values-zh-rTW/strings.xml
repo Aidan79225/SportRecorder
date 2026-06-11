@@ -1,9 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SportRecorder</string>
+    <string name="title_home">首頁</string>
+    <string name="title_record">紀錄</string>
+    <string name="title_notifications">通知</string>
+
     <string name="diet_remaining_time">剩餘時間</string>
-    <string name="diet_status_eating">進食中</string>
-    <string name="diet_status_fasting">斷食中</string>
-    <string name="diet_status_success">成功</string>
     <string name="diet_fasting_time">已禁食時間</string>
+    <string name="diet_status_eating">進食中</string>
+    <string name="diet_status_success">成功</string>
+    <string name="diet_status_fasting">斷食中</string>
+
+    <string name="diet_create_eating_date_title">日期</string>
+    <string name="diet_create_eating_time_title">時間</string>
+    <string name="diet_create_eating_error">不能設定超過目前的時間</string>
+    <string name="diet_create_food_title">食物</string>
+    <string name="diet_food_record_title">食物紀錄</string>
+
+    <string name="create_food_name">名稱</string>
+    <string name="create_food_carbohydrate">碳水化合物</string>
+    <string name="create_food_protein">蛋白質</string>
+    <string name="create_food_fat">脂肪</string>
+
+    <string name="diet_fasting_type_title">斷食類型</string>
+    <string name="diet_fasting_type_trainee">新手</string>
+    <string name="diet_fasting_type_normal">一般</string>
+    <string name="diet_fasting_type_expert">專家</string>
+    <string name="diet_fasting_type_master">大師</string>
+    <string name="diet_fasting_type_monk">苦行僧</string>
+
+    <string name="diet_fasting_type_create_duplicate">已略過，你已經有相同的斷食類型！</string>
+
+    <string name="diet_eat_time_delete_title">刪除</string>
+    <string name="diet_eat_time_delete_message">確定要刪除這筆紀錄嗎？</string>
+    <string name="yes">是</string>
+    <string name="no">否</string>
 </resources>
