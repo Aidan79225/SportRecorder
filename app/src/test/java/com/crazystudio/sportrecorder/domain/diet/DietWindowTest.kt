@@ -1,4 +1,4 @@
-package com.crazystudio.sportrecorder.ui.diet
+package com.crazystudio.sportrecorder.domain.diet
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

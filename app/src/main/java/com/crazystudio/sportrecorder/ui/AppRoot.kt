@@ -123,7 +123,7 @@ fun AppRoot() {
                     val records by vm.records.collectAsStateWithLifecycle()
                     RecordScreen(
                         records = records,
-                        onDelete = vm::deleteEatTime,
+                        onDelete = vm::deleteRecord,
                         onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
                     )
                 }

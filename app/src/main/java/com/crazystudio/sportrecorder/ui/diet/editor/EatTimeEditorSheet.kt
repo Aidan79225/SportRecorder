@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import java.text.SimpleDateFormat
 
@@ -43,7 +44,7 @@ fun EatTimeEditorSheet(
     onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
     onRemovePendingPhoto: (String) -> Unit,
-    onRemoveExistingPhoto: (com.crazystudio.sportrecorder.entity.Photo) -> Unit,
+    onRemoveExistingPhoto: (EatPhoto) -> Unit,
     onRecaptureLocation: () -> Unit,
     onClearLocation: () -> Unit,
     onConfirm: () -> Unit,

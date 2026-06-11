@@ -4,12 +4,11 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
-import com.crazystudio.sportrecorder.dao.EatTimeDao
-import com.crazystudio.sportrecorder.dao.PhotoDao
-import com.crazystudio.sportrecorder.database.AppDatabase
-import com.crazystudio.sportrecorder.entity.EatTime
-import com.crazystudio.sportrecorder.entity.Photo
+import com.crazystudio.sportrecorder.domain.model.EatPhoto
+import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.util.LocationProvider
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,9 +28,8 @@ import javax.inject.Inject
 @Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val appDatabase: AppDatabase,
-    private val eatTimeDao: EatTimeDao,
-    private val photoDao: PhotoDao,
+    private val loadEatRecord: LoadEatRecordUseCase,
+    private val saveEatRecord: SaveEatRecordUseCase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -41,27 +39,23 @@ class EatTimeEditorViewModel @Inject constructor(
 
     val currentCalendar: Calendar = Calendar.getInstance()
     private var committed = false
-    private val photosToDelete = mutableListOf<Photo>()
+    private val photosToDelete = mutableListOf<EatPhoto>()
 
     private val _uiState = MutableStateFlow(
-        EatTimeEditorUiState(date = currentCalendar.clone() as Calendar, isEditMode = isEditMode)
+        EatTimeEditorUiState(date = currentCalendar.clone() as Calendar, isEditMode = isEditMode),
     )
     val uiState: StateFlow<EatTimeEditorUiState> = _uiState.asStateFlow()
 
     init {
         if (isEditMode) {
             viewModelScope.launch {
-                val record = eatTimeDao.findWithPhotosById(eatTimeId) ?: return@launch
-                currentCalendar.timeInMillis = record.eatTime.time
-                val loc = if (record.eatTime.lat != null && record.eatTime.lng != null) {
-                    EatTimeEditorUiState.LatLng(record.eatTime.lat, record.eatTime.lng)
-                } else {
-                    null
-                }
+                val record = loadEatRecord(eatTimeId) ?: return@launch
+                currentCalendar.timeInMillis = record.time
+                val loc = record.location?.let { EatTimeEditorUiState.LatLng(it.lat, it.lng) }
                 _uiState.update {
                     it.copy(
                         date = currentCalendar.clone() as Calendar,
-                        note = record.eatTime.note.orEmpty(),
+                        note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         location = loc,
                         locationStatus = if (loc != null) {
@@ -90,7 +84,7 @@ class EatTimeEditorViewModel @Inject constructor(
     }
 
     /** Mark an already-saved photo for deletion; actual delete happens on save(). */
-    fun removeExistingPhoto(photo: Photo) {
+    fun removeExistingPhoto(photo: EatPhoto) {
         photosToDelete.add(photo)
         _uiState.update { it.copy(existingPhotos = it.existingPhotos - photo) }
     }
@@ -102,10 +96,7 @@ class EatTimeEditorViewModel @Inject constructor(
             val result = LocationProvider.currentLocation(appContext)
             _uiState.update {
                 if (result == null) {
-                    it.copy(
-                        location = null,
-                        locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE
-                    )
+                    it.copy(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
                 } else {
                     it.copy(
                         location = EatTimeEditorUiState.LatLng(result.first, result.second),
@@ -124,43 +115,19 @@ class EatTimeEditorViewModel @Inject constructor(
         it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
     }
 
-    /** INSERT (create) or UPDATE (edit) the eat record and reconcile photos. */
+    /** Validate + persist via the use case. Returns false if rejected (e.g. future time). */
     suspend fun save(): Boolean {
-        if (currentCalendar.timeInMillis > Calendar.getInstance().timeInMillis) return false
         val state = _uiState.value
-        val note = state.note.ifBlank { null }
-        appDatabase.withTransaction {
-            val id: Int = if (isEditMode) {
-                eatTimeDao.update(
-                    EatTime(
-                        id = eatTimeId,
-                        time = currentCalendar.timeInMillis,
-                        lat = state.location?.lat,
-                        lng = state.location?.lng,
-                        note = note
-                    )
-                )
-                photosToDelete.forEach { photoDao.delete(it) }
-                eatTimeId
-            } else {
-                eatTimeDao.insert(
-                    EatTime(
-                        time = currentCalendar.timeInMillis,
-                        lat = state.location?.lat,
-                        lng = state.location?.lng,
-                        note = note
-                    )
-                ).toInt()
-            }
-            val now = System.currentTimeMillis()
-            state.pendingPhotos.forEach { name ->
-                photoDao.insert(Photo(eatTimeId = id, fileName = name, createdAt = now))
-            }
-        }
-        // File deletes are not transactional — only after the DB transaction succeeds.
-        photosToDelete.forEach { PhotoStorage.deleteByName(appContext, it.fileName) }
-        committed = true
-        return true
+        val record = EatRecord(
+            id = eatTimeId,
+            time = currentCalendar.timeInMillis,
+            location = state.location?.let { GeoPoint(it.lat, it.lng) },
+            note = state.note.ifBlank { null },
+            photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
+        )
+        val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
+        if (ok) committed = true
+        return ok
     }
 
     fun updateDate(year: Int, month: Int, dayOfMonth: Int) {
