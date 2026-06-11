@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.dao.EatTimeDao
+import com.crazystudio.sportrecorder.domain.diet.DietPhase
+import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
 import com.crazystudio.sportrecorder.util.Constants
