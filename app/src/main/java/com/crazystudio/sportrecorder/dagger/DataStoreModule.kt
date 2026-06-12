@@ -16,6 +16,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DataStoreModule {
+    // Must match the legacy SharedPreferences file name so SharedPreferencesMigration finds it.
     private const val DIET_PREFERENCES_NAME = "diet_preference"
 
     @Provides
