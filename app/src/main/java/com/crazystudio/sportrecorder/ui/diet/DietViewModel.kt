@@ -46,8 +46,6 @@ class DietViewModel @Inject constructor(
         val selectedFastingItem = FastingItem.defaultFastingItems.firstOrNull {
             it.fastingHours == fastingHours && it.eatingHours == eatingHours
         }
-        val history = snapshot.history.map { DietUiState.HistoryBar(dateMillis = it.dateMillis, ratio = it.ratio) }
-
         val s = DietWindow.compute(
             eatTimesAsc = snapshot.eatTimesAsc,
             eatingHours = eatingHours,
@@ -58,7 +56,6 @@ class DietViewModel @Inject constructor(
         val base = DietUiState(
             progress = s.ringProgress * 100f,
             fastingLabel = fastingLabel,
-            history = history,
             selectedFastingItem = selectedFastingItem,
             elapsedText = formatElapsed(s.elapsedMillis),
         )
