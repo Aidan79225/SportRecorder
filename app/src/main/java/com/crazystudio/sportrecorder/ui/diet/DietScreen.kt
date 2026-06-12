@@ -2,7 +2,6 @@ package com.crazystudio.sportrecorder.ui.diet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,8 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.component.CircleProgress
-import com.crazystudio.sportrecorder.ui.component.VerticalProgress
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
+import kotlin.math.roundToInt
 
 @Composable
 @Suppress("LongMethod") // cohesive single-screen layout; splitting hurts readability
@@ -55,11 +53,20 @@ fun DietScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Circular progress with overlaid icon / status / prompt / timer.
+            // Status string — moved above the ring.
+            Text(
+                text = stringResource(id = state.statusTextRes),
+                color = colorScheme.primary,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+
+            // Ring with overlaid icon / percentage / prompt / countdown.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp, start = 24.dp, end = 24.dp),
+                    .padding(top = 8.dp, start = 24.dp, end = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 CircleProgress(
@@ -74,37 +81,44 @@ fun DietScreen(
                         modifier = Modifier.size(36.dp),
                     )
                     Text(
-                        text = stringResource(id = state.statusTextRes),
-                        color = colorScheme.onSurface,
-                        fontSize = 24.sp,
+                        text = "${state.progress.roundToInt()}%",
+                        color = colorScheme.primary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = stringResource(id = state.promptTextRes),
                         color = colorScheme.onSurfaceVariant,
-                        fontSize = 24.sp,
+                        fontSize = 16.sp,
                     )
                     Text(
                         text = state.elapsedText,
                         color = colorScheme.primary,
-                        fontSize = 48.sp,
+                        fontSize = 44.sp,
                         fontWeight = FontWeight.Bold,
                     )
-                    if (state.timeInfoRes != 0) {
-                        Text(
-                            text = stringResource(state.timeInfoRes, state.timeInfoArg1, state.timeInfoArg2),
-                            fontSize = 14.sp,
-                            color = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
                 }
+            }
+
+            // Fast window (start → end), below the ring. Hidden when no record yet.
+            if (state.fastStart.isNotEmpty()) {
+                val endText = if (state.fastEndsNextDay) {
+                    stringResource(id = R.string.diet_next_day, state.fastEnd)
+                } else {
+                    state.fastEnd
+                }
+                Text(
+                    text = stringResource(id = R.string.diet_fast_window, state.fastStart, endText),
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
             }
 
             // Fasting-type chip with edit pencil.
             Row(
                 modifier = Modifier
-                    .padding(top = 10.dp)
+                    .padding(top = 12.dp)
                     .clip(RoundedCornerShape(50))
                     .background(colorScheme.surfaceContainer)
                     .clickable { onEditFastingType() }
@@ -126,34 +140,6 @@ fun DietScreen(
                 )
             }
 
-            // Row of 5 history bars with date labels.
-            Row(
-                modifier = Modifier
-                    .padding(top = 10.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                state.history.forEach { bar ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        VerticalProgress(
-                            progress = bar.ratio,
-                            modifier = Modifier
-                                .padding(horizontal = 20.dp, vertical = 10.dp)
-                                .width(20.dp)
-                                .height(170.dp),
-                        )
-                        Text(
-                            text = DietViewModel.formatHistoryDate(bar.dateMillis),
-                            color = colorScheme.onSurface,
-                        )
-                    }
-                }
-            }
-
-            // Bottom spacer mirrors the original 100dp filler so FAB never overlaps content.
             Spacer(modifier = Modifier.height(100.dp))
         }
 
@@ -180,15 +166,14 @@ private fun DietScreenPreview() {
     SportRecorderTheme {
         DietScreen(
             state = DietUiState(
-                elapsedText = "12:34:56",
-                progress = 70f,
+                elapsedText = "02:21:18",
+                progress = 75f,
                 fastingLabel = "16 : 8",
-                history = List(5) { i ->
-                    DietUiState.HistoryBar(
-                        dateMillis = System.currentTimeMillis() - i * 86_400_000L,
-                        ratio = (i + 1) / 5f,
-                    )
-                },
+                statusTextRes = R.string.diet_status_fasting,
+                promptTextRes = R.string.diet_fasting_time,
+                fastStart = "23:00",
+                fastEnd = "15:00",
+                fastEndsNextDay = true,
             ),
             onEditFastingType = {},
             onAddEatTime = {},
