@@ -7,7 +7,6 @@ import com.crazystudio.sportrecorder.dao.FastingTypeDao
 import com.crazystudio.sportrecorder.dao.PhotoDao
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
-import com.crazystudio.sportrecorder.util.DietPreference
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,12 +27,6 @@ object DatabaseModule {
         ).apply {
             Migrations.getMigrations().forEach { addMigrations(it) }
         }.build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideDietPreference(@ApplicationContext applicationContext: Context): DietPreference {
-        return DietPreference(applicationContext)
     }
 
     @Provides
