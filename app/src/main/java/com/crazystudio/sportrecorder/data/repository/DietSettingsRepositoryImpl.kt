@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.data.repository
 
 import android.content.SharedPreferences
 import com.crazystudio.sportrecorder.domain.model.DietSettings
+import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.util.Constants
 import com.crazystudio.sportrecorder.util.DietPreference
@@ -27,5 +28,12 @@ class DietSettingsRepositoryImpl @Inject constructor(
         val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(current()) }
         dietPreference.preference.registerOnSharedPreferenceChangeListener(listener)
         awaitClose { dietPreference.preference.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+
+    override suspend fun setSelection(window: FastingWindow) {
+        dietPreference.preference.edit()
+            .putLong(Constants.DIET_FASTING_TIME_INTERVAL, window.fastingHours)
+            .putLong(Constants.DIET_EATING_TIME_INTERVAL, window.eatingHours)
+            .apply()
     }
 }
