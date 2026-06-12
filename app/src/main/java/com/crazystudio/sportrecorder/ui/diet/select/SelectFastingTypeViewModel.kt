@@ -1,30 +1,28 @@
 package com.crazystudio.sportrecorder.ui.diet.select
 
 import androidx.lifecycle.ViewModel
-import com.crazystudio.sportrecorder.database.AppDatabase
-import com.crazystudio.sportrecorder.util.Constants
-import com.crazystudio.sportrecorder.util.DietPreference
+import androidx.lifecycle.viewModelScope
+import com.crazystudio.sportrecorder.domain.model.FastingWindow
+import com.crazystudio.sportrecorder.domain.usecase.ObserveCustomFastingTypesUseCase
+import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SelectFastingTypeViewModel @Inject constructor(
-    val db: AppDatabase,
-    val dietPreference: DietPreference
+    observeCustomFastingTypes: ObserveCustomFastingTypesUseCase,
+    private val saveFastingSelection: SaveFastingSelectionUseCase,
 ) : ViewModel() {
-    private val fastingTypeDao = db.getFastingTypeDao()
 
-    val fastingItemFlow = fastingTypeDao.flowLast(10).map {
-        return@map FastingItem.defaultFastingItems + it.map {
-            FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours)
-        }.reversed()
+    val fastingItemFlow: Flow<List<FastingItem>> = observeCustomFastingTypes().map { windows ->
+        FastingItem.defaultFastingItems +
+            windows.map { FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours) }.reversed()
     }
 
     fun saveSelection(fastingHours: Long, eatingHours: Long) {
-        dietPreference.preference.edit()
-            .putLong(Constants.DIET_FASTING_TIME_INTERVAL, fastingHours)
-            .putLong(Constants.DIET_EATING_TIME_INTERVAL, eatingHours)
-            .apply()
+        viewModelScope.launch { saveFastingSelection(FastingWindow(fastingHours, eatingHours)) }
     }
 }
