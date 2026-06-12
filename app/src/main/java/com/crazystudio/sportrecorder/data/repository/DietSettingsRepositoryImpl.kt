@@ -1,39 +1,46 @@
 package com.crazystudio.sportrecorder.data.repository
 
-import android.content.SharedPreferences
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.util.Constants
-import com.crazystudio.sportrecorder.util.DietPreference
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import java.io.IOException
 import javax.inject.Inject
 
 private const val DEFAULT_FASTING_HOURS = 16L
 private const val DEFAULT_EATING_HOURS = 8L
 
+// Key names MUST match the legacy SharedPreferences keys so SharedPreferencesMigration carries values over.
+private val FASTING_KEY = longPreferencesKey(Constants.DIET_FASTING_TIME_INTERVAL)
+private val EATING_KEY = longPreferencesKey(Constants.DIET_EATING_TIME_INTERVAL)
+
 class DietSettingsRepositoryImpl @Inject constructor(
-    private val dietPreference: DietPreference,
+    private val dataStore: DataStore<Preferences>,
 ) : DietSettingsRepository {
 
-    private fun current(): DietSettings = DietSettings(
-        fastingHours = dietPreference.preference.getLong(Constants.DIET_FASTING_TIME_INTERVAL, DEFAULT_FASTING_HOURS),
-        eatingHours = dietPreference.preference.getLong(Constants.DIET_EATING_TIME_INTERVAL, DEFAULT_EATING_HOURS),
-    )
-
-    override val settings: Flow<DietSettings> = callbackFlow {
-        trySend(current())
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> trySend(current()) }
-        dietPreference.preference.registerOnSharedPreferenceChangeListener(listener)
-        awaitClose { dietPreference.preference.unregisterOnSharedPreferenceChangeListener(listener) }
-    }
+    override val settings: Flow<DietSettings> = dataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { prefs ->
+            DietSettings(
+                fastingHours = prefs[FASTING_KEY] ?: DEFAULT_FASTING_HOURS,
+                eatingHours = prefs[EATING_KEY] ?: DEFAULT_EATING_HOURS,
+            )
+        }
+        .distinctUntilChanged()
 
     override suspend fun setSelection(window: FastingWindow) {
-        dietPreference.preference.edit()
-            .putLong(Constants.DIET_FASTING_TIME_INTERVAL, window.fastingHours)
-            .putLong(Constants.DIET_EATING_TIME_INTERVAL, window.eatingHours)
-            .apply()
+        dataStore.edit { prefs ->
+            prefs[FASTING_KEY] = window.fastingHours
+            prefs[EATING_KEY] = window.eatingHours
+        }
     }
 }
