@@ -37,9 +37,6 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
 
-    <string name="diet_eating_window">Eating window %1$s – %2$s</string>
-    <string name="diet_fast_target">Ends at %1$s</string>
-    <string name="diet_fast_done">Goal reached</string>
     <string name="diet_no_record">Add your first meal</string>
     <string name="diet_fast_window">Fast %1$s → %2$s</string>
     <string name="diet_next_day">next day %1$s</string>
