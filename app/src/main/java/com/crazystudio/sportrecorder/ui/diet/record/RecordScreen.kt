@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
@@ -159,12 +158,12 @@ private fun RecordCard(
             Column {
                 Text(
                     text = dateFormat.format(Date(record.time)),
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
                 Text(
                     text = timeFormat.format(Date(record.time)),
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
             }
@@ -182,7 +181,7 @@ private fun RecordCard(
         if (!record.note.isNullOrBlank()) {
             Text(
                 text = record.note,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurface,
             )
         }
@@ -235,7 +234,7 @@ private fun RecordCard(
         record.location?.let { loc ->
             Text(
                 text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", loc.lat, loc.lng)}",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurfaceVariant,
             )
         }
