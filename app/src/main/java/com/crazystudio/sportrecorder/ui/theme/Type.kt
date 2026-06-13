@@ -42,6 +42,13 @@ fun createTypography(colorScheme: ColorScheme) = Typography(
         color = colorScheme.primary
     ),
     // Roles below intentionally carry NO color — color is set at the call site via colorScheme roles.
+    displayMedium = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Bold,
+        fontSize = 52.sp,
+        lineHeight = 60.sp,
+        letterSpacing = 0.sp,
+    ),
     displaySmall = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,

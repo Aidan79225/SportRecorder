@@ -85,17 +85,17 @@ fun DietScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${state.progress.roundToInt()}%",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = colorScheme.primary,
                     )
                     Text(
                         text = stringResource(id = state.promptTextRes),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         color = colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = state.elapsedText,
-                        style = MaterialTheme.typography.displaySmall,
+                        style = MaterialTheme.typography.displayMedium,
                         color = colorScheme.primary,
                     )
                 }
