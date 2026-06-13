@@ -159,7 +159,9 @@ fun DietScreen(
     }
 }
 
-@Preview
+// showBackground gives layoutlib a window/theme context so drawable + Window_* styleable
+// resolution doesn't fail in the IDE preview; the dark backgroundColor matches the app surface.
+@Preview(showBackground = true, backgroundColor = 0xFF2B2B2B)
 @Composable
 @Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
 private fun DietScreenPreview() {
@@ -169,6 +171,7 @@ private fun DietScreenPreview() {
                 elapsedText = "02:21:18",
                 progress = 75f,
                 fastingLabel = "16 : 8",
+                statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_fasting,
                 promptTextRes = R.string.diet_fasting_time,
                 fastStart = "23:00",
