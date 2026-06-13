@@ -46,7 +46,6 @@ class DietViewModel @Inject constructor(
         val selectedFastingItem = FastingItem.defaultFastingItems.firstOrNull {
             it.fastingHours == fastingHours && it.eatingHours == eatingHours
         }
-        val history = snapshot.history.map { DietUiState.HistoryBar(dateMillis = it.dateMillis, ratio = it.ratio) }
 
         val s = DietWindow.compute(
             eatTimesAsc = snapshot.eatTimesAsc,
@@ -58,44 +57,46 @@ class DietViewModel @Inject constructor(
         val base = DietUiState(
             progress = s.ringProgress * 100f,
             fastingLabel = fastingLabel,
-            history = history,
             selectedFastingItem = selectedFastingItem,
             elapsedText = formatElapsed(s.elapsedMillis),
+            fastStart = timeLabel(s.windowEnd, now),
+            fastEnd = timeLabel(s.fastTargetAt, now),
         )
 
         return when (s.phase) {
             DietPhase.IDLE -> base.copy(
                 elapsedText = formatElapsed(0L),
                 statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_fasting,
+                statusTextRes = R.string.diet_status_idle,
                 promptTextRes = R.string.diet_no_record,
             )
             DietPhase.EATING -> base.copy(
                 statusIcon = R.drawable.ic_baseline_fastfood_24,
                 statusTextRes = R.string.diet_status_eating,
                 promptTextRes = R.string.diet_remaining_time,
-                timeInfoRes = R.string.diet_eating_window,
-                timeInfoArg1 = hm(s.windowStart),
-                timeInfoArg2 = hm(s.windowEnd),
             )
             DietPhase.FASTING -> base.copy(
                 statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_fasting,
                 promptTextRes = R.string.diet_fasting_time,
-                timeInfoRes = R.string.diet_fast_target,
-                timeInfoArg1 = hm(s.fastTargetAt),
             )
             DietPhase.SUCCESS -> base.copy(
                 statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_success,
                 promptTextRes = R.string.diet_fasting_time,
-                timeInfoRes = R.string.diet_fast_done,
             )
         }
     }
 
-    private fun hm(millis: Long?): String =
-        if (millis == null) "" else HM_FORMAT.format(Date(millis))
+    private fun timeLabel(millis: Long?, now: Long): FastTimeLabel? {
+        if (millis == null) return null
+        val date = Date(millis)
+        return FastTimeLabel(
+            time = HM_FORMAT.format(date),
+            day = relativeDay(now, millis),
+            date = DATE_FORMAT.format(date),
+        )
+    }
 
     private fun formatElapsed(timestamp: Long): String {
         var temp = timestamp
@@ -109,10 +110,7 @@ class DietViewModel @Inject constructor(
     }
 
     companion object {
-        private val HISTORY_DATE_FORMAT = SimpleDateFormat("MM/dd", Locale.getDefault())
         private val HM_FORMAT = SimpleDateFormat("HH:mm", Locale.getDefault())
-
-        fun formatHistoryDate(dateMillis: Long): String =
-            HISTORY_DATE_FORMAT.format(Date(dateMillis))
+        private val DATE_FORMAT = SimpleDateFormat("M/d", Locale.getDefault())
     }
 }
