@@ -48,7 +48,7 @@ private val DarkColors = darkColorScheme(
 fun SportRecorderTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColors,
-        typography = createTypography(DarkColors),
+        typography = createTypography(),
         content = content,
     )
 }

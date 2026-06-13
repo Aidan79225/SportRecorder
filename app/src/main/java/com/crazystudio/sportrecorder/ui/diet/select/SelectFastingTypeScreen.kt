@@ -77,7 +77,8 @@ fun SelectFastingTypeScreen(
             ) {
                 Text(
                     text = stringResource(id = R.string.diet_fasting_type_title),
-                    style = MaterialTheme.typography.headlineLarge
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
