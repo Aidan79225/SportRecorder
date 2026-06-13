@@ -28,7 +28,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
@@ -113,13 +112,13 @@ fun EatTimeEditorSheet(
             )
             Text(
                 text = "Location",
+                style = MaterialTheme.typography.bodyLarge,
                 color = colorScheme.onSurface,
-                fontSize = 18.sp,
             )
             Text(
                 text = locationText,
+                style = MaterialTheme.typography.bodyLarge,
                 color = colorScheme.onSurface,
-                fontSize = 18.sp,
                 textAlign = TextAlign.End,
                 modifier = Modifier
                     .weight(1f)
@@ -259,13 +258,13 @@ private fun HeaderRow(
         )
         Text(
             text = title,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 18.sp,
         )
         Text(
             text = content,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 18.sp,
             textAlign = TextAlign.End,
             modifier = Modifier
                 .weight(1f)

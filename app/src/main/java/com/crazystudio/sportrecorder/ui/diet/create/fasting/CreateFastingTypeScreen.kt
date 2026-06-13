@@ -91,7 +91,8 @@ fun CreateFastingTypeScreen(
                 ) {
                     Text(
                         text = "CANCEL",
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
                 Button(
@@ -124,6 +125,7 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
         Text(
             text = stringResource(id = type.titleResId),
             style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .weight(1f)
                 .padding(start = 10.dp)
@@ -131,6 +133,7 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
         Text(
             text = selectedValueState.value,
             style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .padding(end = 10.dp)
                 .clickable {
@@ -173,6 +176,7 @@ private fun SelectListDialog(
                     Text(
                         text = it,
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(10.dp)
@@ -180,7 +184,7 @@ private fun SelectListDialog(
                                 onSelectedListener(it)
                                 onDismissRequest()
                             },
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.primary)
                 }
