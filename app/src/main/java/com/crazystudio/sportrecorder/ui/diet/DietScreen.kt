@@ -26,10 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.ui.component.CircleProgress
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
@@ -68,9 +66,8 @@ fun DietScreen(
             // Status string.
             Text(
                 text = stringResource(id = state.statusTextRes),
+                style = MaterialTheme.typography.headlineMedium,
                 color = colorScheme.primary,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 4.dp),
             )
 
@@ -88,20 +85,18 @@ fun DietScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "${state.progress.roundToInt()}%",
+                        style = MaterialTheme.typography.headlineSmall,
                         color = colorScheme.primary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = stringResource(id = state.promptTextRes),
+                        style = MaterialTheme.typography.bodyMedium,
                         color = colorScheme.onSurfaceVariant,
-                        fontSize = 16.sp,
                     )
                     Text(
                         text = state.elapsedText,
+                        style = MaterialTheme.typography.displaySmall,
                         color = colorScheme.primary,
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -133,8 +128,8 @@ fun DietScreen(
             ) {
                 Text(
                     text = state.fastingLabel,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurfaceVariant,
-                    fontSize = 18.sp,
                 )
                 Icon(
                     painter = painterResource(id = R.drawable.ic_baseline_edit_24),
@@ -184,14 +179,13 @@ private fun FastTimeColumn(
     ) {
         Text(
             text = stringResource(id = titleRes),
+            style = MaterialTheme.typography.labelMedium,
             color = colorScheme.onSurfaceVariant,
-            fontSize = 13.sp,
         )
         Text(
             text = "${label.time} $dayText",
+            style = MaterialTheme.typography.titleSmall,
             color = colorScheme.onSurface,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
         )
     }
 }
