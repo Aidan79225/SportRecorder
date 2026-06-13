@@ -49,13 +49,13 @@ enum class Type(
     val values: List<String>
 ) {
     Fasting(
-        R.string.diet_status_fasting,
+        R.string.diet_create_fasting_hours,
         R.drawable.ic_baseline_no_food_24,
         "16",
         (16..49).map { it.toString() }.toList()
     ),
     Eating(
-        R.string.diet_status_eating,
+        R.string.diet_create_eating_hours,
         R.drawable.ic_baseline_fastfood_24,
         "8",
         (1..11).map { it.toString() }.toList()
