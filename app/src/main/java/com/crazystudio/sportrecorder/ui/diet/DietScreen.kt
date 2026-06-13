@@ -192,9 +192,7 @@ private fun FastTimeColumn(
     }
 }
 
-// showBackground gives layoutlib a window/theme context so drawable + Window_* styleable
-// resolution doesn't fail in the IDE preview; the dark backgroundColor matches the app surface.
-@Preview(showBackground = true, backgroundColor = 0xFF2B2B2B)
+@Preview
 @Composable
 @Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
 private fun DietScreenPreview() {
