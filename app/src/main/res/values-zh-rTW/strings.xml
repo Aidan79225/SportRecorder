@@ -7,9 +7,10 @@
 
     <string name="diet_remaining_time">剩餘時間</string>
     <string name="diet_fasting_time">已禁食時間</string>
-    <string name="diet_status_eating">進食中</string>
-    <string name="diet_status_success">成功</string>
-    <string name="diet_status_fasting">斷食中</string>
+    <string name="diet_status_eating">進食中，好好享受！</string>
+    <string name="diet_status_success">你做到了！</string>
+    <string name="diet_status_fasting">斷食中，加油！</string>
+    <string name="diet_status_idle">準備好了嗎？</string>
 
     <string name="diet_create_eating_date_title">日期</string>
     <string name="diet_create_eating_time_title">時間</string>

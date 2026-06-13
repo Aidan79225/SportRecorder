@@ -67,7 +67,7 @@ class DietViewModel @Inject constructor(
             DietPhase.IDLE -> base.copy(
                 elapsedText = formatElapsed(0L),
                 statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_fasting,
+                statusTextRes = R.string.diet_status_idle,
                 promptTextRes = R.string.diet_no_record,
             )
             DietPhase.EATING -> base.copy(
