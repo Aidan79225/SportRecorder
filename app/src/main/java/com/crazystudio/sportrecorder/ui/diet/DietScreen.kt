@@ -7,15 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,35 +43,61 @@ fun DietScreen(
             .fillMaxSize()
             .background(colorScheme.surface),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Status icon — above the status text.
-            Icon(
-                painter = painterResource(id = state.statusIcon),
-                contentDescription = null,
-                tint = colorScheme.onSurface,
+        // Equal-weight regions above/below the fixed-height ring keep the ring's centre at the
+        // vertical centre of the content area (screen top → above the bottom bar).
+        Column(modifier = Modifier.fillMaxSize()) {
+            // ABOVE the ring — status icon, status text, fasting-type chip; hugs the ring's top edge.
+            Column(
                 modifier = Modifier
-                    .padding(top = 16.dp)
-                    .size(36.dp),
-            )
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(bottom = 12.dp),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    painter = painterResource(id = state.statusIcon),
+                    contentDescription = null,
+                    tint = colorScheme.onSurface,
+                    modifier = Modifier.size(36.dp),
+                )
+                Text(
+                    text = stringResource(id = state.statusTextRes),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+                // Edit fasting-type chip — moved under the status text, with a little padding around it.
+                Row(
+                    modifier = Modifier
+                        .padding(top = 12.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(colorScheme.surfaceContainer)
+                        .clickable { onEditFastingType() }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = state.fastingLabel,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colorScheme.onSurfaceVariant,
+                    )
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_baseline_edit_24),
+                        contentDescription = null,
+                        tint = colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(18.dp),
+                    )
+                }
+            }
 
-            // Status string.
-            Text(
-                text = stringResource(id = state.statusTextRes),
-                style = MaterialTheme.typography.headlineMedium,
-                color = colorScheme.primary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-
-            // Ring with overlaid percentage / prompt / countdown.
+            // RING — fixed (square) height; centred between the two weighted regions.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 24.dp, end = 24.dp),
+                    .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 CircleProgress(
@@ -101,47 +123,27 @@ fun DietScreen(
                 }
             }
 
-            // Fast window — two side-by-side blocks (start | end) below the ring. Hidden when no record.
-            val fastStart = state.fastStart
-            val fastEnd = state.fastEnd
-            if (fastStart != null && fastEnd != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp, start = 24.dp, end = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    FastTimeColumn(titleRes = R.string.fast_started_label, label = fastStart)
-                    FastTimeColumn(titleRes = R.string.fast_ending_label, label = fastEnd)
+            // BELOW the ring — fast window blocks; hugs the ring's bottom edge.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                val fastStart = state.fastStart
+                val fastEnd = state.fastEnd
+                if (fastStart != null && fastEnd != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp, start = 24.dp, end = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        FastTimeColumn(titleRes = R.string.fast_started_label, label = fastStart)
+                        FastTimeColumn(titleRes = R.string.fast_ending_label, label = fastEnd)
+                    }
                 }
             }
-
-            // Fasting-type chip with edit pencil.
-            Row(
-                modifier = Modifier
-                    .padding(top = 12.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(colorScheme.surfaceContainer)
-                    .clickable { onEditFastingType() }
-                    .padding(horizontal = 12.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = state.fastingLabel,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorScheme.onSurfaceVariant,
-                )
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_baseline_edit_24),
-                    contentDescription = null,
-                    tint = colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(start = 5.dp)
-                        .size(18.dp),
-                )
-            }
-
-            Spacer(modifier = Modifier.height(100.dp))
         }
 
         FloatingActionButton(
@@ -179,12 +181,12 @@ private fun FastTimeColumn(
     ) {
         Text(
             text = stringResource(id = titleRes),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = colorScheme.onSurfaceVariant,
         )
         Text(
             text = "${label.time} $dayText",
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.headlineSmall,
             color = colorScheme.onSurface,
         )
     }
