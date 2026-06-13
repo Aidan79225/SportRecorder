@@ -1,13 +1,26 @@
 package com.crazystudio.sportrecorder.ui.diet
 
 import java.util.Calendar
+import java.util.concurrent.TimeUnit
 
-/** True if [endMillis] falls on a later calendar day than [startMillis] (device-default time zone). */
-fun fastWindowCrossesDay(startMillis: Long, endMillis: Long): Boolean {
-    val start = Calendar.getInstance().apply { timeInMillis = startMillis }
-    val end = Calendar.getInstance().apply { timeInMillis = endMillis }
-    val startDay = start.get(Calendar.YEAR) to start.get(Calendar.DAY_OF_YEAR)
-    val endDay = end.get(Calendar.YEAR) to end.get(Calendar.DAY_OF_YEAR)
-    return endDay.first > startDay.first ||
-        (endDay.first == startDay.first && endDay.second > startDay.second)
+/** Classify [target] relative to [now]'s day. Beyond ±1 day returns [RelativeDay.OTHER]. */
+fun relativeDay(now: Long, target: Long): RelativeDay {
+    val dayMillis = TimeUnit.DAYS.toMillis(1)
+    // Round so DST-shortened/lengthened days still map to whole-day deltas.
+    val diffDays = Math.round((startOfDay(target) - startOfDay(now)).toDouble() / dayMillis)
+    return when (diffDays) {
+        -1L -> RelativeDay.YESTERDAY
+        0L -> RelativeDay.TODAY
+        1L -> RelativeDay.TOMORROW
+        else -> RelativeDay.OTHER
+    }
 }
+
+private fun startOfDay(millis: Long): Long =
+    Calendar.getInstance().apply {
+        timeInMillis = millis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis

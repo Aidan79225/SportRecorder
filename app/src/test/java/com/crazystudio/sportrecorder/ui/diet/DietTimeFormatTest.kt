@@ -1,12 +1,11 @@
 package com.crazystudio.sportrecorder.ui.diet
 
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Calendar
 
 class DietTimeFormatTest {
-    private fun at(hour: Int, dayOffset: Int = 0): Long =
+    private fun at(dayOffset: Int, hour: Int): Long =
         Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, dayOffset)
             set(Calendar.HOUR_OF_DAY, hour)
@@ -15,11 +14,21 @@ class DietTimeFormatTest {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
-    @Test fun sameDay_isNotNextDay() {
-        assertFalse(fastWindowCrossesDay(at(hour = 8), at(hour = 20)))
+    private val now = at(dayOffset = 0, hour = 12)
+
+    @Test fun sameDay_isToday() {
+        assertEquals(RelativeDay.TODAY, relativeDay(now, at(dayOffset = 0, hour = 23)))
     }
 
-    @Test fun acrossMidnight_isNextDay() {
-        assertTrue(fastWindowCrossesDay(at(hour = 20), at(hour = 10, dayOffset = 1)))
+    @Test fun dayBefore_isYesterday() {
+        assertEquals(RelativeDay.YESTERDAY, relativeDay(now, at(dayOffset = -1, hour = 8)))
+    }
+
+    @Test fun dayAfter_isTomorrow() {
+        assertEquals(RelativeDay.TOMORROW, relativeDay(now, at(dayOffset = 1, hour = 6)))
+    }
+
+    @Test fun beyondRange_isOther() {
+        assertEquals(RelativeDay.OTHER, relativeDay(now, at(dayOffset = 3, hour = 12)))
     }
 }

@@ -1,7 +1,9 @@
 package com.crazystudio.sportrecorder.ui.diet
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,16 +55,26 @@ fun DietScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Status string — moved above the ring.
+            // Status icon — above the status text.
+            Icon(
+                painter = painterResource(id = state.statusIcon),
+                contentDescription = null,
+                tint = colorScheme.onSurface,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .size(36.dp),
+            )
+
+            // Status string.
             Text(
                 text = stringResource(id = state.statusTextRes),
                 color = colorScheme.primary,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 16.dp),
+                modifier = Modifier.padding(top = 4.dp),
             )
 
-            // Ring with overlaid icon / percentage / prompt / countdown.
+            // Ring with overlaid percentage / prompt / countdown.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -74,12 +86,6 @@ fun DietScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        painter = painterResource(id = state.statusIcon),
-                        contentDescription = null,
-                        tint = colorScheme.onSurface,
-                        modifier = Modifier.size(36.dp),
-                    )
                     Text(
                         text = "${state.progress.roundToInt()}%",
                         color = colorScheme.primary,
@@ -100,19 +106,19 @@ fun DietScreen(
                 }
             }
 
-            // Fast window (start → end), below the ring. Hidden when no record yet.
-            if (state.fastStart.isNotEmpty()) {
-                val endText = if (state.fastEndsNextDay) {
-                    stringResource(id = R.string.diet_next_day, state.fastEnd)
-                } else {
-                    state.fastEnd
+            // Fast window — two side-by-side blocks (start | end) below the ring. Hidden when no record.
+            val fastStart = state.fastStart
+            val fastEnd = state.fastEnd
+            if (fastStart != null && fastEnd != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp, start = 24.dp, end = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    FastTimeColumn(titleRes = R.string.fast_started_label, label = fastStart)
+                    FastTimeColumn(titleRes = R.string.fast_ending_label, label = fastEnd)
                 }
-                Text(
-                    text = stringResource(id = R.string.diet_fast_window, state.fastStart, endText),
-                    color = colorScheme.onSurfaceVariant,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
             }
 
             // Fasting-type chip with edit pencil.
@@ -159,6 +165,37 @@ fun DietScreen(
     }
 }
 
+@Composable
+private fun FastTimeColumn(
+    @StringRes titleRes: Int,
+    label: FastTimeLabel,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val dayText = when (label.day) {
+        RelativeDay.YESTERDAY -> stringResource(id = R.string.day_yesterday)
+        RelativeDay.TODAY -> stringResource(id = R.string.day_today)
+        RelativeDay.TOMORROW -> stringResource(id = R.string.day_tomorrow)
+        RelativeDay.OTHER -> label.date
+    }
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(id = titleRes),
+            color = colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+        )
+        Text(
+            text = "${label.time} $dayText",
+            color = colorScheme.onSurface,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
 // showBackground gives layoutlib a window/theme context so drawable + Window_* styleable
 // resolution doesn't fail in the IDE preview; the dark backgroundColor matches the app surface.
 @Preview(showBackground = true, backgroundColor = 0xFF2B2B2B)
@@ -174,9 +211,8 @@ private fun DietScreenPreview() {
                 statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_fasting,
                 promptTextRes = R.string.diet_fasting_time,
-                fastStart = "23:00",
-                fastEnd = "15:00",
-                fastEndsNextDay = true,
+                fastStart = FastTimeLabel(time = "23:00", day = RelativeDay.TODAY, date = ""),
+                fastEnd = FastTimeLabel(time = "15:00", day = RelativeDay.TOMORROW, date = ""),
             ),
             onEditFastingType = {},
             onAddEatTime = {},

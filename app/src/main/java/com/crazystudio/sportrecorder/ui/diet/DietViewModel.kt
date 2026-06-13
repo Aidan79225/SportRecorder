@@ -54,17 +54,13 @@ class DietViewModel @Inject constructor(
             now = now,
         )
 
-        val fastStartMs = s.windowEnd
-        val fastEndMs = s.fastTargetAt
         val base = DietUiState(
             progress = s.ringProgress * 100f,
             fastingLabel = fastingLabel,
             selectedFastingItem = selectedFastingItem,
             elapsedText = formatElapsed(s.elapsedMillis),
-            fastStart = hm(fastStartMs),
-            fastEnd = hm(fastEndMs),
-            fastEndsNextDay = fastStartMs != null && fastEndMs != null &&
-                fastWindowCrossesDay(fastStartMs, fastEndMs),
+            fastStart = timeLabel(s.windowEnd, now),
+            fastEnd = timeLabel(s.fastTargetAt, now),
         )
 
         return when (s.phase) {
@@ -92,8 +88,15 @@ class DietViewModel @Inject constructor(
         }
     }
 
-    private fun hm(millis: Long?): String =
-        if (millis == null) "" else HM_FORMAT.format(Date(millis))
+    private fun timeLabel(millis: Long?, now: Long): FastTimeLabel? {
+        if (millis == null) return null
+        val date = Date(millis)
+        return FastTimeLabel(
+            time = HM_FORMAT.format(date),
+            day = relativeDay(now, millis),
+            date = DATE_FORMAT.format(date),
+        )
+    }
 
     private fun formatElapsed(timestamp: Long): String {
         var temp = timestamp
@@ -108,5 +111,6 @@ class DietViewModel @Inject constructor(
 
     companion object {
         private val HM_FORMAT = SimpleDateFormat("HH:mm", Locale.getDefault())
+        private val DATE_FORMAT = SimpleDateFormat("M/d", Locale.getDefault())
     }
 }
