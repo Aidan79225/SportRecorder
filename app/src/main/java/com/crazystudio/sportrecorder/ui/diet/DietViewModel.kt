@@ -22,20 +22,25 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltViewModel
-class DietViewModel @Inject constructor(
+class DietViewModel(
     observeDietState: ObserveDietStateUseCase,
+    private val now: () -> Long,
 ) : ViewModel() {
+
+    @Inject
+    constructor(observeDietState: ObserveDietStateUseCase) :
+        this(observeDietState, System::currentTimeMillis)
 
     /** Per-second ticker so elapsedText / progress recompute every second. */
     private val tickerFlow: Flow<Long> = flow {
         while (true) {
-            emit(System.currentTimeMillis())
+            emit(now())
             delay(TimeUnit.SECONDS.toMillis(1))
         }
     }
 
     val uiState: StateFlow<DietUiState> =
-        combine(observeDietState(System.currentTimeMillis()), tickerFlow) { snapshot, now ->
+        combine(observeDietState(now()), tickerFlow) { snapshot, now ->
             buildState(snapshot, now)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DietUiState())
 
