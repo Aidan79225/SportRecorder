@@ -7,6 +7,10 @@ import java.util.concurrent.TimeUnit
 /** Pure (Android-free) calculator for the Insights screen. */
 object InsightsAggregator {
 
+    private const val LATE_NIGHT_HOUR = 22
+    private const val MINUTES_PER_HOUR = 60
+    private const val WEEK_LOOKBACK_DAYS = 6
+
     /** Classify one calendar day's ascending meal times against the eating-hours goal. */
     fun adherenceFor(dayMealTimesAsc: List<Long>, eatingHours: Long): AdherenceState {
         if (dayMealTimesAsc.isEmpty()) return AdherenceState.NO_DATA
@@ -70,4 +74,37 @@ object InsightsAggregator {
             DayCell(dayStart = start, dayOfMonth = day, state = state)
         }
     }
+
+    /** Inclusive lower bound (local midnight) for the selected period relative to [now]. */
+    fun periodStart(now: Long, period: Period): Long {
+        val cal = Calendar.getInstance().apply { timeInMillis = dayStart(now) }
+        when (period) {
+            Period.WEEK -> cal.add(Calendar.DAY_OF_MONTH, -WEEK_LOOKBACK_DAYS)
+            Period.MONTH -> cal.set(Calendar.DAY_OF_MONTH, 1)
+        }
+        return cal.timeInMillis
+    }
+
+    /** Stats over [records] (assumed already filtered to the period). */
+    fun statsFor(records: List<EatRecord>): InsightsStats {
+        val byDay = records.groupBy { dayStart(it.time) }
+        val firsts = byDay.values.map { day -> minutesSinceMidnight(day.minOf { it.time }) }
+        val lasts = byDay.values.map { day -> minutesSinceMidnight(day.maxOf { it.time }) }
+        val lateDays = byDay.values.count { day ->
+            day.any { minutesSinceMidnight(it.time) >= LATE_NIGHT_HOUR * MINUTES_PER_HOUR }
+        }
+        return InsightsStats(
+            mealCount = records.size,
+            avgFirstMealMinutes = firsts.averageOrNull(),
+            avgLastMealMinutes = lasts.averageOrNull(),
+            lateNightDays = lateDays,
+        )
+    }
+
+    private fun minutesSinceMidnight(millis: Long): Int =
+        Calendar.getInstance().apply { timeInMillis = millis }
+            .let { it.get(Calendar.HOUR_OF_DAY) * MINUTES_PER_HOUR + it.get(Calendar.MINUTE) }
+
+    private fun List<Int>.averageOrNull(): Int? =
+        if (isEmpty()) null else (sum().toDouble() / size).toInt()
 }

@@ -111,4 +111,41 @@ class InsightsAggregatorTest {
         val now = at(2026, 2, 15, 20)
         assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, now))
     }
+
+    @Test fun statsFor_countsAndAverages() {
+        val records = listOf(
+            rec(at(2026, 2, 10, 8, 0)),
+            rec(at(2026, 2, 10, 18, 0)),
+            rec(at(2026, 2, 11, 10, 0)),
+            rec(at(2026, 2, 11, 20, 0)),
+        )
+        val stats = InsightsAggregator.statsFor(records)
+        assertEquals(4, stats.mealCount)
+        assertEquals(9 * 60, stats.avgFirstMealMinutes)
+        assertEquals(19 * 60, stats.avgLastMealMinutes)
+    }
+
+    @Test fun statsFor_lateNightCountsDistinctDays() {
+        val records = listOf(
+            rec(at(2026, 2, 10, 23, 0)),
+            rec(at(2026, 2, 11, 12, 0)),
+            rec(at(2026, 2, 12, 22, 0)),
+            rec(at(2026, 2, 12, 22, 30)),
+        )
+        assertEquals(2, InsightsAggregator.statsFor(records).lateNightDays)
+    }
+
+    @Test fun statsFor_empty() {
+        val stats = InsightsAggregator.statsFor(emptyList())
+        assertEquals(0, stats.mealCount)
+        assertEquals(null, stats.avgFirstMealMinutes)
+        assertEquals(null, stats.avgLastMealMinutes)
+        assertEquals(0, stats.lateNightDays)
+    }
+
+    @Test fun periodStart_weekIsSevenDays() {
+        val now = at(2026, 2, 15, 12)
+        val start = InsightsAggregator.periodStart(now, Period.WEEK)
+        assertEquals(InsightsAggregator.dayStart(at(2026, 2, 9, 0)), start)
+    }
 }
