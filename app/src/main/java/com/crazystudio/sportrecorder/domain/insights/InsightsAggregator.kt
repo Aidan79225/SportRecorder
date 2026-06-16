@@ -103,7 +103,11 @@ object InsightsAggregator {
         )
     }
 
-    /** Build the full Insights result. [monthAnchor] selects the calendar month. */
+    /**
+     * Build the full Insights result. The adherence calendar reflects [monthAnchor]'s month,
+     * while the streak, stats, photo wall, and locations reflect [now] and [period] — the two
+     * are intentionally independent (paging the calendar does not move the stats window).
+     */
     fun compute(
         records: List<EatRecord>,
         settings: DietSettings,

@@ -60,4 +60,21 @@ class InsightsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun shiftMonth_movesAnchorBackward() = runTest(mainRule.testDispatcher.scheduler) {
+        val repo = FakeEatRecordRepository()
+        val vm = viewModel(repo)
+
+        vm.uiState.test {
+            // First item is the stateIn default (monthAnchor = 0L); skip it.
+            awaitItem()
+            // Second item is the real combined state produced by now() = fixedNow.
+            val initial = awaitItem()
+            vm.shiftMonth(-1)
+            val shifted = awaitItem()
+            assertTrue(shifted.monthAnchor < initial.monthAnchor)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
