@@ -68,4 +68,13 @@
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none" translatable="false">—</string>
     <string name="insights_location_count" translatable="false">📍 %1$.4f, %2$.4f · %3$d</string>
+    <string-array name="insights_weekday_initials">
+        <item>Su</item>
+        <item>Mo</item>
+        <item>Tu</item>
+        <item>We</item>
+        <item>Th</item>
+        <item>Fr</item>
+        <item>Sa</item>
+    </string-array>
 </resources>

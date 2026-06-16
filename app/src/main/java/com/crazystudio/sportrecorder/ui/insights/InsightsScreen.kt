@@ -30,8 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
@@ -134,6 +136,17 @@ private fun CalendarGrid(days: List<DayCell>) {
         Calendar.getInstance().apply { timeInMillis = days.first().dayStart }
             .get(Calendar.DAY_OF_WEEK) - 1
     }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        stringArrayResource(R.array.insights_weekday_initials).forEach { label ->
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
     val cells: List<DayCell?> = List(leadingBlanks) { null } + days
     cells.chunked(WEEK_COLUMNS).forEach { week ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -162,10 +175,10 @@ private fun DayBox(cell: DayCell?, modifier: Modifier) {
             Text(
                 text = cell.dayOfMonth.toString(),
                 style = MaterialTheme.typography.labelSmall,
-                color = if (cell.state == AdherenceState.NO_DATA) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onPrimary
+                color = when (cell.state) {
+                    AdherenceState.NO_DATA -> MaterialTheme.colorScheme.onSurfaceVariant
+                    AdherenceState.OFF_TARGET -> MaterialTheme.colorScheme.onError
+                    else -> MaterialTheme.colorScheme.onPrimary
                 },
             )
         }
