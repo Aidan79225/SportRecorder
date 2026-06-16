@@ -28,6 +28,26 @@ object InsightsAggregator {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
+    /** Consecutive ON_TARGET days ending at the most recent day; empty today is neutral. */
+    fun computeStreak(records: List<EatRecord>, eatingHours: Long, now: Long): Int {
+        val byDay: Map<Long, List<Long>> = records
+            .groupBy { dayStart(it.time) }
+            .mapValues { entry -> entry.value.map { it.time }.sorted() }
+
+        val cal = Calendar.getInstance().apply { timeInMillis = dayStart(now) }
+        // Skip an empty in-progress today so it does not zero the streak.
+        if (byDay[cal.timeInMillis].isNullOrEmpty()) {
+            cal.add(Calendar.DAY_OF_MONTH, -1)
+        }
+
+        var streak = 0
+        while (adherenceFor(byDay[cal.timeInMillis].orEmpty(), eatingHours) == AdherenceState.ON_TARGET) {
+            streak++
+            cal.add(Calendar.DAY_OF_MONTH, -1)
+        }
+        return streak
+    }
+
     /** One [DayCell] per day of the month containing [monthAnchor]. */
     fun monthCells(records: List<EatRecord>, eatingHours: Long, monthAnchor: Long): List<DayCell> {
         val byDay: Map<Long, List<Long>> = records

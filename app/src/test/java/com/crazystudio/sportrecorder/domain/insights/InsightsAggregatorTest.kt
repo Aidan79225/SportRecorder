@@ -64,4 +64,51 @@ class InsightsAggregatorTest {
         assertEquals(AdherenceState.OFF_TARGET, cells[10].state) // day 11
         assertEquals(AdherenceState.NO_DATA, cells[0].state) // day 1
     }
+
+    @Test fun streak_countsConsecutiveOnTargetDays() {
+        val records = listOf(
+            rec(at(2026, 2, 14, 9)),
+            rec(at(2026, 2, 14, 12)),
+            rec(at(2026, 2, 15, 9)),
+            rec(at(2026, 2, 15, 13)),
+        )
+        val now = at(2026, 2, 15, 20)
+        assertEquals(2, InsightsAggregator.computeStreak(records, eatingHours, now))
+    }
+
+    @Test fun streak_emptyTodayDoesNotBreak() {
+        // 14th is ON; 15th (today) has no meals yet.
+        val records = listOf(
+            rec(at(2026, 2, 14, 9)),
+            rec(at(2026, 2, 14, 12)),
+        )
+        val now = at(2026, 2, 15, 10)
+        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, now))
+    }
+
+    @Test fun streak_offTargetBreaks() {
+        // 13th ON, 14th OFF (14h window), 15th ON.
+        val records = listOf(
+            rec(at(2026, 2, 13, 9)),
+            rec(at(2026, 2, 13, 12)),
+            rec(at(2026, 2, 14, 8)),
+            rec(at(2026, 2, 14, 22)),
+            rec(at(2026, 2, 15, 9)),
+            rec(at(2026, 2, 15, 12)),
+        )
+        val now = at(2026, 2, 15, 20)
+        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, now))
+    }
+
+    @Test fun streak_gapDayBreaks() {
+        // 13th ON, 14th no meals (gap), 15th ON.
+        val records = listOf(
+            rec(at(2026, 2, 13, 9)),
+            rec(at(2026, 2, 13, 12)),
+            rec(at(2026, 2, 15, 9)),
+            rec(at(2026, 2, 15, 12)),
+        )
+        val now = at(2026, 2, 15, 20)
+        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, now))
+    }
 }
