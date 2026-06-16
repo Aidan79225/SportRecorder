@@ -48,8 +48,9 @@ import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
+import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
-import com.crazystudio.sportrecorder.ui.notifications.NotificationsScreen
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 
@@ -64,7 +65,7 @@ fun AppRoot() {
     val tabs = listOf(
         Tab(Route.Diet, "Home", R.drawable.ic_home_black_24dp),
         Tab(Route.Record, "Record", R.drawable.ic_dashboard_black_24dp),
-        Tab(Route.Notifications, "Notifications", R.drawable.ic_notifications_black_24dp),
+        Tab(Route.Insights, "Insights", R.drawable.ic_baseline_insights_24),
     )
 
     ModalBottomSheetLayout(bottomSheetNavigator) {
@@ -78,7 +79,7 @@ fun AppRoot() {
                             when (tab.route) {
                                 Route.Diet -> dest.hasRoute(Route.Diet::class)
                                 Route.Record -> dest.hasRoute(Route.Record::class)
-                                Route.Notifications -> dest.hasRoute(Route.Notifications::class)
+                                Route.Insights -> dest.hasRoute(Route.Insights::class)
                                 else -> false
                             }
                         } == true
@@ -128,7 +129,15 @@ fun AppRoot() {
                         onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
                     )
                 }
-                composable<Route.Notifications> { NotificationsScreen() }
+                composable<Route.Insights> {
+                    val vm: InsightsViewModel = hiltViewModel()
+                    val state by vm.uiState.collectAsStateWithLifecycle()
+                    InsightsScreen(
+                        state = state,
+                        onSelectPeriod = vm::setPeriod,
+                        onShiftMonth = vm::shiftMonth,
+                    )
+                }
 
                 bottomSheet<Route.SelectFastingType> {
                     val vm: SelectFastingTypeViewModel = hiltViewModel()
