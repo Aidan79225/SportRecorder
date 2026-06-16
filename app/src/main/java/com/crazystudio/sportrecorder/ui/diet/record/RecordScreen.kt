@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.model.EatRecord
@@ -59,7 +58,7 @@ fun RecordScreen(
     modifier: Modifier = Modifier,
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
-    var fullScreenPhoto by remember { mutableStateOf<String?>(null) }
+    var fullScreenPhotos by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
 
     Box(
         modifier = modifier
@@ -75,7 +74,7 @@ fun RecordScreen(
                 RecordCard(
                     record = record,
                     onLongClick = { recordToDelete = record },
-                    onThumbnailClick = { fileName -> fullScreenPhoto = fileName },
+                    onThumbnailClick = { fileNames, index -> fullScreenPhotos = fileNames to index },
                     onEditRecord = onEditRecord,
                 )
             }
@@ -103,24 +102,12 @@ fun RecordScreen(
         )
     }
 
-    fullScreenPhoto?.let { fileName ->
-        val context = LocalContext.current
-        Dialog(onDismissRequest = { fullScreenPhoto = null }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable { fullScreenPhoto = null },
-                contentAlignment = Alignment.Center,
-            ) {
-                AsyncImage(
-                    model = PhotoStorage.fileFor(context, fileName),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
+    fullScreenPhotos?.let { (fileNames, index) ->
+        FullScreenPhotoViewer(
+            fileNames = fileNames,
+            initialIndex = index,
+            onDismiss = { fullScreenPhotos = null },
+        )
     }
 }
 
@@ -130,7 +117,7 @@ fun RecordScreen(
 private fun RecordCard(
     record: EatRecord,
     onLongClick: () -> Unit,
-    onThumbnailClick: (String) -> Unit,
+    onThumbnailClick: (List<String>, Int) -> Unit,
     onEditRecord: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -188,6 +175,7 @@ private fun RecordCard(
 
         // Photo carousel
         if (record.photos.isNotEmpty()) {
+            val photoNames = remember(record.photos) { record.photos.map { it.fileName } }
             val pagerState = rememberPagerState(pageCount = { record.photos.size })
             HorizontalPager(
                 state = pagerState,
@@ -202,7 +190,7 @@ private fun RecordCard(
                         .fillMaxWidth()
                         .heightIn(max = 360.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onThumbnailClick(photo.fileName) },
+                        .clickable { onThumbnailClick(photoNames, page) },
                 )
             }
 

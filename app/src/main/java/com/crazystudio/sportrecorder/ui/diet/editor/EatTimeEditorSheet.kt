@@ -42,6 +42,7 @@ fun EatTimeEditorSheet(
     onPickTime: () -> Unit,
     onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
+    onSelectPhoto: () -> Unit,
     onRemovePendingPhoto: (String) -> Unit,
     onRemoveExistingPhoto: (EatPhoto) -> Unit,
     onRecaptureLocation: () -> Unit,
@@ -145,13 +146,21 @@ fun EatTimeEditorSheet(
                 )
             }
         }
-        // ADD PHOTO (+) row
+        // TAKE PHOTO (camera) row
         HeaderRow(
             icon = R.drawable.ic_baseline_add_24,
-            title = "Add photo",
+            title = stringResource(id = R.string.photo_add),
             content = "",
             actionIcon = R.drawable.ic_baseline_add_24,
             onActionClick = onAddPhoto,
+        )
+        // SELECT PHOTO (gallery) row
+        HeaderRow(
+            icon = R.drawable.ic_baseline_photo_library_24,
+            title = stringResource(id = R.string.photo_select),
+            content = "",
+            actionIcon = R.drawable.ic_baseline_photo_library_24,
+            onActionClick = onSelectPhoto,
         )
         // EXISTING photos (edit mode)
         if (state.existingPhotos.isNotEmpty()) {

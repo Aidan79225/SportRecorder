@@ -39,6 +39,11 @@
     <string name="yes">是</string>
     <string name="no">否</string>
 
+    <string name="photo_add">拍照</string>
+    <string name="photo_select">從相簿選擇</string>
+    <string name="photo_saved">已儲存到相簿</string>
+    <string name="photo_save_failed">儲存照片失敗</string>
+
     <string name="diet_no_record">新增第一餐</string>
     <string name="fast_started_label">開始斷食</string>
     <string name="fast_ending_label">結束斷食</string>

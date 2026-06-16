@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -74,6 +75,14 @@ class EatTimeEditorViewModel @Inject constructor(
     fun addCapturedPhoto(tempFile: File) {
         viewModelScope.launch {
             val name = withContext(Dispatchers.IO) { PhotoStorage.convertToWebp(appContext, tempFile) }
+            _uiState.update { it.copy(pendingPhotos = it.pendingPhotos + name) }
+        }
+    }
+
+    /** Import an existing photo picked from the gallery. The source file is kept intact. */
+    fun addPickedPhoto(uri: Uri) {
+        viewModelScope.launch {
+            val name = withContext(Dispatchers.IO) { PhotoStorage.importFromUri(appContext, uri) }
             _uiState.update { it.copy(pendingPhotos = it.pendingPhotos + name) }
         }
     }

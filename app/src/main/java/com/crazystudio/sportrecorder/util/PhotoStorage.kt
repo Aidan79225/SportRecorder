@@ -1,23 +1,20 @@
 package com.crazystudio.sportrecorder.util
 
+import android.content.ContentValues
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
-import androidx.exifinterface.media.ExifInterface
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 import java.util.UUID
-import kotlin.math.max
-import kotlin.math.roundToInt
 
 /** App-private photo storage: webp files in getExternalFilesDir("photos"). DB stores only file names. */
 object PhotoStorage {
-    private const val MAX_EDGE = 1280
-    private const val WEBP_QUALITY = 80
 
     fun photosDir(context: Context): File =
         File(context.getExternalFilesDir(null), "photos").apply { mkdirs() }
@@ -39,65 +36,69 @@ object PhotoStorage {
      * write into photosDir, delete the temp file, and return the saved file name.
      */
     fun convertToWebp(context: Context, tempFile: File): String {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(tempFile.absolutePath, bounds)
-        val sample = sampleSizeFor(bounds.outWidth, bounds.outHeight, MAX_EDGE * 2)
-        val decoded = BitmapFactory.decodeFile(
-            tempFile.absolutePath,
-            BitmapFactory.Options().apply { inSampleSize = sample },
-        ) ?: error("Failed to decode capture: ${tempFile.absolutePath}")
-
-        val rotated = applyExifRotation(tempFile, decoded)
-        val scaled = scaleToMaxEdge(rotated, MAX_EDGE)
-
-        val name = "${UUID.randomUUID()}.webp"
-        FileOutputStream(File(photosDir(context), name)).use { out ->
-            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Bitmap.CompressFormat.WEBP_LOSSY
-            } else {
-                @Suppress("DEPRECATION")
-                Bitmap.CompressFormat.WEBP
-            }
-            scaled.compress(format, WEBP_QUALITY, out)
-        }
-        if (scaled !== decoded) scaled.recycle()
-        if (rotated !== decoded) rotated.recycle()
-        decoded.recycle()
+        val name = decodeScaleEncode(photosDir(context)) { tempFile.inputStream() }
         tempFile.delete()
         return name
     }
+
+    /**
+     * Import an existing image picked from [uri] (e.g. the gallery): correct EXIF rotation,
+     * downscale, encode webp into photosDir, and return the saved file name. The source file
+     * referenced by [uri] is NOT modified or deleted.
+     */
+    fun importFromUri(context: Context, uri: Uri): String =
+        decodeScaleEncode(photosDir(context)) {
+            context.contentResolver.openInputStream(uri) ?: error("Cannot open uri: $uri")
+        }
 
     fun deleteByName(context: Context, fileName: String) {
         File(photosDir(context), fileName).delete()
     }
 
-    private fun sampleSizeFor(w: Int, h: Int, target: Int): Int {
-        var sample = 1
-        var longEdge = max(w, h)
-        while (longEdge / 2 >= target) {
-            longEdge /= 2
-            sample *= 2
+    /** Launch the system share sheet for the photo [fileName]. */
+    fun share(context: Context, fileName: String) {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            fileFor(context, fileName),
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "image/webp"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        return sample
+        context.startActivity(
+            Intent.createChooser(intent, null).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+        )
     }
 
-    private fun scaleToMaxEdge(src: Bitmap, maxEdge: Int): Bitmap {
-        val longEdge = max(src.width, src.height)
-        if (longEdge <= maxEdge) return src
-        val ratio = maxEdge.toFloat() / longEdge
-        return Bitmap.createScaledBitmap(src, (src.width * ratio).roundToInt(), (src.height * ratio).roundToInt(), true)
-    }
-
-    private fun applyExifRotation(file: File, bitmap: Bitmap): Bitmap {
-        val orientation = ExifInterface(file.absolutePath)
-            .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        val degrees = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
-            else -> return bitmap
+    /** Copy the photo [fileName] into the device's public gallery. Returns true on success. */
+    suspend fun saveToGallery(context: Context, fileName: String): Boolean = withContext(Dispatchers.IO) {
+        val source = fileFor(context, fileName)
+        if (!source.exists()) return@withContext false
+        val resolver = context.contentResolver
+        val displayName = "SportRecorder_${System.currentTimeMillis()}.webp"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/webp")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/SportRecorder")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
         }
-        val m = Matrix().apply { postRotate(degrees) }
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true)
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: return@withContext false
+        val written = runCatching {
+            resolver.openOutputStream(uri)?.use { out ->
+                source.inputStream().use { it.copyTo(out) }
+            } ?: error("Cannot open output stream for $uri")
+        }.isSuccess
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            resolver.update(uri, values, null, null)
+        }
+        if (!written) resolver.delete(uri, null, null)
+        written
     }
 }
