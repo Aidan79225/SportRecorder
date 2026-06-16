@@ -67,5 +67,5 @@
     <string name="insights_empty_photos">No meal photos in this period</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none" translatable="false">—</string>
-    <string name="insights_location_count">📍 %1$.4f, %2$.4f · %3$d</string>
+    <string name="insights_location_count" translatable="false">📍 %1$.4f, %2$.4f · %3$d</string>
 </resources>
