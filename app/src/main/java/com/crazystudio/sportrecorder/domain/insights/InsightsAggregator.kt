@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.domain.insights
 
+import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
@@ -10,6 +11,7 @@ object InsightsAggregator {
     private const val LATE_NIGHT_HOUR = 22
     private const val MINUTES_PER_HOUR = 60
     private const val WEEK_LOOKBACK_DAYS = 6
+    private const val LOCATION_ROUNDING = 1000.0 // ~100m grid for grouping eat locations
 
     /** Classify one calendar day's ascending meal times against the eating-hours goal. */
     fun adherenceFor(dayMealTimesAsc: List<Long>, eatingHours: Long): AdherenceState {
@@ -98,6 +100,42 @@ object InsightsAggregator {
             avgFirstMealMinutes = firsts.averageOrNull(),
             avgLastMealMinutes = lasts.averageOrNull(),
             lateNightDays = lateDays,
+        )
+    }
+
+    /** Build the full Insights result. [monthAnchor] selects the calendar month. */
+    fun compute(
+        records: List<EatRecord>,
+        settings: DietSettings,
+        now: Long,
+        period: Period,
+        monthAnchor: Long,
+    ): InsightsResult {
+        val from = periodStart(now, period)
+        val inPeriod = records.filter { it.time in from..now }
+
+        val photoFileNames = inPeriod
+            .sortedByDescending { it.time }
+            .flatMap { record -> record.photos.map { it.fileName } }
+
+        val locations = inPeriod
+            .mapNotNull { it.location }
+            .groupBy { (Math.round(it.lat * LOCATION_ROUNDING)) to (Math.round(it.lng * LOCATION_ROUNDING)) }
+            .map { (key, points) ->
+                LocationCount(
+                    lat = key.first / LOCATION_ROUNDING,
+                    lng = key.second / LOCATION_ROUNDING,
+                    count = points.size,
+                )
+            }
+            .sortedByDescending { it.count }
+
+        return InsightsResult(
+            calendarDays = monthCells(records, settings.eatingHours, monthAnchor),
+            streak = computeStreak(records, settings.eatingHours, now),
+            stats = statsFor(inPeriod),
+            photoFileNames = photoFileNames,
+            locations = locations,
         )
     }
 

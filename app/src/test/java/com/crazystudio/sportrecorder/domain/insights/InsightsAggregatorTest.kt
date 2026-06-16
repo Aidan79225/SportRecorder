@@ -1,6 +1,9 @@
 package com.crazystudio.sportrecorder.domain.insights
 
+import com.crazystudio.sportrecorder.domain.model.DietSettings
+import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Calendar
@@ -147,5 +150,31 @@ class InsightsAggregatorTest {
         val now = at(2026, 2, 15, 12)
         val start = InsightsAggregator.periodStart(now, Period.WEEK)
         assertEquals(InsightsAggregator.dayStart(at(2026, 2, 9, 0)), start)
+    }
+
+    private fun recFull(time: Long, photos: List<String>, lat: Double?, lng: Double?) =
+        EatRecord(
+            id = 0,
+            time = time,
+            note = null,
+            location = if (lat != null && lng != null) GeoPoint(lat, lng) else null,
+            photos = photos.mapIndexed { i, name -> EatPhoto(id = i, fileName = name, createdAt = time) },
+        )
+
+    @Test fun compute_assemblesAllCards() {
+        val settings = DietSettings(fastingHours = 16, eatingHours = 8)
+        val now = at(2026, 1, 15, 21)
+        val records = listOf(
+            recFull(at(2026, 1, 15, 9), listOf("a.webp"), 25.0, 121.0),
+            recFull(at(2026, 1, 15, 13), listOf("b.webp"), 25.0, 121.0),
+        )
+        val result = InsightsAggregator.compute(records, settings, now, Period.MONTH, now)
+
+        assertEquals(28, result.calendarDays.size)
+        assertEquals(1, result.streak)
+        assertEquals(2, result.stats.mealCount)
+        assertEquals(listOf("b.webp", "a.webp"), result.photoFileNames)
+        assertEquals(1, result.locations.size)
+        assertEquals(2, result.locations.first().count)
     }
 }
