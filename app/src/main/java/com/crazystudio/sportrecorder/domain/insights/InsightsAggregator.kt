@@ -13,10 +13,10 @@ object InsightsAggregator {
     private const val WEEK_LOOKBACK_DAYS = 6
     private const val LOCATION_ROUNDING = 1000.0 // ~100m grid for grouping eat locations
 
-    /** Classify one calendar day's ascending meal times against the eating-hours goal. */
-    fun adherenceFor(dayMealTimesAsc: List<Long>, eatingHours: Long): AdherenceState {
-        if (dayMealTimesAsc.isEmpty()) return AdherenceState.NO_DATA
-        val window = dayMealTimesAsc.last() - dayMealTimesAsc.first()
+    /** Classify one calendar day's meal times against the eating-hours goal. */
+    fun adherenceFor(dayMealTimes: List<Long>, eatingHours: Long): AdherenceState {
+        if (dayMealTimes.isEmpty()) return AdherenceState.NO_DATA
+        val window = (dayMealTimes.max() - dayMealTimes.min())
         return if (window <= TimeUnit.HOURS.toMillis(eatingHours)) {
             AdherenceState.ON_TARGET
         } else {
@@ -34,11 +34,13 @@ object InsightsAggregator {
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
+    private fun mealTimesByDay(records: List<EatRecord>): Map<Long, List<Long>> =
+        records.groupBy { dayStart(it.time) }
+            .mapValues { entry -> entry.value.map { it.time }.sorted() }
+
     /** Consecutive ON_TARGET days ending at the most recent day; empty today is neutral. */
     fun computeStreak(records: List<EatRecord>, eatingHours: Long, now: Long): Int {
-        val byDay: Map<Long, List<Long>> = records
-            .groupBy { dayStart(it.time) }
-            .mapValues { entry -> entry.value.map { it.time }.sorted() }
+        val byDay = mealTimesByDay(records)
 
         val cal = Calendar.getInstance().apply { timeInMillis = dayStart(now) }
         // Skip an empty in-progress today so it does not zero the streak.
@@ -56,9 +58,7 @@ object InsightsAggregator {
 
     /** One [DayCell] per day of the month containing [monthAnchor]. */
     fun monthCells(records: List<EatRecord>, eatingHours: Long, monthAnchor: Long): List<DayCell> {
-        val byDay: Map<Long, List<Long>> = records
-            .groupBy { dayStart(it.time) }
-            .mapValues { entry -> entry.value.map { it.time }.sorted() }
+        val byDay = mealTimesByDay(records)
 
         val cal = Calendar.getInstance().apply {
             timeInMillis = monthAnchor

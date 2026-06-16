@@ -177,4 +177,28 @@ class InsightsAggregatorTest {
         assertEquals(1, result.locations.size)
         assertEquals(2, result.locations.first().count)
     }
+
+    @Test fun compute_weekPeriodFiltersOutOlderRecords() {
+        val settings = DietSettings(fastingHours = 16, eatingHours = 8)
+        val now = at(2026, 1, 15, 21)
+        val records = listOf(
+            recFull(at(2026, 1, 15, 9), listOf("recent.webp"), 25.0, 121.0),
+            recFull(at(2026, 1, 1, 9), listOf("old.webp"), 25.0, 121.0),
+        )
+        val result = InsightsAggregator.compute(records, settings, now, Period.WEEK, now)
+        assertEquals(1, result.stats.mealCount)
+        assertEquals(listOf("recent.webp"), result.photoFileNames)
+        assertEquals(1, result.locations.first().count)
+    }
+
+    @Test fun compute_empty_returnsZeroedCardsWithFullCalendar() {
+        val settings = DietSettings(fastingHours = 16, eatingHours = 8)
+        val now = at(2026, 1, 15, 21)
+        val result = InsightsAggregator.compute(emptyList(), settings, now, Period.MONTH, now)
+        assertEquals(28, result.calendarDays.size)
+        assertEquals(0, result.streak)
+        assertEquals(0, result.stats.mealCount)
+        assertEquals(emptyList<String>(), result.photoFileNames)
+        assertEquals(emptyList<LocationCount>(), result.locations)
+    }
 }
