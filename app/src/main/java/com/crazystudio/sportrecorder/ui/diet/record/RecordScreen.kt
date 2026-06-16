@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.model.EatRecord
@@ -104,23 +103,10 @@ fun RecordScreen(
     }
 
     fullScreenPhoto?.let { fileName ->
-        val context = LocalContext.current
-        Dialog(onDismissRequest = { fullScreenPhoto = null }) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .clickable { fullScreenPhoto = null },
-                contentAlignment = Alignment.Center,
-            ) {
-                AsyncImage(
-                    model = PhotoStorage.fileFor(context, fileName),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
+        FullScreenPhotoViewer(
+            fileName = fileName,
+            onDismiss = { fullScreenPhoto = null },
+        )
     }
 }
 

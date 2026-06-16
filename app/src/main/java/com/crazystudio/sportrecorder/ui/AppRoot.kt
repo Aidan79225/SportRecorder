@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.ui
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxSize
@@ -175,6 +176,11 @@ fun AppRoot() {
                         }
                         captureFile = null
                     }
+                    val photoPickerLauncher = rememberLauncherForActivityResult(
+                        ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        if (uri != null) vm.addPickedPhoto(uri)
+                    }
                     val locationPermLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestMultiplePermissions()
                     ) { result ->
@@ -226,6 +232,11 @@ fun AppRoot() {
                             val (file, uri) = PhotoStorage.newCaptureTarget(context)
                             captureFile = file
                             cameraLauncher.launch(uri)
+                        },
+                        onSelectPhoto = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         },
                         onRemovePendingPhoto = vm::removePendingPhoto,
                         onRemoveExistingPhoto = vm::removeExistingPhoto,
