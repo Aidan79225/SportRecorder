@@ -58,7 +58,7 @@ fun RecordScreen(
     modifier: Modifier = Modifier,
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
-    var fullScreenPhoto by remember { mutableStateOf<String?>(null) }
+    var fullScreenPhotos by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
 
     Box(
         modifier = modifier
@@ -74,7 +74,7 @@ fun RecordScreen(
                 RecordCard(
                     record = record,
                     onLongClick = { recordToDelete = record },
-                    onThumbnailClick = { fileName -> fullScreenPhoto = fileName },
+                    onThumbnailClick = { fileNames, index -> fullScreenPhotos = fileNames to index },
                     onEditRecord = onEditRecord,
                 )
             }
@@ -102,10 +102,11 @@ fun RecordScreen(
         )
     }
 
-    fullScreenPhoto?.let { fileName ->
+    fullScreenPhotos?.let { (fileNames, index) ->
         FullScreenPhotoViewer(
-            fileName = fileName,
-            onDismiss = { fullScreenPhoto = null },
+            fileNames = fileNames,
+            initialIndex = index,
+            onDismiss = { fullScreenPhotos = null },
         )
     }
 }
@@ -116,7 +117,7 @@ fun RecordScreen(
 private fun RecordCard(
     record: EatRecord,
     onLongClick: () -> Unit,
-    onThumbnailClick: (String) -> Unit,
+    onThumbnailClick: (List<String>, Int) -> Unit,
     onEditRecord: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -174,6 +175,7 @@ private fun RecordCard(
 
         // Photo carousel
         if (record.photos.isNotEmpty()) {
+            val photoNames = remember(record.photos) { record.photos.map { it.fileName } }
             val pagerState = rememberPagerState(pageCount = { record.photos.size })
             HorizontalPager(
                 state = pagerState,
@@ -188,7 +190,7 @@ private fun RecordCard(
                         .fillMaxWidth()
                         .heightIn(max = 360.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onThumbnailClick(photo.fileName) },
+                        .clickable { onThumbnailClick(photoNames, page) },
                 )
             }
 
