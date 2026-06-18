@@ -147,11 +147,11 @@ fun AppRoot() {
                     val scope = rememberCoroutineScope()
                     CreateFastingTypeScreen(
                         onDismissRequest = { navController.popBackStack() },
-                        onConfirmRequest = { fastingTime, eatingTime ->
+                        onConfirmRequest = { name, fastingTime, eatingTime ->
                             val fastingHours = fastingTime.toLong()
                             val eatingHours = eatingTime.toLong()
                             scope.launch {
-                                vm.createCustomFastingType(fastingHours, eatingHours)
+                                vm.createCustomFastingType(fastingHours, eatingHours, name)
                                 navController.popBackStack()
                             }
                         },

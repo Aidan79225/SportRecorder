@@ -137,6 +137,13 @@ fun CustomFastingItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        if (!item.name.isNullOrBlank()) {
+            Text(
+                text = item.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
         Text(
             text = "${item.fastingHours} : ${item.eatingHours}",
             style = MaterialTheme.typography.titleMedium,

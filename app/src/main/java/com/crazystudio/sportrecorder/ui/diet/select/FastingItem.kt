@@ -11,7 +11,8 @@ sealed class FastingItem {
 
     data class CustomFastingItem(
         val fastingHours: Long,
-        val eatingHours: Long
+        val eatingHours: Long,
+        val name: String? = null
     ) : FastingItem()
 
     companion object {

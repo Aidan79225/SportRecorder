@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.domain.usecase
 
+import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import kotlinx.coroutines.flow.Flow
@@ -13,10 +14,12 @@ private class FakeFastingTypeRepository(
     private val existing: Set<FastingWindow> = emptySet(),
 ) : FastingTypeRepository {
     val added = mutableListOf<FastingWindow>()
-    override fun observeRecentCustomWindows(): Flow<List<FastingWindow>> = TODO()
+    val addedNames = mutableListOf<String?>()
+    override fun observeRecentCustomTypes(): Flow<List<CustomFastingType>> = TODO()
     override suspend fun exists(window: FastingWindow): Boolean = window in existing
-    override suspend fun add(window: FastingWindow) {
+    override suspend fun add(window: FastingWindow, name: String?) {
         added.add(window)
+        addedNames.add(name)
     }
 }
 

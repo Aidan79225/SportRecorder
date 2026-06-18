@@ -16,6 +16,9 @@ data class FastingType(
     @ColumnInfo(name = "eating_hours")
     val eatingHours: Long,
 
+    @ColumnInfo(name = "name")
+    val name: String? = null,
+
     @ColumnInfo(name = "timestamp")
     val timestamp: Long
 ) {
