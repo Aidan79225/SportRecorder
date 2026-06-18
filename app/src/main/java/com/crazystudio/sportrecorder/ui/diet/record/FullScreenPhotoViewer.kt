@@ -239,9 +239,8 @@ fun FullScreenPhotoViewer(
                                                             focalOffset(
                                                                 centroid = event.calculateCentroid(),
                                                                 pan = event.calculatePan(),
-                                                                oldScale = oldScale,
+                                                                from = ZoomState(oldScale, offset),
                                                                 newScale = newScale,
-                                                                offset = offset,
                                                                 size = size,
                                                             )
                                                         } else {
@@ -259,10 +258,11 @@ fun FullScreenPhotoViewer(
                                                     val target = if (scale > 1f) 1f else DOUBLE_TAP_ZOOM
                                                     val viewSize = size
                                                     animJob?.cancel()
+                                                    val from = ZoomState(scale, offset)
                                                     animJob = scope.launch {
-                                                        animateZoom(target, tapPos, viewSize, scale, offset) { s, o ->
-                                                            scale = s
-                                                            offset = o
+                                                        animateZoom(target, tapPos, viewSize, from) { state ->
+                                                            scale = state.scale
+                                                            offset = state.offset
                                                         }
                                                     }
                                                 },
@@ -338,39 +338,41 @@ fun FullScreenPhotoViewer(
     }
 }
 
+/** Scale + pan offset of the visible photo. */
+private data class ZoomState(val scale: Float, val offset: Offset)
+
 /** Animate scale + focal-anchored offset toward [target], reporting each frame via [onUpdate]. */
 private suspend fun animateZoom(
     target: Float,
     tapPosition: Offset,
     size: IntSize,
-    startScale: Float,
-    startOffset: Offset,
-    onUpdate: (scale: Float, offset: Offset) -> Unit,
+    from: ZoomState,
+    onUpdate: (ZoomState) -> Unit,
 ) {
     val endOffset = if (target > 1f) {
-        focalOffset(tapPosition, Offset.Zero, startScale, target, startOffset, size)
+        focalOffset(tapPosition, Offset.Zero, from, target, size)
     } else {
         Offset.Zero
     }
     animate(0f, 1f, animationSpec = tween(ZOOM_ANIM_MS)) { t, _ ->
-        onUpdate(startScale + (target - startScale) * t, lerp(startOffset, endOffset, t))
+        onUpdate(ZoomState(from.scale + (target - from.scale) * t, lerp(from.offset, endOffset, t)))
     }
 }
 
 /**
  * Compute the new pan offset for a zoom step that keeps the content point under [centroid]
  * fixed, then clamp it so the (container-sized) content can't be panned past its edges.
+ * [from] is the pre-step scale + offset; [newScale] the post-step scale.
  */
 private fun focalOffset(
     centroid: Offset,
     pan: Offset,
-    oldScale: Float,
+    from: ZoomState,
     newScale: Float,
-    offset: Offset,
     size: IntSize,
 ): Offset {
     val center = Offset(size.width / 2f, size.height / 2f)
-    val raw = (centroid - center) + pan - (centroid - center - offset) * (newScale / oldScale)
+    val raw = (centroid - center) + pan - (centroid - center - from.offset) * (newScale / from.scale)
     return clampOffset(raw, newScale, size)
 }
 

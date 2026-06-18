@@ -7,7 +7,7 @@ sealed interface Route {
 
     @Serializable data object Record : Route
 
-    @Serializable data object Notifications : Route
+    @Serializable data object Insights : Route
 
     @Serializable data object SelectFastingType : Route
 
