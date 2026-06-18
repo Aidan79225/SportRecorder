@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -226,8 +227,12 @@ fun FullScreenPhotoViewer(
                                                 animJob?.cancel()
                                                 do {
                                                     val event = awaitPointerEvent()
-                                                    val pinching = event.changes.size >= 2
-                                                    if (pinching || scale > 1f) {
+                                                    val pressed = event.changes.count { it.pressed }
+                                                    val pinching = pressed >= 2
+                                                    // Require a pointer still down: on the release
+                                                    // event calculateCentroid() is Unspecified and
+                                                    // would feed NaN into the transform.
+                                                    if ((pinching || scale > 1f) && pressed > 0) {
                                                         // A pinch may have started after a brief
                                                         // one-finger move; drop any dismiss drag.
                                                         if (pinching) dismissDragY = 0f
@@ -339,7 +344,7 @@ fun FullScreenPhotoViewer(
 }
 
 /** Scale + pan offset of the visible photo. */
-private data class ZoomState(val scale: Float, val offset: Offset)
+internal data class ZoomState(val scale: Float, val offset: Offset)
 
 /** Animate scale + focal-anchored offset toward [target], reporting each frame via [onUpdate]. */
 private suspend fun animateZoom(
@@ -364,13 +369,17 @@ private suspend fun animateZoom(
  * fixed, then clamp it so the (container-sized) content can't be panned past its edges.
  * [from] is the pre-step scale + offset; [newScale] the post-step scale.
  */
-private fun focalOffset(
+internal fun focalOffset(
     centroid: Offset,
     pan: Offset,
     from: ZoomState,
     newScale: Float,
     size: IntSize,
 ): Offset {
+    // On the pointer-release event no pointer is down, so calculateCentroid() yields
+    // Offset.Unspecified (NaN). Don't let that NaN reach the graphicsLayer translation,
+    // which would blank the image; keep the last offset instead.
+    if (!centroid.isSpecified) return from.offset
     val center = Offset(size.width / 2f, size.height / 2f)
     val raw = (centroid - center) + pan - (centroid - center - from.offset) * (newScale / from.scale)
     return clampOffset(raw, newScale, size)
