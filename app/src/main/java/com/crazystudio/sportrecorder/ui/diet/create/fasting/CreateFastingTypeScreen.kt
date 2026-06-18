@@ -79,58 +79,70 @@ fun CreateFastingTypeScreen(
                 .padding(top = 10.dp)
         ) {
             val nameState = remember { mutableStateOf("") }
-            OutlinedTextField(
-                value = nameState.value,
-                onValueChange = { nameState.value = it },
-                label = { Text(stringResource(id = R.string.diet_create_fasting_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = colorScheme.onSurface,
-                    unfocusedTextColor = colorScheme.onSurface,
-                    focusedBorderColor = colorScheme.primary,
-                    unfocusedBorderColor = colorScheme.onSurfaceVariant,
-                    focusedLabelColor = colorScheme.primary,
-                    unfocusedLabelColor = colorScheme.onSurfaceVariant,
-                    cursorColor = colorScheme.primary,
-                ),
-            )
+            NameField(nameState)
             Spacer(modifier = Modifier.padding(top = 20.dp))
             val fastingTimeState = remember { mutableStateOf(Type.Fasting.defaultValue) }
             TimeSelectRow(Type.Fasting, fastingTimeState)
             Spacer(modifier = Modifier.padding(top = 20.dp))
             val eatingTimeState = remember { mutableStateOf(Type.Eating.defaultValue) }
             TimeSelectRow(Type.Eating, eatingTimeState)
-            Row(modifier = Modifier.padding(top = 30.dp)) {
-                OutlinedButton(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 10.dp),
-                    onClick = {
-                        onDismissRequest()
-                    },
-                ) {
-                    Text(
-                        text = "CANCEL",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Button(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 10.dp),
-                    onClick = {
-                        onConfirmRequest(nameState.value, fastingTimeState.value, eatingTimeState.value)
-                    }
-                ) {
-                    Text(
-                        text = "OK",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
+            ActionButtons(
+                onCancel = onDismissRequest,
+                onConfirm = {
+                    onConfirmRequest(nameState.value, fastingTimeState.value, eatingTimeState.value)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NameField(state: MutableState<String>) {
+    val colorScheme = MaterialTheme.colorScheme
+    OutlinedTextField(
+        value = state.value,
+        onValueChange = { state.value = it },
+        label = { Text(stringResource(id = R.string.diet_create_fasting_name)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = colorScheme.onSurface,
+            unfocusedTextColor = colorScheme.onSurface,
+            focusedBorderColor = colorScheme.primary,
+            unfocusedBorderColor = colorScheme.onSurfaceVariant,
+            focusedLabelColor = colorScheme.primary,
+            unfocusedLabelColor = colorScheme.onSurfaceVariant,
+            cursorColor = colorScheme.primary,
+        ),
+    )
+}
+
+@Composable
+private fun ActionButtons(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    Row(modifier = Modifier.padding(top = 30.dp)) {
+        OutlinedButton(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 10.dp),
+            onClick = onCancel,
+        ) {
+            Text(
+                text = "CANCEL",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Button(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp),
+            onClick = onConfirm,
+        ) {
+            Text(
+                text = "OK",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
         }
     }
 }
