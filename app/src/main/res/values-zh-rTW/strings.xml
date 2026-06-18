@@ -50,4 +50,28 @@
     <string name="day_yesterday">昨天</string>
     <string name="day_today">今天</string>
     <string name="day_tomorrow">明天</string>
+
+    <string name="title_insights">回顧</string>
+    <string name="insights_card_adherence">斷食達成</string>
+    <string name="insights_card_stats">統計</string>
+    <string name="insights_card_photos">餐點</string>
+    <string name="insights_card_locations">地點</string>
+    <string name="insights_streak">連續 %d 天</string>
+    <string name="insights_period_week">週</string>
+    <string name="insights_period_month">月</string>
+    <string name="insights_stat_meals">用餐次數</string>
+    <string name="insights_stat_first">平均第一餐</string>
+    <string name="insights_stat_last">平均最後一餐</string>
+    <string name="insights_stat_late">深夜進食天數</string>
+    <string name="insights_empty_photos">這段期間沒有餐點照片</string>
+    <string name="insights_empty_locations">這段期間沒有地點紀錄</string>
+    <string-array name="insights_weekday_initials">
+        <item>日</item>
+        <item>一</item>
+        <item>二</item>
+        <item>三</item>
+        <item>四</item>
+        <item>五</item>
+        <item>六</item>
+    </string-array>
 </resources>
