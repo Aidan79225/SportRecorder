@@ -26,6 +26,18 @@ class CreateFastingTypeViewModelTest {
     }
 
     @Test
+    fun name_isPassedToRepository() = runTest {
+        val repo = FakeFastingTypeRepository()
+        val vm = viewModel(repo)
+
+        val ok = vm.createCustomFastingType(fastingHours = 18, eatingHours = 6, name = "Brunch")
+
+        assertTrue(ok)
+        assertEquals(listOf(FastingWindow(18, 6)), repo.added)
+        assertEquals(listOf("Brunch"), repo.addedNames)
+    }
+
+    @Test
     fun builtInDefault_isRejected() = runTest {
         val repo = FakeFastingTypeRepository()
         val vm = viewModel(repo)

@@ -73,6 +73,8 @@ class DietViewModelTest {
             assertEquals(75f, s.progress, 0.01f)
             assertEquals("16 : 8", s.fastingLabel)
             assertEquals("12:00:00", s.elapsedText)
+            // Fast start is the last recorded meal (f = 22:13 UTC), not windowEnd (06:13).
+            assertEquals("22:13", s.fastStart?.time)
             cancelAndIgnoreRemainingEvents()
         }
     }

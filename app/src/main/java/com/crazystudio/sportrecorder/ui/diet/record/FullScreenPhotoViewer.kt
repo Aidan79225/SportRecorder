@@ -172,23 +172,31 @@ fun FullScreenPhotoViewer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { translationY = dismissDragY }
-                    .pointerInput(scale <= 1f) {
-                        if (scale > 1f) return@pointerInput
+                    // Only translate for the dismiss drag while not zoomed; otherwise the
+                    // zoomed image must stay put.
+                    .graphicsLayer { translationY = if (scale <= 1f) dismissDragY else 0f }
+                    // Stable key: a keyed pointerInput would be disposed mid-pinch (when scale
+                    // crosses 1) and leave dismissDragY stuck, hiding the image. Guard by zoom
+                    // state inside the callbacks instead.
+                    .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onVerticalDrag = { change, dragAmount ->
-                                dismissDragY += dragAmount
-                                change.consume()
+                                if (scale <= 1f) {
+                                    dismissDragY += dragAmount
+                                    change.consume()
+                                }
                             },
                             onDragEnd = {
-                                if (abs(dismissDragY) > dismissThresholdPx) {
+                                if (scale <= 1f && abs(dismissDragY) > dismissThresholdPx) {
                                     onDismiss()
-                                } else {
+                                } else if (dismissDragY != 0f) {
                                     scope.launch { animate(dismissDragY, 0f) { v, _ -> dismissDragY = v } }
                                 }
                             },
                             onDragCancel = {
-                                scope.launch { animate(dismissDragY, 0f) { v, _ -> dismissDragY = v } }
+                                if (dismissDragY != 0f) {
+                                    scope.launch { animate(dismissDragY, 0f) { v, _ -> dismissDragY = v } }
+                                }
                             },
                         )
                     },
@@ -220,6 +228,9 @@ fun FullScreenPhotoViewer(
                                                     val event = awaitPointerEvent()
                                                     val pinching = event.changes.size >= 2
                                                     if (pinching || scale > 1f) {
+                                                        // A pinch may have started after a brief
+                                                        // one-finger move; drop any dismiss drag.
+                                                        if (pinching) dismissDragY = 0f
                                                         val oldScale = scale
                                                         val newScale = (oldScale * event.calculateZoom())
                                                             .coerceIn(1f, MAX_ZOOM)

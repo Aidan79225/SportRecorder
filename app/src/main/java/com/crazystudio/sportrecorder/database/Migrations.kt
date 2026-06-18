@@ -10,6 +10,7 @@ private const val VERSION_3 = 3
 private const val VERSION_4 = 4
 private const val VERSION_5 = 5
 private const val VERSION_6 = 6
+private const val VERSION_7 = 7
 
 object Migrations {
     fun getMigrations(): Array<Migration> {
@@ -66,6 +67,13 @@ object Migrations {
                 override fun migrate(database: SupportSQLiteDatabase) {
                     database.runInTransaction {
                         execSQL("ALTER TABLE `eat_time` ADD COLUMN `note` TEXT")
+                    }
+                }
+            },
+            object : Migration(VERSION_6, VERSION_7) {
+                override fun migrate(database: SupportSQLiteDatabase) {
+                    database.runInTransaction {
+                        execSQL("ALTER TABLE `${FastingType.tableName}` ADD COLUMN `name` TEXT")
                     }
                 }
             }

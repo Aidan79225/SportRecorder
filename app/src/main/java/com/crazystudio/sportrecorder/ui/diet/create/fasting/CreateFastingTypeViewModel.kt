@@ -11,6 +11,9 @@ class CreateFastingTypeViewModel @Inject constructor(
     private val createCustomType: CreateCustomFastingTypeUseCase,
 ) : ViewModel() {
 
-    suspend fun createCustomFastingType(fastingHours: Long, eatingHours: Long): Boolean =
-        createCustomType(FastingWindow(fastingHours, eatingHours))
+    suspend fun createCustomFastingType(
+        fastingHours: Long,
+        eatingHours: Long,
+        name: String = "",
+    ): Boolean = createCustomType(FastingWindow(fastingHours, eatingHours), name.ifBlank { null })
 }

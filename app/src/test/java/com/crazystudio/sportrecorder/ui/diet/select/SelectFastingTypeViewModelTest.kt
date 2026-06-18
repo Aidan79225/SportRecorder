@@ -1,7 +1,7 @@
 package com.crazystudio.sportrecorder.ui.diet.select
 
 import app.cash.turbine.test
-import com.crazystudio.sportrecorder.domain.model.FastingWindow
+import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.usecase.ObserveCustomFastingTypesUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
 import com.crazystudio.sportrecorder.fake.FakeDietSettingsRepository
@@ -39,14 +39,18 @@ class SelectFastingTypeViewModelTest {
     @Test
     fun fastingItemFlow_customWindows_appendedReversed() = runTest(mainRule.testDispatcher.scheduler) {
         // Repository order is newest-first [20/4, 18/6]; display tail is reversed [18/6, 20/4].
+        // The optional name is carried through to the UI item.
         val typeRepo = FakeFastingTypeRepository(
-            initial = listOf(FastingWindow(20, 4), FastingWindow(18, 6)),
+            initial = listOf(
+                CustomFastingType(20, 4, "Lunch only"),
+                CustomFastingType(18, 6),
+            ),
         )
         val vm = viewModel(typeRepo, FakeDietSettingsRepository())
 
         val expected = FastingItem.defaultFastingItems + listOf(
-            FastingItem.CustomFastingItem(18, 6),
-            FastingItem.CustomFastingItem(20, 4),
+            FastingItem.CustomFastingItem(18, 6, null),
+            FastingItem.CustomFastingItem(20, 4, "Lunch only"),
         )
         assertEquals(expected, vm.fastingItemFlow.first())
     }

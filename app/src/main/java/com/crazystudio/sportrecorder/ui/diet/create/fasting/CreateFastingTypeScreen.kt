@@ -17,6 +17,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -38,7 +40,7 @@ import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 @Composable
 private fun Preview() {
     SportRecorderTheme {
-        CreateFastingTypeScreen({}, { _, _ -> })
+        CreateFastingTypeScreen({}, { _, _, _ -> })
     }
 }
 
@@ -52,7 +54,7 @@ enum class Type(
         R.string.diet_create_fasting_hours,
         R.drawable.ic_baseline_no_food_24,
         "16",
-        (16..49).map { it.toString() }.toList()
+        (8..49).map { it.toString() }.toList()
     ),
     Eating(
         R.string.diet_create_eating_hours,
@@ -65,51 +67,82 @@ enum class Type(
 @Composable
 fun CreateFastingTypeScreen(
     onDismissRequest: () -> Unit,
-    onConfirmRequest: (String, String) -> Unit,
+    onConfirmRequest: (name: String, fastingHours: String, eatingHours: String) -> Unit,
 ) {
     SportRecorderTheme {
+        val colorScheme = MaterialTheme.colorScheme
         Column(
             Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
+                .background(colorScheme.surface)
                 .padding(20.dp)
                 .padding(top = 10.dp)
         ) {
+            val nameState = remember { mutableStateOf("") }
+            NameField(nameState)
+            Spacer(modifier = Modifier.padding(top = 20.dp))
             val fastingTimeState = remember { mutableStateOf(Type.Fasting.defaultValue) }
             TimeSelectRow(Type.Fasting, fastingTimeState)
             Spacer(modifier = Modifier.padding(top = 20.dp))
             val eatingTimeState = remember { mutableStateOf(Type.Eating.defaultValue) }
             TimeSelectRow(Type.Eating, eatingTimeState)
-            Row(modifier = Modifier.padding(top = 30.dp)) {
-                OutlinedButton(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 10.dp),
-                    onClick = {
-                        onDismissRequest()
-                    },
-                ) {
-                    Text(
-                        text = "CANCEL",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                Button(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 10.dp),
-                    onClick = {
-                        onConfirmRequest(fastingTimeState.value, eatingTimeState.value)
-                    }
-                ) {
-                    Text(
-                        text = "OK",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                }
-            }
+            ActionButtons(
+                onCancel = onDismissRequest,
+                onConfirm = {
+                    onConfirmRequest(nameState.value, fastingTimeState.value, eatingTimeState.value)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NameField(state: MutableState<String>) {
+    val colorScheme = MaterialTheme.colorScheme
+    OutlinedTextField(
+        value = state.value,
+        onValueChange = { state.value = it },
+        label = { Text(stringResource(id = R.string.diet_create_fasting_name)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = colorScheme.onSurface,
+            unfocusedTextColor = colorScheme.onSurface,
+            focusedBorderColor = colorScheme.primary,
+            unfocusedBorderColor = colorScheme.onSurfaceVariant,
+            focusedLabelColor = colorScheme.primary,
+            unfocusedLabelColor = colorScheme.onSurfaceVariant,
+            cursorColor = colorScheme.primary,
+        ),
+    )
+}
+
+@Composable
+private fun ActionButtons(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    Row(modifier = Modifier.padding(top = 30.dp)) {
+        OutlinedButton(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 10.dp),
+            onClick = onCancel,
+        ) {
+            Text(
+                text = "CANCEL",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Button(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 10.dp),
+            onClick = onConfirm,
+        ) {
+            Text(
+                text = "OK",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
         }
     }
 }

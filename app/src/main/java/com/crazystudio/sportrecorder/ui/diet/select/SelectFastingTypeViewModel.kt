@@ -17,9 +17,9 @@ class SelectFastingTypeViewModel @Inject constructor(
     private val saveFastingSelection: SaveFastingSelectionUseCase,
 ) : ViewModel() {
 
-    val fastingItemFlow: Flow<List<FastingItem>> = observeCustomFastingTypes().map { windows ->
+    val fastingItemFlow: Flow<List<FastingItem>> = observeCustomFastingTypes().map { types ->
         FastingItem.defaultFastingItems +
-            windows.map { FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours) }.reversed()
+            types.map { FastingItem.CustomFastingItem(it.fastingHours, it.eatingHours, it.name) }.reversed()
     }
 
     fun saveSelection(fastingHours: Long, eatingHours: Long) {
