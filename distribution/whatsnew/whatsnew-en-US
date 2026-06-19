@@ -1,5 +1,3 @@
-New: Fasting reminders
-• "Eating window closing" reminder with adjustable lead time
-• "Fast complete" celebration
-• Quiet hours to mute reminders overnight
-Open the gear icon on the home screen to turn them on.
+Fixes & improvements
+• A meal logged slightly past your eating window now merges into it, instead of starting a new window.
+• The meal editor is fully scrollable (nothing gets cut off) and properly shows Chinese.
