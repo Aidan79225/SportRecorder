@@ -87,10 +87,13 @@ fun AppRoot() {
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
+                                // popUpTo(Diet) drops anything above Diet (incl. the Settings
+                                // sub-screen) before switching tabs. No saveState/restoreState:
+                                // that pair is for nested tab back stacks and would otherwise
+                                // re-restore Settings, trapping the user on it.
                                 navController.navigate(tab.route) {
-                                    popUpTo(Route.Diet) { saveState = true }
+                                    popUpTo(Route.Diet)
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
