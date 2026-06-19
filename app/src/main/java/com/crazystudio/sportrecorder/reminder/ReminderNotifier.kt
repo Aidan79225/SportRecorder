@@ -72,7 +72,14 @@ class ReminderNotifier @Inject constructor(
 
     fun notify(type: ReminderType) {
         ensureChannels()
-        if (!hasPostPermission()) return
+        // POST_NOTIFICATIONS is a 33+ runtime permission; bail if the user hasn't granted it.
+        // Inlined (not a helper) so lint can see the guard dominating the notify() call below.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
         val spec = ReminderChannel.of(type)
         val notification = NotificationCompat.Builder(context, spec.channelId)
             .setSmallIcon(R.drawable.ic_baseline_notifications_24)
@@ -95,13 +102,5 @@ class ReminderNotifier @Inject constructor(
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-    }
-
-    private fun hasPostPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS,
-        ) == PackageManager.PERMISSION_GRANTED
     }
 }
