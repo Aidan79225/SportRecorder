@@ -9,6 +9,19 @@ description: Use when cutting a new release of the SportRecorder Android app —
 
 Cut a Play release: **bump version → build & verify the signed AAB → commit to `master` → annotated tag → push → hand over the AAB + release notes.** Build the bundle *before* committing so a broken build never gets a release tag.
 
+## Automated upload (GitHub Action)
+
+Pushing the version tag also **builds and uploads to Google Play** via `.github/workflows/release.yml` (trigger: tags matching `[0-9]+.[0-9]+.[0-9]+`, or manual `workflow_dispatch` to pick the track/status). It runs `bundleRelease` then `r0adkll/upload-google-play` (the Gradle Play Publisher plugin is **not** usable here — it requires `BaseAppModuleExtension`, which AGP 9 removed).
+
+So the per-release manual work is just: **bump the version → edit `distribution/whatsnew/whatsnew-en-US` + `whatsnew-zh-TW` → commit → tag → push the tag.** The Action does the build + upload.
+
+- **Default track:** `internal`, `status=completed`. For production, run the workflow manually with `track=production` and **`status=draft`** so nothing auto-goes-live without a click in the Console.
+- **One-time setup (required before it works):** add repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** — the full JSON key of a Google Cloud service account granted access in Play Console → Users & permissions. Signing needs no secret (the keystore + passwords are in the repo).
+- **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration and the data-safety form.
+- Keep `whatsnew-*` files ≤ 500 chars, user-facing, both locales.
+
+The steps below remain the **local fallback** (and the source of truth for version-bump rules) when you want to build/inspect the AAB by hand or the Action isn't available.
+
 ## When to use
 
 - Shipping merged changes to Google Play / preparing a store submission.

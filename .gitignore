@@ -15,5 +15,7 @@
 local.properties
 .idea/
 *.aab
+# Play upload service-account key — never commit
+play-service-account.json
 # Visual companion (brainstorming) scratch
 .superpowers/
