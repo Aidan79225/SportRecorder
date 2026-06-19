@@ -85,13 +85,13 @@ class ReminderPlannerTest {
 
     @Test
     fun fastComplete_atLastEatPlusFastingHours() {
-        // Eat 10:00 → fastTargetAt 02:00 next day (10 + 16). now 11:00.
+        // Single meal 10:00 → fast starts at 11:00 (meal + 1h grace) → target 03:00 next day.
         val prefs = ReminderPrefs(fastCompleteEnabled = true)
         val out = ReminderPlanner.plan(listOf(day0 + h(10)), settings, prefs, day0 + h(11))
 
         assertEquals(1, out.size)
         assertEquals(ReminderType.FAST_COMPLETE, out[0].type)
-        assertEquals(day0 + h(26), out[0].triggerAtMillis)
+        assertEquals(day0 + h(27), out[0].triggerAtMillis)
     }
 
     @Test
@@ -120,13 +120,14 @@ class ReminderPlannerTest {
 
     @Test
     fun fastComplete_notSuppressedOutsideQuietHours_spanningMidnight() {
-        // Eat 22:00 → target 14:00 next day, outside 22:00–08:00 quiet hours. now 23:00.
+        // Single meal 22:00 → fast from 23:00 (meal + 1h) → target 15:00 next day, outside the
+        // 22:00–08:00 quiet hours. now 23:00.
         val prefs = ReminderPrefs(fastCompleteEnabled = true, quietHoursEnabled = true)
         val out = ReminderPlanner.plan(listOf(day0 + h(22)), settings, prefs, day0 + h(23))
 
         assertEquals(1, out.size)
         assertEquals(ReminderType.FAST_COMPLETE, out[0].type)
-        assertEquals(day0 + h(38), out[0].triggerAtMillis)
+        assertEquals(day0 + h(39), out[0].triggerAtMillis)
     }
 
     @Test
@@ -144,8 +145,7 @@ class ReminderPlannerTest {
 
     @Test
     fun fastComplete_notSuppressed_nonSpanningWindowMissesTarget() {
-        // Quiet 01:00–05:00 but target is 02:00 only when eating at 10:00; here eat 14:00 →
-        // target 06:00, outside the window → delivered.
+        // Single meal 14:00 → fast from 15:00 (meal + 1h) → target 07:00, outside 01:00–05:00.
         val prefs = ReminderPrefs(
             fastCompleteEnabled = true,
             quietHoursEnabled = true,
@@ -153,7 +153,7 @@ class ReminderPlannerTest {
             quietEndMinutes = 300,
         )
         val out = ReminderPlanner.plan(listOf(day0 + h(14)), settings, prefs, day0 + h(15))
-        assertEquals(day0 + h(30), out[0].triggerAtMillis)
+        assertEquals(day0 + h(31), out[0].triggerAtMillis)
     }
 
     @Test
