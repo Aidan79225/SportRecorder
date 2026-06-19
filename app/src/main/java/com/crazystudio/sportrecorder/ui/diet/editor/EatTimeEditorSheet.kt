@@ -8,11 +8,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -53,8 +57,13 @@ fun EatTimeEditorSheet(
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     Column(
+        // Insets + scroll keep the whole sheet reachable no matter how tall it grows
+        // (location row, photo rows, or the keyboard opening for Note).
         modifier = modifier
             .background(colorScheme.surface)
+            .navigationBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
         // DATE row
@@ -77,7 +86,7 @@ fun EatTimeEditorSheet(
         OutlinedTextField(
             value = state.note,
             onValueChange = onNoteChange,
-            label = { Text("Note") },
+            label = { Text(stringResource(id = R.string.diet_eat_note)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -94,11 +103,11 @@ fun EatTimeEditorSheet(
         )
         // LOCATION row — custom Row with two action icons
         val locationText = when (state.locationStatus) {
-            EatTimeEditorUiState.LocationStatus.LOADING -> "Locating…"
+            EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(id = R.string.diet_eat_location_loading)
             EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
                 String.format(java.util.Locale.ROOT, "%.5f, %.5f", it.lat, it.lng)
-            } ?: "No location"
-            else -> "No location"
+            } ?: stringResource(id = R.string.diet_eat_location_none)
+            else -> stringResource(id = R.string.diet_eat_location_none)
         }
         Row(
             modifier = Modifier,
@@ -112,7 +121,7 @@ fun EatTimeEditorSheet(
                     .size(36.dp),
             )
             Text(
-                text = "Location",
+                text = stringResource(id = R.string.diet_eat_location),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colorScheme.onSurface,
             )
@@ -128,7 +137,7 @@ fun EatTimeEditorSheet(
             // Re-capture location icon (ic_baseline_add_24 — no refresh drawable available)
             Image(
                 painter = painterResource(id = R.drawable.ic_baseline_add_24),
-                contentDescription = "Re-capture location",
+                contentDescription = stringResource(id = R.string.diet_eat_recapture_location),
                 modifier = Modifier
                     .padding(4.dp)
                     .size(36.dp)
@@ -138,7 +147,7 @@ fun EatTimeEditorSheet(
             if (state.location != null) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                    contentDescription = "Clear location",
+                    contentDescription = stringResource(id = R.string.diet_eat_clear_location),
                     modifier = Modifier
                         .padding(4.dp)
                         .size(36.dp)
@@ -185,7 +194,7 @@ fun EatTimeEditorSheet(
                         )
                         Image(
                             painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                            contentDescription = "Remove existing photo",
+                            contentDescription = stringResource(id = R.string.diet_eat_remove_photo),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)
@@ -219,7 +228,7 @@ fun EatTimeEditorSheet(
                         )
                         Image(
                             painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                            contentDescription = "Remove photo",
+                            contentDescription = stringResource(id = R.string.diet_eat_remove_photo),
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(2.dp)
@@ -238,7 +247,9 @@ fun EatTimeEditorSheet(
             onClick = onConfirm,
         ) {
             Text(
-                text = if (state.isEditMode) "SAVE" else "CREATE",
+                text = stringResource(
+                    id = if (state.isEditMode) R.string.diet_eat_save else R.string.diet_eat_create,
+                ),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
