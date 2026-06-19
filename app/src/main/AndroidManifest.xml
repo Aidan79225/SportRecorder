@@ -7,6 +7,17 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!--
+      TODO(release): Fasting-reminders permissions. Before shipping, work through the
+      "Release / compliance checklist" in
+      docs/superpowers/specs/2026-06-19-fasting-reminders-design.md
+      (privacy policy in the separate repo, Play Console sensitive-permissions declaration,
+      and confirm USE_EXACT_ALARM is NOT present below).
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:name=".SportApplication"
         android:allowBackup="true"
@@ -33,6 +44,20 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Fires our own scheduled alarms; explicit (not exported). -->
+        <receiver
+            android:name=".reminder.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Re-arms reminders after reboot; receives the system BOOT_COMPLETED broadcast. -->
+        <receiver
+            android:name=".reminder.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

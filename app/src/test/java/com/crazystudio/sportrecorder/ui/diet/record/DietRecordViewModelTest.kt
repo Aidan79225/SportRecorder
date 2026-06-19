@@ -5,6 +5,7 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
+import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -24,7 +25,7 @@ class DietRecordViewModelTest {
 
     private fun viewModel(repo: FakeEatRecordRepository) = DietRecordViewModel(
         observeEatRecords = ObserveEatRecordsUseCase(repo),
-        deleteEatRecord = DeleteEatRecordUseCase(repo),
+        deleteEatRecord = DeleteEatRecordUseCase(repo, FakeRemindersRescheduler()),
     )
 
     @Test

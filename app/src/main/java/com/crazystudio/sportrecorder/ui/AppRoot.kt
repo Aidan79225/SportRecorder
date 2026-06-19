@@ -51,6 +51,7 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 
@@ -86,10 +87,13 @@ fun AppRoot() {
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
+                                // popUpTo(Diet) drops anything above Diet (incl. the Settings
+                                // sub-screen) before switching tabs. No saveState/restoreState:
+                                // that pair is for nested tab back stacks and would otherwise
+                                // re-restore Settings, trapping the user on it.
                                 navController.navigate(tab.route) {
-                                    popUpTo(Route.Diet) { saveState = true }
+                                    popUpTo(Route.Diet)
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
@@ -118,7 +122,11 @@ fun AppRoot() {
                         state = state,
                         onEditFastingType = { navController.navigate(Route.SelectFastingType) },
                         onAddEatTime = { navController.navigate(Route.EatTimeEditor()) },
+                        onOpenSettings = { navController.navigate(Route.Settings) },
                     )
+                }
+                composable<Route.Settings> {
+                    SettingsRoute(onBack = { navController.popBackStack() })
                 }
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = hiltViewModel()

@@ -75,4 +75,30 @@
         <item>五</item>
         <item>六</item>
     </string-array>
+
+    <!-- 提醒設定 -->
+    <string name="settings_title">提醒</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_reminder_window_closing_title">進食視窗即將關閉</string>
+    <string name="settings_reminder_window_closing_desc">進食視窗結束前的最後提醒</string>
+    <string name="settings_reminder_fast_complete_title">斷食達標</string>
+    <string name="settings_reminder_fast_complete_desc">達成斷食目標時提醒你慶祝</string>
+    <string name="settings_lead_time_title">提前時間</string>
+    <string name="settings_lead_time_value">%d 分鐘</string>
+    <string name="settings_quiet_hours_title">勿擾時段</string>
+    <string name="settings_quiet_hours_desc">此時段內不發送斷食達標提醒</string>
+    <string name="settings_quiet_start">開始</string>
+    <string name="settings_quiet_end">結束</string>
+    <string name="settings_exact_alarm_title">開啟精準提醒</string>
+    <string name="settings_exact_alarm_desc">允許精準鬧鐘，提醒才能準時送達</string>
+    <string name="settings_notifications_blocked_title">通知已關閉</string>
+    <string name="settings_notifications_blocked_desc">請開啟通知，提醒才能送達</string>
+
+    <!-- 提醒通知 -->
+    <string name="reminder_channel_window_closing_name">進食視窗即將關閉</string>
+    <string name="reminder_channel_fast_complete_name">斷食達標</string>
+    <string name="reminder_window_closing_title">進食視窗即將關閉</string>
+    <string name="reminder_window_closing_text">視窗關閉前，記得吃完最後一餐。</string>
+    <string name="reminder_fast_complete_title">斷食達標 🎉</string>
+    <string name="reminder_fast_complete_text">你已達成斷食目標，太棒了！</string>
 </resources>

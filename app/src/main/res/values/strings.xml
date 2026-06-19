@@ -78,4 +78,30 @@
         <item>Fr</item>
         <item>Sa</item>
     </string-array>
+
+    <!-- Reminder settings -->
+    <string name="settings_title">Reminders</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_reminder_window_closing_title">Eating window closing</string>
+    <string name="settings_reminder_window_closing_desc">Last call before your eating window ends</string>
+    <string name="settings_reminder_fast_complete_title">Fast complete</string>
+    <string name="settings_reminder_fast_complete_desc">Celebrate when you reach your fasting goal</string>
+    <string name="settings_lead_time_title">Lead time</string>
+    <string name="settings_lead_time_value">%d min</string>
+    <string name="settings_quiet_hours_title">Quiet hours</string>
+    <string name="settings_quiet_hours_desc">Suppress the fast-complete reminder during this time</string>
+    <string name="settings_quiet_start">Start</string>
+    <string name="settings_quiet_end">End</string>
+    <string name="settings_exact_alarm_title">Enable precise reminders</string>
+    <string name="settings_exact_alarm_desc">Allow exact alarms so reminders fire on time</string>
+    <string name="settings_notifications_blocked_title">Notifications are off</string>
+    <string name="settings_notifications_blocked_desc">Turn on notifications so reminders can be delivered</string>
+
+    <!-- Reminder notifications -->
+    <string name="reminder_channel_window_closing_name">Eating window closing</string>
+    <string name="reminder_channel_fast_complete_name">Fast complete</string>
+    <string name="reminder_window_closing_title">Eating window closing soon</string>
+    <string name="reminder_window_closing_text">Time for your last meal before the window closes.</string>
+    <string name="reminder_fast_complete_title">Fast complete 🎉</string>
+    <string name="reminder_fast_complete_text">You reached your fasting goal. Great job!</string>
 </resources>
