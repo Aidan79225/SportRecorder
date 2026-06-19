@@ -6,6 +6,7 @@ import com.crazystudio.sportrecorder.domain.usecase.ObserveCustomFastingTypesUse
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
 import com.crazystudio.sportrecorder.fake.FakeDietSettingsRepository
 import com.crazystudio.sportrecorder.fake.FakeFastingTypeRepository
+import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -26,7 +27,7 @@ class SelectFastingTypeViewModelTest {
         settingsRepo: FakeDietSettingsRepository,
     ) = SelectFastingTypeViewModel(
         observeCustomFastingTypes = ObserveCustomFastingTypesUseCase(typeRepo),
-        saveFastingSelection = SaveFastingSelectionUseCase(settingsRepo),
+        saveFastingSelection = SaveFastingSelectionUseCase(settingsRepo, FakeRemindersRescheduler()),
     )
 
     @Test

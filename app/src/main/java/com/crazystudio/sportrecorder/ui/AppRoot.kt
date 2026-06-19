@@ -51,6 +51,7 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 
@@ -118,7 +119,11 @@ fun AppRoot() {
                         state = state,
                         onEditFastingType = { navController.navigate(Route.SelectFastingType) },
                         onAddEatTime = { navController.navigate(Route.EatTimeEditor()) },
+                        onOpenSettings = { navController.navigate(Route.Settings) },
                     )
+                }
+                composable<Route.Settings> {
+                    SettingsRoute(onBack = { navController.popBackStack() })
                 }
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = hiltViewModel()

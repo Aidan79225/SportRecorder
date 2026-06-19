@@ -9,6 +9,8 @@ sealed interface Route {
 
     @Serializable data object Insights : Route
 
+    @Serializable data object Settings : Route
+
     @Serializable data object SelectFastingType : Route
 
     @Serializable data object CreateFastingType : Route

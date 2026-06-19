@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ fun DietScreen(
     state: DietUiState,
     onEditFastingType: () -> Unit,
     onAddEatTime: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -146,6 +148,20 @@ fun DietScreen(
             }
         }
 
+        // Floating gear → reminder settings (top-end of the Box, no TopAppBar to match the app style).
+        IconButton(
+            onClick = onOpenSettings,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 8.dp, top = 8.dp),
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_baseline_settings_24),
+                contentDescription = stringResource(id = R.string.settings_title),
+                tint = colorScheme.onSurfaceVariant,
+            )
+        }
+
         FloatingActionButton(
             onClick = onAddEatTime,
             containerColor = colorScheme.primary,
@@ -212,6 +228,7 @@ private fun DietScreenPreview() {
             ),
             onEditFastingType = {},
             onAddEatTime = {},
+            onOpenSettings = {},
         )
     }
 }
