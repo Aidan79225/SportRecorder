@@ -70,11 +70,12 @@ class DietViewModelTest {
             assertEquals(R.string.diet_status_fasting, s.statusTextRes)
             assertEquals(R.drawable.ic_baseline_no_food_24, s.statusIcon)
             assertEquals(R.string.diet_fasting_time, s.promptTextRes)
-            assertEquals(75f, s.progress, 0.01f)
+            // Single meal: fast clock starts 1h after the meal, so at +12h it's 11h (68.75%).
+            assertEquals(68.75f, s.progress, 0.01f)
             assertEquals("16 : 8", s.fastingLabel)
-            assertEquals("12:00:00", s.elapsedText)
-            // Fast start is the last recorded meal (f = 22:13 UTC), not windowEnd (06:13).
-            assertEquals("22:13", s.fastStart?.time)
+            assertEquals("11:00:00", s.elapsedText)
+            // Fast start is the meal + 1h grace (f = 22:13 UTC → 23:13), not windowEnd.
+            assertEquals("23:13", s.fastStart?.time)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -97,7 +98,8 @@ class DietViewModelTest {
 
     @Test
     fun success_mapsStatusAndFullProgress() = runTest(mainRule.testDispatcher.scheduler) {
-        val vm = viewModel(eats = listOf(eat(f))) { f + h(16) }
+        // Single meal: success at meal + 1h grace + 16h fasting.
+        val vm = viewModel(eats = listOf(eat(f))) { f + h(17) }
 
         vm.uiState.test {
             skipItems(1)
@@ -131,12 +133,13 @@ class DietViewModelTest {
 
         vm.uiState.test {
             skipItems(1) // initial default
-            assertEquals("12:00:00", awaitItem().elapsedText)
+            // Single meal: fast clock starts 1h after the meal, so +12h shows 11h.
+            assertEquals("11:00:00", awaitItem().elapsedText)
 
             nowMs += TimeUnit.SECONDS.toMillis(1)
             advanceTimeBy(TimeUnit.SECONDS.toMillis(1))
 
-            assertEquals("12:00:01", awaitItem().elapsedText)
+            assertEquals("11:00:01", awaitItem().elapsedText)
             cancelAndIgnoreRemainingEvents()
         }
     }

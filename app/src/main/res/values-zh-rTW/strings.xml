@@ -45,6 +45,16 @@
     <string name="photo_saved">已儲存到相簿</string>
     <string name="photo_save_failed">儲存照片失敗</string>
 
+    <string name="diet_eat_note">備註</string>
+    <string name="diet_eat_location">位置</string>
+    <string name="diet_eat_location_loading">定位中…</string>
+    <string name="diet_eat_location_none">無位置</string>
+    <string name="diet_eat_create">新增</string>
+    <string name="diet_eat_save">儲存</string>
+    <string name="diet_eat_recapture_location">重新定位</string>
+    <string name="diet_eat_clear_location">清除位置</string>
+    <string name="diet_eat_remove_photo">移除照片</string>
+
     <string name="diet_no_record">新增第一餐</string>
     <string name="fast_started_label">開始斷食</string>
     <string name="fast_ending_label">結束斷食</string>

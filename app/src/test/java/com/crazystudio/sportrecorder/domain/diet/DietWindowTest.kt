@@ -42,35 +42,69 @@ class DietWindowTest {
     }
 
     @Test fun fastingInProgress() {
+        // Single meal: the fast clock starts 1h after the meal, so at +12h elapsed is 11h.
         val s = DietWindow.compute(listOf(f), eh, fh, f + h(12))
         assertEquals(DietPhase.FASTING, s.phase)
-        assertEquals(h(12), s.elapsedMillis)
-        assertEquals(12f / 16f, s.ringProgress, 0.001f)
+        assertEquals(h(11), s.elapsedMillis)
+        assertEquals(11f / 16f, s.ringProgress, 0.001f)
     }
 
     @Test fun success_whenFastReachesTarget() {
-        val s = DietWindow.compute(listOf(f), eh, fh, f + h(16))
+        // Single meal: target = meal + 1h + fastingHours = f + 17h.
+        val s = DietWindow.compute(listOf(f), eh, fh, f + h(17))
         assertEquals(DietPhase.SUCCESS, s.phase)
         assertEquals(1f, s.ringProgress, 0f)
         assertEquals(h(16), s.elapsedMillis)
     }
 
-    @Test fun eatAfterWindowClose_startsNewWindow() {
+    @Test fun singleMeal_fastStartsOneHourAfterMeal() {
+        val s = DietWindow.compute(listOf(f), eh, fh, f + h(12))
+        assertEquals(f + h(1), s.fastStartAt)
+        assertEquals(f + h(1) + fhMs, s.fastTargetAt)
+    }
+
+    @Test fun multiMeal_fastStartsAtLastMealNoGrace() {
+        val s = DietWindow.compute(listOf(f, f + h(3)), eh, fh, f + h(12))
+        assertEquals(f + h(3), s.fastStartAt)
+        assertEquals(f + h(3) + fhMs, s.fastTargetAt)
+    }
+
+    @Test fun lateMealWithinTolerance_mergesIntoWindow() {
+        // Meal at +10h is past the 8h window but within 8h+8h tolerance → same window, not a new
+        // one. So we're fasting from that meal, NOT starting a fresh 8h eating window.
         val s = DietWindow.compute(listOf(f, f + h(4), f + h(10)), eh, fh, f + h(11))
-        assertEquals(DietPhase.EATING, s.phase)
-        assertEquals(f + h(10), s.windowStart)
-        assertEquals(f + h(10) + ehMs, s.windowEnd)
+        assertEquals(DietPhase.FASTING, s.phase)
+        assertEquals(f, s.windowStart)
         assertEquals(f + h(10), s.lastEat)
+        assertEquals(f + h(10), s.fastStartAt) // multi-meal → no grace
+        assertEquals(f + h(10) + fhMs, s.fastTargetAt)
+    }
+
+    @Test fun slightOverrun_extendsWindowEnd() {
+        // Original 8h window, but a meal at +9h (within tolerance) extends the window to +9h.
+        val s = DietWindow.compute(listOf(f, f + h(9)), eh, fh, f + h(9))
+        assertEquals(f, s.windowStart)
+        assertEquals(f + h(9), s.windowEnd)
+    }
+
+    @Test fun mealBeyondTolerance_startsNewWindow() {
+        // +17h is past eatingHours + fastingHours/2 (8h + 8h = 16h) → genuinely a new window.
+        val s = DietWindow.compute(listOf(f, f + h(17)), eh, fh, f + h(18))
+        assertEquals(f + h(17), s.windowStart)
+        assertEquals(f + h(17), s.lastEat)
+        assertEquals(f + h(17) + ehMs, s.windowEnd)
     }
 
     @Test fun boundary_exactlyAtWindowEnd_flipsToFasting() {
+        // Single meal: at the 8h window end, fast clock (from meal+1h) shows 7h elapsed.
         val s = DietWindow.compute(listOf(f), eh, fh, f + ehMs)
         assertEquals(DietPhase.FASTING, s.phase)
-        assertEquals(ehMs, s.elapsedMillis)
+        assertEquals(ehMs - h(1), s.elapsedMillis)
     }
 
     @Test fun boundary_exactlyAtFastTarget_isSuccess() {
-        val s = DietWindow.compute(listOf(f), eh, fh, f + fhMs)
+        // Single meal: target is meal + 1h + fastingHours.
+        val s = DietWindow.compute(listOf(f), eh, fh, f + h(1) + fhMs)
         assertEquals(DietPhase.SUCCESS, s.phase)
     }
 

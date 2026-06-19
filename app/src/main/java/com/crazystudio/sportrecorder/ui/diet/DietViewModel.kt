@@ -84,14 +84,14 @@ class DietViewModel(
                 statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_fasting,
                 promptTextRes = R.string.diet_fasting_time,
-                // Fasting counts from the last meal, so show it as the fast's start.
-                fastStart = timeLabel(s.lastEat, now),
+                // Show when the fast actually started (last meal, or +1h for a single-meal window).
+                fastStart = timeLabel(s.fastStartAt, now),
             )
             DietPhase.SUCCESS -> base.copy(
                 statusIcon = R.drawable.ic_baseline_no_food_24,
                 statusTextRes = R.string.diet_status_success,
                 promptTextRes = R.string.diet_fasting_time,
-                fastStart = timeLabel(s.lastEat, now),
+                fastStart = timeLabel(s.fastStartAt, now),
             )
         }
     }
