@@ -34,6 +34,7 @@ import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 fun SettingsScreen(
     state: ReminderPrefs,
     canScheduleExact: Boolean,
+    notificationsBlocked: Boolean,
     onWindowClosingToggle: (Boolean) -> Unit,
     onFastCompleteToggle: (Boolean) -> Unit,
     onLeadDelta: (Long) -> Unit,
@@ -41,6 +42,7 @@ fun SettingsScreen(
     onPickQuietStart: () -> Unit,
     onPickQuietEnd: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,8 +55,21 @@ fun SettingsScreen(
     ) {
         Header(onBack = onBack)
 
+        // Notifications off entirely (e.g. POST_NOTIFICATIONS denied) → nothing can be delivered.
+        if (notificationsBlocked) {
+            BannerRow(
+                titleRes = R.string.settings_notifications_blocked_title,
+                descRes = R.string.settings_notifications_blocked_desc,
+                onClick = onOpenNotificationSettings,
+            )
+        }
+
         if (!canScheduleExact) {
-            ExactAlarmRow(onClick = onOpenExactAlarmSettings)
+            BannerRow(
+                titleRes = R.string.settings_exact_alarm_title,
+                descRes = R.string.settings_exact_alarm_desc,
+                onClick = onOpenExactAlarmSettings,
+            )
         }
 
         ToggleRow(
@@ -217,8 +232,9 @@ private fun TimeRow(labelRes: Int, minutesSinceMidnight: Int, onClick: () -> Uni
     }
 }
 
+/** Tappable banner used for the actionable permission prompts (notifications, exact alarms). */
 @Composable
-private fun ExactAlarmRow(onClick: () -> Unit) {
+private fun BannerRow(titleRes: Int, descRes: Int, onClick: () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
@@ -230,12 +246,12 @@ private fun ExactAlarmRow(onClick: () -> Unit) {
             .padding(16.dp),
     ) {
         Text(
-            text = stringResource(id = R.string.settings_exact_alarm_title),
+            text = stringResource(id = titleRes),
             style = MaterialTheme.typography.bodyLarge,
             color = colorScheme.onSecondaryContainer,
         )
         Text(
-            text = stringResource(id = R.string.settings_exact_alarm_desc),
+            text = stringResource(id = descRes),
             style = MaterialTheme.typography.bodyMedium,
             color = colorScheme.onSecondaryContainer,
         )
@@ -264,6 +280,7 @@ private fun SettingsScreenPreview() {
                 quietHoursEnabled = true,
             ),
             canScheduleExact = false,
+            notificationsBlocked = true,
             onWindowClosingToggle = {},
             onFastCompleteToggle = {},
             onLeadDelta = {},
@@ -271,6 +288,7 @@ private fun SettingsScreenPreview() {
             onPickQuietStart = {},
             onPickQuietEnd = {},
             onOpenExactAlarmSettings = {},
+            onOpenNotificationSettings = {},
             onBack = {},
         )
     }

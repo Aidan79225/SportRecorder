@@ -91,6 +91,8 @@
     <string name="settings_quiet_end">結束</string>
     <string name="settings_exact_alarm_title">開啟精準提醒</string>
     <string name="settings_exact_alarm_desc">允許精準鬧鐘，提醒才能準時送達</string>
+    <string name="settings_notifications_blocked_title">通知已關閉</string>
+    <string name="settings_notifications_blocked_desc">請開啟通知，提醒才能送達</string>
 
     <!-- 提醒通知 -->
     <string name="reminder_channel_window_closing_name">進食視窗即將關閉</string>

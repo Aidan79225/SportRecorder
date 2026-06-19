@@ -34,10 +34,14 @@ class AlarmReminderScheduler @Inject constructor(
     private fun setAlarm(manager: AlarmManager, reminder: ScheduledReminder) {
         val pendingIntent = pendingIntent(reminder.type, PendingIntent.FLAG_UPDATE_CURRENT)
         if (canScheduleExact(manager)) {
-            manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.triggerAtMillis, pendingIntent)
-        } else {
-            manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.triggerAtMillis, pendingIntent)
+            try {
+                manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.triggerAtMillis, pendingIntent)
+                return
+            } catch (_: SecurityException) {
+                // Exact-alarm access was revoked between the check and here; fall back to inexact.
+            }
         }
+        manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.triggerAtMillis, pendingIntent)
     }
 
     private fun cancel(manager: AlarmManager, type: ReminderType) {
