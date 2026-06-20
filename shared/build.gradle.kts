@@ -37,6 +37,8 @@ kotlin {
             implementation(compose.ui)
             // Generated Res class + stringResource() for shared string/image resources.
             implementation(compose.components.resources)
+            // Coil 3 (multiplatform) — AsyncImage for shared photo UI.
+            implementation(libs.coil3.compose)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
