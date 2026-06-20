@@ -16,10 +16,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.crazystudio.sportrecorder.R
+import org.koin.androidx.compose.koinViewModel
 
 private const val MINUTES_PER_HOUR = 60
 
@@ -27,7 +27,7 @@ private const val MINUTES_PER_HOUR = 60
  *  exact-alarm status/deep-link, and the quiet-hours time pickers. */
 @Composable
 fun SettingsRoute(onBack: () -> Unit) {
-    val vm: SettingsViewModel = hiltViewModel()
+    val vm: SettingsViewModel = koinViewModel()
     val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 

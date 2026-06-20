@@ -12,8 +12,6 @@ import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.util.LocationProvider
 import com.crazystudio.sportrecorder.util.PhotoStorage
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,12 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Calendar
-import javax.inject.Inject
 
-@HiltViewModel
 @Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
-class EatTimeEditorViewModel @Inject constructor(
-    @ApplicationContext private val appContext: Context,
+class EatTimeEditorViewModel constructor(
+    private val appContext: Context,
     private val loadEatRecord: LoadEatRecordUseCase,
     private val saveEatRecord: SaveEatRecordUseCase,
     savedStateHandle: SavedStateHandle,

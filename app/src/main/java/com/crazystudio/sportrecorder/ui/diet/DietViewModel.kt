@@ -7,7 +7,6 @@ import com.crazystudio.sportrecorder.domain.diet.DietPhase
 import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
 import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,15 +18,12 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
 
-@HiltViewModel
 class DietViewModel(
     observeDietState: ObserveDietStateUseCase,
     private val now: () -> Long,
 ) : ViewModel() {
 
-    @Inject
     constructor(observeDietState: ObserveDietStateUseCase) :
         this(observeDietState, System::currentTimeMillis)
 

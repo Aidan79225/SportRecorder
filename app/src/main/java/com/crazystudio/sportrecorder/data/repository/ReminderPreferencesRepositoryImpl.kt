@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.IOException
-import javax.inject.Inject
 
 private val WINDOW_CLOSING_KEY = booleanPreferencesKey(Constants.REMINDER_WINDOW_CLOSING_ENABLED)
 private val FAST_COMPLETE_KEY = booleanPreferencesKey(Constants.REMINDER_FAST_COMPLETE_ENABLED)
@@ -24,7 +23,7 @@ private val QUIET_ENABLED_KEY = booleanPreferencesKey(Constants.REMINDER_QUIET_E
 private val QUIET_START_KEY = intPreferencesKey(Constants.REMINDER_QUIET_START_MINUTES)
 private val QUIET_END_KEY = intPreferencesKey(Constants.REMINDER_QUIET_END_MINUTES)
 
-class ReminderPreferencesRepositoryImpl @Inject constructor(
+class ReminderPreferencesRepositoryImpl constructor(
     private val dataStore: DataStore<Preferences>,
 ) : ReminderPreferencesRepository {
 

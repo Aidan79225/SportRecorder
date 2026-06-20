@@ -15,8 +15,6 @@ import androidx.core.content.ContextCompat
 import com.crazystudio.sportrecorder.MainActivity
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.reminder.ReminderType
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 
 /** Per-type notification metadata so each reminder owns a distinct channel the user can tune. */
 private enum class ReminderChannel(
@@ -51,8 +49,8 @@ private enum class ReminderChannel(
 }
 
 /** Creates the per-reminder notification channels and posts reminder notifications. */
-class ReminderNotifier @Inject constructor(
-    @ApplicationContext private val context: Context,
+class ReminderNotifier constructor(
+    private val context: Context,
 ) {
 
     /** Idempotent: safe to call repeatedly (createNotificationChannel just updates the channel). */

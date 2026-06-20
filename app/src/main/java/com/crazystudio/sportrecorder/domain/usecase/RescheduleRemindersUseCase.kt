@@ -7,7 +7,6 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
 
 /**
  * Reads the current records + settings + reminder prefs once, runs the pure [ReminderPlanner],
@@ -22,7 +21,6 @@ class RescheduleRemindersUseCase(
     private val now: () -> Long,
 ) : RemindersRescheduler {
 
-    @Inject
     constructor(
         eatRecordRepository: EatRecordRepository,
         dietSettingsRepository: DietSettingsRepository,

@@ -8,8 +8,6 @@ import android.os.Build
 import com.crazystudio.sportrecorder.domain.reminder.ReminderScheduler
 import com.crazystudio.sportrecorder.domain.reminder.ReminderType
 import com.crazystudio.sportrecorder.domain.reminder.ScheduledReminder
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
 
 /**
  * AlarmManager-backed [ReminderScheduler]. Each [ReminderType] owns one alarm slot (a distinct
@@ -17,8 +15,8 @@ import javax.inject.Inject
  * present. Uses exact alarms when allowed, degrading to inexact (no USE_EXACT_ALARM — see the
  * manifest's TODO(release) note).
  */
-class AlarmReminderScheduler @Inject constructor(
-    @ApplicationContext private val context: Context,
+class AlarmReminderScheduler constructor(
+    private val context: Context,
     private val notifier: ReminderNotifier,
 ) : ReminderScheduler {
 

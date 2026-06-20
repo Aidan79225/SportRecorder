@@ -5,15 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class DietRecordViewModel @Inject constructor(
+class DietRecordViewModel constructor(
     observeEatRecords: ObserveEatRecordsUseCase,
     private val deleteEatRecord: DeleteEatRecordUseCase,
 ) : ViewModel() {
