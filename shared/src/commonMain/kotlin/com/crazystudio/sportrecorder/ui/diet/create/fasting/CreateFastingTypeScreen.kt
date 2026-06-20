@@ -1,7 +1,5 @@
 package com.crazystudio.sportrecorder.ui.diet.create.fasting
 
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,40 +25,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_hours
+import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_hours
+import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_name
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_no_food_24
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
-
-@Preview(showBackground = true)
-@Composable
-private fun Preview() {
-    SportRecorderTheme {
-        CreateFastingTypeScreen({}, { _, _, _ -> })
-    }
-}
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 enum class Type(
-    @StringRes val titleResId: Int,
-    @DrawableRes val iconResId: Int,
+    val titleRes: StringResource,
+    val iconRes: DrawableResource,
     val defaultValue: String,
-    val values: List<String>
+    val values: List<String>,
 ) {
     Fasting(
-        R.string.diet_create_fasting_hours,
-        R.drawable.ic_baseline_no_food_24,
+        Res.string.diet_create_fasting_hours,
+        Res.drawable.ic_baseline_no_food_24,
         "16",
-        (8..49).map { it.toString() }.toList()
+        (8..49).map { it.toString() },
     ),
     Eating(
-        R.string.diet_create_eating_hours,
-        R.drawable.ic_baseline_fastfood_24,
+        Res.string.diet_create_eating_hours,
+        Res.drawable.ic_baseline_fastfood_24,
         "8",
-        (1..11).map { it.toString() }.toList()
+        (1..11).map { it.toString() },
     ),
 }
 
@@ -76,7 +73,7 @@ fun CreateFastingTypeScreen(
                 .fillMaxWidth()
                 .background(colorScheme.surface)
                 .padding(20.dp)
-                .padding(top = 10.dp)
+                .padding(top = 10.dp),
         ) {
             val nameState = remember { mutableStateOf("") }
             NameField(nameState)
@@ -102,7 +99,7 @@ private fun NameField(state: MutableState<String>) {
     OutlinedTextField(
         value = state.value,
         onValueChange = { state.value = it },
-        label = { Text(stringResource(id = R.string.diet_create_fasting_name)) },
+        label = { Text(stringResource(Res.string.diet_create_fasting_name)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
         colors = OutlinedTextFieldDefaults.colors(
@@ -152,16 +149,16 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
     var showSelectedDialog by remember { mutableStateOf(false) }
     Row(modifier = Modifier) {
         Image(
-            painter = painterResource(id = type.iconResId),
-            contentDescription = ""
+            painter = painterResource(type.iconRes),
+            contentDescription = "",
         )
         Text(
-            text = stringResource(id = type.titleResId),
+            text = stringResource(type.titleRes),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .weight(1f)
-                .padding(start = 10.dp)
+                .padding(start = 10.dp),
         )
         Text(
             text = selectedValueState.value,
@@ -171,11 +168,11 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
                 .padding(end = 10.dp)
                 .clickable {
                     showSelectedDialog = true
-                }
+                },
         )
         Image(
-            painter = painterResource(id = R.drawable.ic_baseline_arrow_drop_down),
-            contentDescription = ""
+            painter = painterResource(Res.drawable.ic_baseline_arrow_drop_down),
+            contentDescription = "",
         )
     }
 
@@ -187,7 +184,7 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
             onSelectedListener = {
                 selectedValueState.value = it
             },
-            values = type.values
+            values = type.values,
         )
     }
 }
@@ -196,13 +193,13 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
 private fun SelectListDialog(
     onDismissRequest: () -> Unit,
     onSelectedListener: (String) -> Unit,
-    values: List<String>
+    values: List<String>,
 ) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Column(
             Modifier
                 .background(MaterialTheme.colorScheme.background)
-                .fillMaxSize(0.5f)
+                .fillMaxSize(0.5f),
         ) {
             LazyColumn {
                 items(values) {

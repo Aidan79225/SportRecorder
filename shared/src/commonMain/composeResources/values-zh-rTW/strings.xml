@@ -52,4 +52,14 @@
     <string name="settings_exact_alarm_desc">允許精準鬧鐘，提醒才能準時送達</string>
     <string name="settings_notifications_blocked_title">通知已關閉</string>
     <string name="settings_notifications_blocked_desc">請開啟通知，提醒才能送達</string>
+
+    <string name="diet_fasting_type_title">斷食類型</string>
+    <string name="diet_fasting_type_trainee">新手</string>
+    <string name="diet_fasting_type_normal">一般</string>
+    <string name="diet_fasting_type_expert">專家</string>
+    <string name="diet_fasting_type_master">大師</string>
+    <string name="diet_fasting_type_monk">苦行僧</string>
+    <string name="diet_create_fasting_hours">斷食時數</string>
+    <string name="diet_create_eating_hours">進食時數</string>
+    <string name="diet_create_fasting_name">名稱（選填）</string>
 </resources>

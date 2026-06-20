@@ -6,9 +6,7 @@
 
     <string name="diet_time_format" translatable="false">%02d:%02d:%02d</string>
     <!-- diet_status_* / diet_fasting_time / diet_remaining_time moved to :shared composeResources. -->
-    <string name="diet_create_fasting_hours">Fasting hours</string>
-    <string name="diet_create_eating_hours">Eating hours</string>
-    <string name="diet_create_fasting_name">Name (optional)</string>
+    <!-- diet_create_fasting_hours/eating_hours/fasting_name moved to :shared composeResources. -->
 
     <string name="diet_create_eating_date_title">Date</string>
     <string name="diet_create_eating_time_title">Time</string>
@@ -22,13 +20,7 @@
     <string name="create_food_fat">Fat</string>
 
 
-    <string name="diet_fasting_type_title">Fasting type</string>
-    <string name="diet_fasting_type_trainee">Trainee</string>
-    <string name="diet_fasting_type_normal">Normal</string>
-    <string name="diet_fasting_type_expert">Expert</string>
-    <string name="diet_fasting_type_master">Master</string>
-    <string name="diet_fasting_type_monk">Monk</string>
-
+    <!-- diet_fasting_type_title/trainee/normal/expert/master/monk moved to :shared composeResources. -->
     <string name="diet_fasting_type_create_duplicate">It was skipped, you already have the same fasting type!</string>
 
     <string name="diet_eat_time_delete_title">Delete</string>
