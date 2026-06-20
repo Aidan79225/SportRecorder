@@ -7,7 +7,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.crazystudio.sportrecorder.data.AndroidPhotoFileStore
+import com.crazystudio.sportrecorder.data.AndroidPhotoImageSource
 import com.crazystudio.sportrecorder.data.PhotoFileStore
+import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.data.repository.DietSettingsRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.EatRecordRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.FastingTypeRepositoryImpl
@@ -64,6 +66,7 @@ val appModule = module {
 
     // Repositories
     single<PhotoFileStore> { AndroidPhotoFileStore(androidContext()) }
+    single<PhotoImageSource> { AndroidPhotoImageSource(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get()) }
