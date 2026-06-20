@@ -164,10 +164,11 @@ private fun RecordCard(
             )
         }
 
-        // Note
-        if (!record.note.isNullOrBlank()) {
+        // Note (local val: cross-module smart-cast doesn't apply to :shared properties)
+        val note = record.note
+        if (!note.isNullOrBlank()) {
             Text(
-                text = record.note,
+                text = note,
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurface,
             )

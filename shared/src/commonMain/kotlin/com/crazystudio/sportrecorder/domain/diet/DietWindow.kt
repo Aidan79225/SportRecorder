@@ -1,6 +1,6 @@
 package com.crazystudio.sportrecorder.domain.diet
 
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.hours
 
 enum class DietPhase { IDLE, EATING, FASTING, SUCCESS }
 
@@ -20,7 +20,7 @@ data class DietWindowState(
 object DietWindow {
 
     /** Grace before the fast clock starts when a window holds a single meal. */
-    private val SINGLE_MEAL_FAST_GRACE_MILLIS = TimeUnit.HOURS.toMillis(1)
+    private val SINGLE_MEAL_FAST_GRACE_MILLIS = 1.hours.inWholeMilliseconds
 
     fun compute(
         eatTimesAsc: List<Long>,
@@ -30,8 +30,8 @@ object DietWindow {
     ): DietWindowState {
         if (eatTimesAsc.isEmpty()) return DietWindowState(phase = DietPhase.IDLE)
 
-        val ehMillis = TimeUnit.HOURS.toMillis(eatingHours)
-        val fhMillis = TimeUnit.HOURS.toMillis(fastingHours)
+        val ehMillis = eatingHours.hours.inWholeMilliseconds
+        val fhMillis = fastingHours.hours.inWholeMilliseconds
         // A meal stays in the current window while it's within eatingHours + fastingHours/2 of the
         // window's first meal — a slight overrun is treated as the same window, not a new one.
         // Only a meal beyond that tolerance (i.e. after a real fast) opens a fresh window.

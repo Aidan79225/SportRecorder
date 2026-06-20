@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "SportRecorder"
 include(":app")
+include(":shared")
