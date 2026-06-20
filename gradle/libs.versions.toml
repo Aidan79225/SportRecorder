@@ -11,7 +11,9 @@ activityCompose = "1.8.2"
 navigationCompose = "2.9.8"
 serializationJson = "1.7.3"
 coil = "2.7.0"
-coil3 = "3.5.0"
+# Coil 3.4.0 is built with Kotlin 2.3.10 (matches ours); 3.5.0 moved to Kotlin 2.4.0, whose
+# Kotlin/Native klib ABI our 2.3.10 compiler can't read. Bump together with Kotlin.
+coil3 = "3.4.0"
 datastore = "1.2.1"
 playServicesLocation = "21.3.0"
 exifinterface = "1.3.7"
