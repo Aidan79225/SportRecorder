@@ -6,9 +6,8 @@ import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import java.util.Calendar
-import javax.inject.Inject
 
-class ObserveDietStateUseCase @Inject constructor(
+class ObserveDietStateUseCase constructor(
     private val eatRecordRepository: EatRecordRepository,
     private val dietSettingsRepository: DietSettingsRepository,
 ) {

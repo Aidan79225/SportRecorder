@@ -12,13 +12,11 @@ import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.Photo
 import com.crazystudio.sportrecorder.util.PhotoStorage
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
-class EatRecordRepositoryImpl @Inject constructor(
-    @ApplicationContext private val appContext: Context,
+class EatRecordRepositoryImpl constructor(
+    private val appContext: Context,
     private val appDatabase: AppDatabase,
     private val eatTimeDao: EatTimeDao,
     private val photoDao: PhotoDao,

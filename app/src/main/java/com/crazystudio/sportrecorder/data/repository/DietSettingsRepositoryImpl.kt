@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.io.IOException
-import javax.inject.Inject
 
 private const val DEFAULT_FASTING_HOURS = 16L
 private const val DEFAULT_EATING_HOURS = 8L
@@ -23,7 +22,7 @@ private const val DEFAULT_EATING_HOURS = 8L
 private val FASTING_KEY = longPreferencesKey(Constants.DIET_FASTING_TIME_INTERVAL)
 private val EATING_KEY = longPreferencesKey(Constants.DIET_EATING_TIME_INTERVAL)
 
-class DietSettingsRepositoryImpl @Inject constructor(
+class DietSettingsRepositoryImpl constructor(
     private val dataStore: DataStore<Preferences>,
 ) : DietSettingsRepository {
 

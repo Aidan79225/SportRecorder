@@ -6,23 +6,19 @@ import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.util.Calendar
-import javax.inject.Inject
 
-@HiltViewModel
 class InsightsViewModel(
     observeEatRecords: ObserveEatRecordsUseCase,
     dietSettingsRepository: DietSettingsRepository,
     private val now: () -> Long,
 ) : ViewModel() {
 
-    @Inject
     constructor(
         observeEatRecords: ObserveEatRecordsUseCase,
         dietSettingsRepository: DietSettingsRepository,

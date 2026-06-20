@@ -1,7 +1,16 @@
 package com.crazystudio.sportrecorder
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
+import com.crazystudio.sportrecorder.di.appModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
 
-@HiltAndroidApp
-class SportApplication : Application()
+class SportApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        startKoin {
+            androidContext(this@SportApplication)
+            modules(appModule)
+        }
+    }
+}

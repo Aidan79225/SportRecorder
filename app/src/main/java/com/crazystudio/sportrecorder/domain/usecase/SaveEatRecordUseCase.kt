@@ -4,9 +4,8 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
-import javax.inject.Inject
 
-class SaveEatRecordUseCase @Inject constructor(
+class SaveEatRecordUseCase constructor(
     private val repository: EatRecordRepository,
     private val rescheduleReminders: RemindersRescheduler,
 ) {

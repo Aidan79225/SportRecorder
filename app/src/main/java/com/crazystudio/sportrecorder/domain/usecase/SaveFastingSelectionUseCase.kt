@@ -3,9 +3,8 @@ package com.crazystudio.sportrecorder.domain.usecase
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
-import javax.inject.Inject
 
-class SaveFastingSelectionUseCase @Inject constructor(
+class SaveFastingSelectionUseCase constructor(
     private val dietSettingsRepository: DietSettingsRepository,
     private val rescheduleReminders: RemindersRescheduler,
 ) {

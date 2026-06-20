@@ -8,11 +8,10 @@ import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.entity.FastingType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import javax.inject.Inject
 
 private const val RECENT_CUSTOM_LIMIT = 10
 
-class FastingTypeRepositoryImpl @Inject constructor(
+class FastingTypeRepositoryImpl constructor(
     private val fastingTypeDao: FastingTypeDao,
 ) : FastingTypeRepository {
 

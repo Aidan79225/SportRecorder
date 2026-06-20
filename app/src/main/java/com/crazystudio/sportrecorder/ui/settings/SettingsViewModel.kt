@@ -5,15 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
+class SettingsViewModel constructor(
     private val repository: ReminderPreferencesRepository,
     private val rescheduleReminders: RemindersRescheduler,
 ) : ViewModel() {

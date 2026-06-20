@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -54,6 +53,7 @@ import com.crazystudio.sportrecorder.ui.nav.Route
 import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -116,7 +116,7 @@ fun AppRoot() {
                 modifier = Modifier.fillMaxSize().padding(padding),
             ) {
                 composable<Route.Diet> {
-                    val vm: DietViewModel = hiltViewModel()
+                    val vm: DietViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     DietScreen(
                         state = state,
@@ -129,7 +129,7 @@ fun AppRoot() {
                     SettingsRoute(onBack = { navController.popBackStack() })
                 }
                 composable<Route.Record> {
-                    val vm: DietRecordViewModel = hiltViewModel()
+                    val vm: DietRecordViewModel = koinViewModel()
                     val records by vm.records.collectAsStateWithLifecycle()
                     RecordScreen(
                         records = records,
@@ -138,7 +138,7 @@ fun AppRoot() {
                     )
                 }
                 composable<Route.Insights> {
-                    val vm: InsightsViewModel = hiltViewModel()
+                    val vm: InsightsViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     InsightsScreen(
                         state = state,
@@ -148,7 +148,7 @@ fun AppRoot() {
                 }
 
                 bottomSheet<Route.SelectFastingType> {
-                    val vm: SelectFastingTypeViewModel = hiltViewModel()
+                    val vm: SelectFastingTypeViewModel = koinViewModel()
                     val items by vm.fastingItemFlow.collectAsStateWithLifecycle(emptyList())
                     SelectFastingTypeScreen(
                         items,
@@ -160,7 +160,7 @@ fun AppRoot() {
                     )
                 }
                 bottomSheet<Route.CreateFastingType> {
-                    val vm: CreateFastingTypeViewModel = hiltViewModel()
+                    val vm: CreateFastingTypeViewModel = koinViewModel()
                     val scope = rememberCoroutineScope()
                     CreateFastingTypeScreen(
                         onDismissRequest = { navController.popBackStack() },
@@ -175,7 +175,7 @@ fun AppRoot() {
                     )
                 }
                 bottomSheet<Route.EatTimeEditor> {
-                    val vm: EatTimeEditorViewModel = hiltViewModel()
+                    val vm: EatTimeEditorViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     val context = LocalContext.current
                     val scope = rememberCoroutineScope()

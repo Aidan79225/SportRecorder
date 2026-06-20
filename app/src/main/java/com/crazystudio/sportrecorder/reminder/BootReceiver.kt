@@ -4,19 +4,17 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /** Re-arms reminders from current DB state after a device reboot (alarms don't survive reboots). */
-@AndroidEntryPoint
-class BootReceiver : BroadcastReceiver() {
+class BootReceiver : BroadcastReceiver(), KoinComponent {
 
-    @Inject
-    lateinit var rescheduler: RemindersRescheduler
+    private val rescheduler: RemindersRescheduler by inject()
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
