@@ -20,6 +20,8 @@ kotlin {
             // api: the repository interfaces expose Flow, and calculators expose TimeZone.
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.datetime)
+            // api: DataStore-backed repos expose DataStore<Preferences> in their constructors.
+            api(libs.androidx.datastore.preferences.core)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

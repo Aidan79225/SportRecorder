@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import java.io.IOException
+import okio.IOException
 
 private const val DEFAULT_FASTING_HOURS = 16L
 private const val DEFAULT_EATING_HOURS = 8L
