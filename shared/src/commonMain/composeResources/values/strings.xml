@@ -5,7 +5,7 @@
     <string name="insights_card_stats">Stats</string>
     <string name="insights_card_photos">Meals</string>
     <string name="insights_card_locations">Places</string>
-    <string name="insights_streak">%d-day streak</string>
+    <string name="insights_streak">%1$d-day streak</string>
     <string name="insights_period_week">Week</string>
     <string name="insights_period_month">Month</string>
     <string name="insights_stat_meals">Meals</string>

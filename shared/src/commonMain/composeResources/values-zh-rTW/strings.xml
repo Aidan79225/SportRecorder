@@ -5,7 +5,7 @@
     <string name="insights_card_stats">統計</string>
     <string name="insights_card_photos">餐點</string>
     <string name="insights_card_locations">地點</string>
-    <string name="insights_streak">連續 %d 天</string>
+    <string name="insights_streak">連續 %1$d 天</string>
     <string name="insights_period_week">週</string>
     <string name="insights_period_month">月</string>
     <string name="insights_stat_meals">用餐次數</string>

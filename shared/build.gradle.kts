@@ -12,6 +12,10 @@ kotlin {
         namespace = "com.crazystudio.sportrecorder.shared"
         compileSdk = 36
         minSdk = 24
+        // Required so Compose Multiplatform resources (.cvr) are packaged into Android assets
+        // with the com.android.kotlin.multiplatform.library plugin (CMP-9547). Without this the
+        // app crashes at runtime with MissingResourceException.
+        androidResources.enable = true
     }
 
     jvm()
