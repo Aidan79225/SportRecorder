@@ -6,9 +6,9 @@ import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.entity.FastingType
+import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 
 private const val RECENT_CUSTOM_LIMIT = 10
 

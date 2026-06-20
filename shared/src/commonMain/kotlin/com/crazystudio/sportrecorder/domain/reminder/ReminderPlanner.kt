@@ -4,7 +4,7 @@ import com.crazystudio.sportrecorder.domain.diet.DietPhase
 import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.diet.DietWindowState
 import com.crazystudio.sportrecorder.domain.model.DietSettings
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
