@@ -16,6 +16,10 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        commonMain.dependencies {
+            // api: the repository interfaces expose Flow in their public signatures.
+            api(libs.kotlinx.coroutines.core)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
