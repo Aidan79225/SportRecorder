@@ -35,11 +35,19 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            // Generated Res class + stringResource() for shared string/image resources.
+            implementation(compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
         }
     }
+}
+
+compose.resources {
+    // Generated accessors live at com.crazystudio.sportrecorder.shared.resources.Res
+    publicResClass = true
+    packageOfResClass = "com.crazystudio.sportrecorder.shared.resources"
 }
 
 room {

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title_insights">Insights</string>
+    <string name="insights_card_adherence">Fasting adherence</string>
+    <string name="insights_card_stats">Stats</string>
+    <string name="insights_card_photos">Meals</string>
+    <string name="insights_card_locations">Places</string>
+    <string name="insights_streak">%d-day streak</string>
+    <string name="insights_period_week">Week</string>
+    <string name="insights_period_month">Month</string>
+    <string name="insights_stat_meals">Meals</string>
+    <string name="insights_stat_first">Avg first meal</string>
+    <string name="insights_stat_last">Avg last meal</string>
+    <string name="insights_stat_late">Late-night days</string>
+    <string name="insights_empty_photos">No meal photos in this period</string>
+    <string name="insights_empty_locations">No places recorded in this period</string>
+    <string name="insights_value_none">—</string>
+    <string name="insights_location_count">📍 %1$s, %2$s · %3$d</string>
+    <string-array name="insights_weekday_initials">
+        <item>Su</item>
+        <item>Mo</item>
+        <item>Tu</item>
+        <item>We</item>
+        <item>Th</item>
+        <item>Fr</item>
+        <item>Sa</item>
+    </string-array>
+</resources>
