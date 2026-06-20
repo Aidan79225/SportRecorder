@@ -6,9 +6,6 @@
     <string name="title_notifications">通知</string>
 
     <!-- diet_status_* / diet_fasting_time / diet_remaining_time 已移至 :shared composeResources。 -->
-    <string name="diet_create_fasting_hours">斷食時數</string>
-    <string name="diet_create_eating_hours">進食時數</string>
-    <string name="diet_create_fasting_name">名稱（選填）</string>
 
     <string name="diet_create_eating_date_title">日期</string>
     <string name="diet_create_eating_time_title">時間</string>
@@ -21,12 +18,6 @@
     <string name="create_food_protein">蛋白質</string>
     <string name="create_food_fat">脂肪</string>
 
-    <string name="diet_fasting_type_title">斷食類型</string>
-    <string name="diet_fasting_type_trainee">新手</string>
-    <string name="diet_fasting_type_normal">一般</string>
-    <string name="diet_fasting_type_expert">專家</string>
-    <string name="diet_fasting_type_master">大師</string>
-    <string name="diet_fasting_type_monk">苦行僧</string>
 
     <string name="diet_fasting_type_create_duplicate">已略過，你已經有相同的斷食類型！</string>
 
