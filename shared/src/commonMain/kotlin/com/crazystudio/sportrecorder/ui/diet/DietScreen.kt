@@ -1,6 +1,5 @@
 package com.crazystudio.sportrecorder.ui.diet
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,13 +20,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.day_today
+import com.crazystudio.sportrecorder.shared.resources.day_tomorrow
+import com.crazystudio.sportrecorder.shared.resources.day_yesterday
+import com.crazystudio.sportrecorder.shared.resources.fast_ending_label
+import com.crazystudio.sportrecorder.shared.resources.fast_started_label
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_settings_24
+import com.crazystudio.sportrecorder.shared.resources.settings_title
 import com.crazystudio.sportrecorder.ui.component.CircleProgress
-import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 @Composable
@@ -58,13 +65,13 @@ fun DietScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
-                    painter = painterResource(id = state.statusIcon),
+                    painter = painterResource(state.statusIcon),
                     contentDescription = null,
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp),
                 )
                 Text(
-                    text = stringResource(id = state.statusTextRes),
+                    text = stringResource(state.statusText),
                     style = MaterialTheme.typography.headlineMedium,
                     color = colorScheme.primary,
                     modifier = Modifier.padding(top = 4.dp),
@@ -85,7 +92,7 @@ fun DietScreen(
                         color = colorScheme.onSurfaceVariant,
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_baseline_edit_24),
+                        painter = painterResource(Res.drawable.ic_baseline_edit_24),
                         contentDescription = null,
                         tint = colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -113,7 +120,7 @@ fun DietScreen(
                         color = colorScheme.primary,
                     )
                     Text(
-                        text = stringResource(id = state.promptTextRes),
+                        text = stringResource(state.promptText),
                         style = MaterialTheme.typography.bodyLarge,
                         color = colorScheme.onSurfaceVariant,
                     )
@@ -141,8 +148,8 @@ fun DietScreen(
                             .padding(top = 16.dp, start = 24.dp, end = 24.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        FastTimeColumn(titleRes = R.string.fast_started_label, label = fastStart)
-                        FastTimeColumn(titleRes = R.string.fast_ending_label, label = fastEnd)
+                        FastTimeColumn(titleRes = Res.string.fast_started_label, label = fastStart)
+                        FastTimeColumn(titleRes = Res.string.fast_ending_label, label = fastEnd)
                     }
                 }
             }
@@ -156,8 +163,8 @@ fun DietScreen(
                 .padding(end = 8.dp, top = 8.dp),
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_baseline_settings_24),
-                contentDescription = stringResource(id = R.string.settings_title),
+                painter = painterResource(Res.drawable.ic_baseline_settings_24),
+                contentDescription = stringResource(Res.string.settings_title),
                 tint = colorScheme.onSurfaceVariant,
             )
         }
@@ -171,7 +178,7 @@ fun DietScreen(
                 .padding(end = 20.dp, bottom = 20.dp),
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_baseline_add_24),
+                painter = painterResource(Res.drawable.ic_baseline_add_24),
                 contentDescription = null,
             )
         }
@@ -180,15 +187,15 @@ fun DietScreen(
 
 @Composable
 private fun FastTimeColumn(
-    @StringRes titleRes: Int,
+    titleRes: StringResource,
     label: FastTimeLabel,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val dayText = when (label.day) {
-        RelativeDay.YESTERDAY -> stringResource(id = R.string.day_yesterday)
-        RelativeDay.TODAY -> stringResource(id = R.string.day_today)
-        RelativeDay.TOMORROW -> stringResource(id = R.string.day_tomorrow)
+        RelativeDay.YESTERDAY -> stringResource(Res.string.day_yesterday)
+        RelativeDay.TODAY -> stringResource(Res.string.day_today)
+        RelativeDay.TOMORROW -> stringResource(Res.string.day_tomorrow)
         RelativeDay.OTHER -> label.date
     }
     Column(
@@ -196,7 +203,7 @@ private fun FastTimeColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(id = titleRes),
+            text = stringResource(titleRes),
             style = MaterialTheme.typography.bodyLarge,
             color = colorScheme.onSurfaceVariant,
         )
@@ -204,31 +211,6 @@ private fun FastTimeColumn(
             text = "${label.time} $dayText",
             style = MaterialTheme.typography.headlineSmall,
             color = colorScheme.onSurface,
-        )
-    }
-}
-
-// showBackground gives layoutlib a window/theme context so drawable + Window_* styleable
-// resolution doesn't fail in the IDE preview; the dark backgroundColor matches the app surface.
-@Preview(showBackground = true, backgroundColor = 0xFF2B2B2B)
-@Composable
-@Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
-private fun DietScreenPreview() {
-    SportRecorderTheme {
-        DietScreen(
-            state = DietUiState(
-                elapsedText = "02:21:18",
-                progress = 75f,
-                fastingLabel = "16 : 8",
-                statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_fasting,
-                promptTextRes = R.string.diet_fasting_time,
-                fastStart = FastTimeLabel(time = "23:00", day = RelativeDay.TODAY, date = ""),
-                fastEnd = FastTimeLabel(time = "15:00", day = RelativeDay.TOMORROW, date = ""),
-            ),
-            onEditFastingType = {},
-            onAddEatTime = {},
-            onOpenSettings = {},
         )
     }
 }

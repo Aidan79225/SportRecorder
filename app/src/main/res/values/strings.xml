@@ -5,12 +5,7 @@
     <string name="title_notifications">Notifications</string>
 
     <string name="diet_time_format" translatable="false">%02d:%02d:%02d</string>
-    <string name="diet_remaining_time">Eating time remaining</string>
-    <string name="diet_fasting_time">Fasting time</string>
-    <string name="diet_status_eating">You\'re eating!</string>
-    <string name="diet_status_success">You did it!</string>
-    <string name="diet_status_fasting">You\'re fasting!</string>
-    <string name="diet_status_idle">Ready to start?</string>
+    <!-- diet_status_* / diet_fasting_time / diet_remaining_time moved to :shared composeResources. -->
     <string name="diet_create_fasting_hours">Fasting hours</string>
     <string name="diet_create_eating_hours">Eating hours</string>
     <string name="diet_create_fasting_name">Name (optional)</string>
@@ -56,12 +51,7 @@
     <string name="diet_eat_clear_location">Clear location</string>
     <string name="diet_eat_remove_photo">Remove photo</string>
 
-    <string name="diet_no_record">Add your first meal</string>
-    <string name="fast_started_label">Started Fasting</string>
-    <string name="fast_ending_label">Fast Ending</string>
-    <string name="day_yesterday">Yesterday</string>
-    <string name="day_today">Today</string>
-    <string name="day_tomorrow">Tomorrow</string>
+    <!-- diet_no_record / fast_*_label / day_* moved to :shared composeResources. -->
 
     <!-- Insights strings now live in :shared composeResources (Res.string.*). -->
 

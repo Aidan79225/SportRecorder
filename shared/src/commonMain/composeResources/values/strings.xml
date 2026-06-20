@@ -25,4 +25,18 @@
         <item>Fr</item>
         <item>Sa</item>
     </string-array>
+
+    <string name="diet_remaining_time">Eating time remaining</string>
+    <string name="diet_fasting_time">Fasting time</string>
+    <string name="diet_status_eating">You're eating!</string>
+    <string name="diet_status_success">You did it!</string>
+    <string name="diet_status_fasting">You're fasting!</string>
+    <string name="diet_status_idle">Ready to start?</string>
+    <string name="diet_no_record">Add your first meal</string>
+    <string name="fast_started_label">Started Fasting</string>
+    <string name="fast_ending_label">Fast Ending</string>
+    <string name="day_yesterday">Yesterday</string>
+    <string name="day_today">Today</string>
+    <string name="day_tomorrow">Tomorrow</string>
+    <string name="settings_title">Reminders</string>
 </resources>

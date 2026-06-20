@@ -1,18 +1,19 @@
 package com.crazystudio.sportrecorder.ui.diet
 
-import androidx.annotation.DrawableRes
-import androidx.annotation.StringRes
-import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
+import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 
 data class DietUiState(
     val elapsedText: String = "00:00:00",
     val progress: Float = 0f, // 0..100 for CircleProgress
     val fastingLabel: String = "", // e.g. "16 : 8"
-    val selectedFastingItem: FastingItem.DefaultFastingItem? = null,
-    @DrawableRes val statusIcon: Int = R.drawable.ic_baseline_fastfood_24,
-    @StringRes val statusTextRes: Int = R.string.diet_status_fasting,
-    @StringRes val promptTextRes: Int = R.string.diet_fasting_time,
+    val statusIcon: DrawableResource = Res.drawable.ic_baseline_fastfood_24,
+    val statusText: StringResource = Res.string.diet_status_fasting,
+    val promptText: StringResource = Res.string.diet_fasting_time,
     // Fast window blocks below the ring; null hides them (e.g. IDLE / no record).
     val fastStart: FastTimeLabel? = null,
     val fastEnd: FastTimeLabel? = null,

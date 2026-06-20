@@ -40,7 +40,9 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.ui)
             // Generated Res class + stringResource() for shared string/image resources.
-            implementation(compose.components.resources)
+            // api: shared UI state (e.g. DietUiState) exposes DrawableResource/StringResource,
+            // so :app needs these types on its compile classpath too.
+            api(compose.components.resources)
             // Coil 3 (multiplatform) — AsyncImage for shared photo UI.
             implementation(libs.coil3.compose)
         }
