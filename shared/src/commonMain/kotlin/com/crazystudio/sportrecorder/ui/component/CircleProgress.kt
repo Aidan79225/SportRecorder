@@ -2,7 +2,6 @@ package com.crazystudio.sportrecorder.ui.component
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -13,8 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -63,7 +62,7 @@ fun CircleProgress(
             }
             // Start dot (dark) at 12 o'clock; tip dot (bright + inner tipColor) at the arc end.
             val rEnd = (w - strokePx * 2) / 2f
-            val endRad = Math.toRadians(360.0 * fraction - 90.0)
+            val endRad = (360.0 * fraction - 90.0) * PI / 180.0
             val endX = (w / 2f + rEnd * cos(endRad)).toFloat()
             val endY = (w / 2f + rEnd * sin(endRad)).toFloat()
             drawCircle(color = gradientStart, radius = strokePx / 2f, center = Offset(w / 2f, w / 2f - rEnd))
@@ -71,11 +70,4 @@ fun CircleProgress(
             drawCircle(color = tipColor, radius = strokePx / 3.25f, center = Offset(endX, endY))
         }
     }
-}
-
-@Preview
-@Composable
-@Suppress("UnusedPrivateMember") // @Preview entry point used by the IDE preview tooling
-private fun CircleProgressPreview() {
-    CircleProgress(progress = 70f, modifier = Modifier.size(240.dp))
 }

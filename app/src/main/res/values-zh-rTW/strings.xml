@@ -5,12 +5,7 @@
     <string name="title_record">紀錄</string>
     <string name="title_notifications">通知</string>
 
-    <string name="diet_remaining_time">剩餘時間</string>
-    <string name="diet_fasting_time">已禁食時間</string>
-    <string name="diet_status_eating">進食中，好好享受！</string>
-    <string name="diet_status_success">你做到了！</string>
-    <string name="diet_status_fasting">斷食中，加油！</string>
-    <string name="diet_status_idle">準備好了嗎？</string>
+    <!-- diet_status_* / diet_fasting_time / diet_remaining_time 已移至 :shared composeResources。 -->
     <string name="diet_create_fasting_hours">斷食時數</string>
     <string name="diet_create_eating_hours">進食時數</string>
     <string name="diet_create_fasting_name">名稱（選填）</string>
@@ -55,12 +50,7 @@
     <string name="diet_eat_clear_location">清除位置</string>
     <string name="diet_eat_remove_photo">移除照片</string>
 
-    <string name="diet_no_record">新增第一餐</string>
-    <string name="fast_started_label">開始斷食</string>
-    <string name="fast_ending_label">結束斷食</string>
-    <string name="day_yesterday">昨天</string>
-    <string name="day_today">今天</string>
-    <string name="day_tomorrow">明天</string>
+    <!-- diet_no_record / fast_*_label / day_* 已移至 :shared composeResources。 -->
 
     <!-- Insights 字串已移至 :shared composeResources (Res.string.*)。 -->
 

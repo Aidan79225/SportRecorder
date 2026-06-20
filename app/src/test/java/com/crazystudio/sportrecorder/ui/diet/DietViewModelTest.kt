@@ -1,12 +1,21 @@
 package com.crazystudio.sportrecorder.ui.diet
 
 import app.cash.turbine.test
-import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
 import com.crazystudio.sportrecorder.fake.FakeDietSettingsRepository
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
+import com.crazystudio.sportrecorder.shared.resources.diet_no_record
+import com.crazystudio.sportrecorder.shared.resources.diet_remaining_time
+import com.crazystudio.sportrecorder.shared.resources.diet_status_eating
+import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
+import com.crazystudio.sportrecorder.shared.resources.diet_status_idle
+import com.crazystudio.sportrecorder.shared.resources.diet_status_success
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_no_food_24
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
@@ -67,9 +76,9 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1) // initial DietUiState() default
             val s = awaitItem()
-            assertEquals(R.string.diet_status_fasting, s.statusTextRes)
-            assertEquals(R.drawable.ic_baseline_no_food_24, s.statusIcon)
-            assertEquals(R.string.diet_fasting_time, s.promptTextRes)
+            assertEquals(Res.string.diet_status_fasting, s.statusText)
+            assertEquals(Res.drawable.ic_baseline_no_food_24, s.statusIcon)
+            assertEquals(Res.string.diet_fasting_time, s.promptText)
             // Single meal: fast clock starts 1h after the meal, so at +12h it's 11h (68.75%).
             assertEquals(68.75f, s.progress, 0.01f)
             assertEquals("16 : 8", s.fastingLabel)
@@ -87,9 +96,9 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(R.string.diet_status_eating, s.statusTextRes)
-            assertEquals(R.drawable.ic_baseline_fastfood_24, s.statusIcon)
-            assertEquals(R.string.diet_remaining_time, s.promptTextRes)
+            assertEquals(Res.string.diet_status_eating, s.statusText)
+            assertEquals(Res.drawable.ic_baseline_fastfood_24, s.statusIcon)
+            assertEquals(Res.string.diet_remaining_time, s.promptText)
             assertEquals(25f, s.progress, 0.01f)
             assertEquals("06:00:00", s.elapsedText) // windowEnd - now = 6h
             cancelAndIgnoreRemainingEvents()
@@ -104,8 +113,8 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(R.string.diet_status_success, s.statusTextRes)
-            assertEquals(R.drawable.ic_baseline_no_food_24, s.statusIcon)
+            assertEquals(Res.string.diet_status_success, s.statusText)
+            assertEquals(Res.drawable.ic_baseline_no_food_24, s.statusIcon)
             assertEquals(100f, s.progress, 0.01f)
             cancelAndIgnoreRemainingEvents()
         }
@@ -118,8 +127,8 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(R.string.diet_status_idle, s.statusTextRes)
-            assertEquals(R.string.diet_no_record, s.promptTextRes)
+            assertEquals(Res.string.diet_status_idle, s.statusText)
+            assertEquals(Res.string.diet_no_record, s.promptText)
             assertEquals("00:00:00", s.elapsedText)
             assertEquals(null, s.fastStart)
             cancelAndIgnoreRemainingEvents()

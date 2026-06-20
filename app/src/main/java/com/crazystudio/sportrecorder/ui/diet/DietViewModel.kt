@@ -2,11 +2,19 @@ package com.crazystudio.sportrecorder.ui.diet
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.diet.DietPhase
 import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
-import com.crazystudio.sportrecorder.ui.diet.select.FastingItem
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
+import com.crazystudio.sportrecorder.shared.resources.diet_no_record
+import com.crazystudio.sportrecorder.shared.resources.diet_remaining_time
+import com.crazystudio.sportrecorder.shared.resources.diet_status_eating
+import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
+import com.crazystudio.sportrecorder.shared.resources.diet_status_idle
+import com.crazystudio.sportrecorder.shared.resources.diet_status_success
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_no_food_24
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,9 +52,6 @@ class DietViewModel(
         val eatingHours = snapshot.settings.eatingHours
         val fastingHours = snapshot.settings.fastingHours
         val fastingLabel = "%d : %d".format(fastingHours, eatingHours)
-        val selectedFastingItem = FastingItem.defaultFastingItems.firstOrNull {
-            it.fastingHours == fastingHours && it.eatingHours == eatingHours
-        }
 
         val s = DietWindow.compute(
             eatTimesAsc = snapshot.eatTimesAsc,
@@ -58,7 +63,6 @@ class DietViewModel(
         val base = DietUiState(
             progress = s.ringProgress * 100f,
             fastingLabel = fastingLabel,
-            selectedFastingItem = selectedFastingItem,
             elapsedText = formatElapsed(s.elapsedMillis),
             fastStart = timeLabel(s.windowEnd, now),
             fastEnd = timeLabel(s.fastTargetAt, now),
@@ -67,26 +71,26 @@ class DietViewModel(
         return when (s.phase) {
             DietPhase.IDLE -> base.copy(
                 elapsedText = formatElapsed(0L),
-                statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_idle,
-                promptTextRes = R.string.diet_no_record,
+                statusIcon = Res.drawable.ic_baseline_no_food_24,
+                statusText = Res.string.diet_status_idle,
+                promptText = Res.string.diet_no_record,
             )
             DietPhase.EATING -> base.copy(
-                statusIcon = R.drawable.ic_baseline_fastfood_24,
-                statusTextRes = R.string.diet_status_eating,
-                promptTextRes = R.string.diet_remaining_time,
+                statusIcon = Res.drawable.ic_baseline_fastfood_24,
+                statusText = Res.string.diet_status_eating,
+                promptText = Res.string.diet_remaining_time,
             )
             DietPhase.FASTING -> base.copy(
-                statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_fasting,
-                promptTextRes = R.string.diet_fasting_time,
+                statusIcon = Res.drawable.ic_baseline_no_food_24,
+                statusText = Res.string.diet_status_fasting,
+                promptText = Res.string.diet_fasting_time,
                 // Show when the fast actually started (last meal, or +1h for a single-meal window).
                 fastStart = timeLabel(s.fastStartAt, now),
             )
             DietPhase.SUCCESS -> base.copy(
-                statusIcon = R.drawable.ic_baseline_no_food_24,
-                statusTextRes = R.string.diet_status_success,
-                promptTextRes = R.string.diet_fasting_time,
+                statusIcon = Res.drawable.ic_baseline_no_food_24,
+                statusText = Res.string.diet_status_success,
+                promptText = Res.string.diet_fasting_time,
                 fastStart = timeLabel(s.fastStartAt, now),
             )
         }
