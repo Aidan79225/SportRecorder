@@ -10,7 +10,7 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
-import com.crazystudio.sportrecorder.util.LocationProvider
+import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +27,7 @@ class EatTimeEditorViewModel constructor(
     private val appContext: Context,
     private val loadEatRecord: LoadEatRecordUseCase,
     private val saveEatRecord: SaveEatRecordUseCase,
+    private val locationProvider: LocationProvider,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -98,13 +99,13 @@ class EatTimeEditorViewModel constructor(
     fun requestLocation() {
         _uiState.update { it.copy(locationStatus = EatTimeEditorUiState.LocationStatus.LOADING) }
         viewModelScope.launch {
-            val result = LocationProvider.currentLocation(appContext)
+            val result = locationProvider.currentLocation()
             _uiState.update {
                 if (result == null) {
                     it.copy(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.UNAVAILABLE)
                 } else {
                     it.copy(
-                        location = EatTimeEditorUiState.LatLng(result.first, result.second),
+                        location = EatTimeEditorUiState.LatLng(result.lat, result.lng),
                         locationStatus = EatTimeEditorUiState.LocationStatus.AVAILABLE,
                     )
                 }
