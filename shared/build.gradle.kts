@@ -17,8 +17,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            // api: the repository interfaces expose Flow in their public signatures.
+            // api: the repository interfaces expose Flow, and calculators expose TimeZone.
             api(libs.kotlinx.coroutines.core)
+            api(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

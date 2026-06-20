@@ -4,12 +4,15 @@ import com.crazystudio.sportrecorder.domain.diet.DietPhase
 import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.diet.DietWindowState
 import com.crazystudio.sportrecorder.domain.model.DietSettings
-import java.util.Calendar
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
- * Pure (Android-free) planner that decides which reminders should be scheduled and when, by
+ * Pure (multiplatform) planner that decides which reminders should be scheduled and when, by
  * reusing [DietWindow]. It only ever returns future, not-yet-passed events; quiet hours suppress
- * (drop) the fast-complete reminder rather than deferring it.
+ * (drop) the fast-complete reminder rather than deferring it. [timeZone] is injected (default: the
+ * system zone) so quiet-hours time-of-day is testable on every platform.
  */
 object ReminderPlanner {
 
@@ -21,6 +24,7 @@ object ReminderPlanner {
         settings: DietSettings,
         prefs: ReminderPrefs,
         now: Long,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): List<ScheduledReminder> {
         if (eatTimesAsc.isEmpty()) return emptyList()
         val state = DietWindow.compute(
@@ -31,7 +35,7 @@ object ReminderPlanner {
         )
         return listOfNotNull(
             windowClosing(state, prefs, now),
-            fastComplete(state, prefs, now),
+            fastComplete(state, prefs, now, timeZone),
         )
     }
 
@@ -44,24 +48,31 @@ object ReminderPlanner {
     }
 
     /** Celebratory reminder at fastTargetAt; skipped if already complete or inside quiet hours. */
-    private fun fastComplete(state: DietWindowState, prefs: ReminderPrefs, now: Long): ScheduledReminder? {
+    private fun fastComplete(
+        state: DietWindowState,
+        prefs: ReminderPrefs,
+        now: Long,
+        timeZone: TimeZone,
+    ): ScheduledReminder? {
         val target = state.fastTargetAt ?: return null
         val eligible = prefs.fastCompleteEnabled &&
             now < target &&
-            !suppressedByQuietHours(target, prefs)
+            !suppressedByQuietHours(target, prefs, timeZone)
         return if (eligible) ScheduledReminder(ReminderType.FAST_COMPLETE, target) else null
     }
 
-    private fun suppressedByQuietHours(triggerAt: Long, prefs: ReminderPrefs): Boolean =
-        prefs.quietHoursEnabled && inQuietHours(triggerAt, prefs.quietStartMinutes, prefs.quietEndMinutes)
+    private fun suppressedByQuietHours(triggerAt: Long, prefs: ReminderPrefs, timeZone: TimeZone): Boolean =
+        prefs.quietHoursEnabled &&
+            inQuietHours(triggerAt, prefs.quietStartMinutes, prefs.quietEndMinutes, timeZone)
 
     /** True if [triggerAt]'s local time-of-day falls in [start, end); the range may span midnight. */
-    private fun inQuietHours(triggerAt: Long, start: Int, end: Int): Boolean {
-        val minute = minutesOfDay(triggerAt)
+    private fun inQuietHours(triggerAt: Long, start: Int, end: Int, timeZone: TimeZone): Boolean {
+        val minute = minutesOfDay(triggerAt, timeZone)
         return if (start <= end) minute in start until end else minute >= start || minute < end
     }
 
-    private fun minutesOfDay(millis: Long): Int =
-        Calendar.getInstance().apply { timeInMillis = millis }
-            .let { it.get(Calendar.HOUR_OF_DAY) * MINUTES_PER_HOUR + it.get(Calendar.MINUTE) }
+    private fun minutesOfDay(millis: Long, timeZone: TimeZone): Int {
+        val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone)
+        return dt.hour * MINUTES_PER_HOUR + dt.minute
+    }
 }
