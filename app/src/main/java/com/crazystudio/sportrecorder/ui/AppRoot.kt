@@ -37,6 +37,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
@@ -44,6 +45,7 @@ import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeVie
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorSheet
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
+import com.crazystudio.sportrecorder.ui.diet.record.FullScreenPhotoViewer
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
@@ -54,6 +56,7 @@ import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -140,11 +143,22 @@ fun AppRoot() {
                 composable<Route.Insights> {
                     val vm: InsightsViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
+                    val photoImageSource: PhotoImageSource = koinInject()
+                    var fullScreen by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
                     InsightsScreen(
                         state = state,
                         onSelectPeriod = vm::setPeriod,
                         onShiftMonth = vm::shiftMonth,
+                        photoModel = { photoImageSource.modelFor(it) },
+                        onPhotoClick = { names, index -> fullScreen = names to index },
                     )
+                    fullScreen?.let { (names, index) ->
+                        FullScreenPhotoViewer(
+                            fileNames = names,
+                            initialIndex = index,
+                            onDismiss = { fullScreen = null },
+                        )
+                    }
                 }
 
                 bottomSheet<Route.SelectFastingType> {
