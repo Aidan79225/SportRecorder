@@ -12,9 +12,9 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.Photo
+import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 
 class EatRecordRepositoryImpl(
     private val appDatabase: AppDatabase,

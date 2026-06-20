@@ -3,7 +3,6 @@ package com.crazystudio.sportrecorder.domain.insights
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -11,6 +10,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToLong
+import kotlin.time.Instant
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -77,10 +77,10 @@ object InsightsAggregator {
     ): List<DayCell> {
         val byDay = mealTimesByDay(records, timeZone)
         val anchor = Instant.fromEpochMilliseconds(monthAnchor).toLocalDateTime(timeZone).date
-        val first = LocalDate(anchor.year, anchor.monthNumber, 1)
-        val daysInMonth = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).dayOfMonth
+        val first = LocalDate(anchor.year, anchor.month, 1)
+        val daysInMonth = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
         return (1..daysInMonth).map { day ->
-            val start = LocalDate(first.year, first.monthNumber, day)
+            val start = LocalDate(first.year, first.month, day)
                 .atStartOfDayIn(timeZone).toEpochMilliseconds()
             DayCell(dayStart = start, dayOfMonth = day, state = adherenceFor(byDay[start].orEmpty(), eatingHours))
         }
@@ -91,7 +91,7 @@ object InsightsAggregator {
         val date = Instant.fromEpochMilliseconds(now).toLocalDateTime(timeZone).date
         val start = when (period) {
             Period.WEEK -> date.minus(WEEK_LOOKBACK_DAYS, DateTimeUnit.DAY)
-            Period.MONTH -> LocalDate(date.year, date.monthNumber, 1)
+            Period.MONTH -> LocalDate(date.year, date.month, 1)
         }
         return start.atStartOfDayIn(timeZone).toEpochMilliseconds()
     }

@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
 }
@@ -13,7 +15,8 @@ kotlin {
     }
 
     jvm()
-    iosX64()
+    // iosX64 (Intel simulator) dropped: Compose Multiplatform no longer publishes it, and both
+    // our CI simulator and modern Macs are Apple Silicon. Device = iosArm64, simulator = arm64.
     iosArm64()
     iosSimulatorArm64()
 
@@ -27,6 +30,11 @@ kotlin {
             // Room (multiplatform) + the bundled SQLite driver used by JVM/iOS.
             implementation(libs.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
+            // Compose Multiplatform — shared UI rendered on Android + iOS.
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -42,7 +50,6 @@ dependencies {
     // Room's KSP processor must run per Kotlin target.
     add("kspAndroid", libs.room.compiler)
     add("kspJvm", libs.room.compiler)
-    add("kspIosX64", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
 }
