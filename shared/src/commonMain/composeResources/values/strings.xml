@@ -39,4 +39,19 @@
     <string name="day_today">Today</string>
     <string name="day_tomorrow">Tomorrow</string>
     <string name="settings_title">Reminders</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_reminder_window_closing_title">Eating window closing</string>
+    <string name="settings_reminder_window_closing_desc">Last call before your eating window ends</string>
+    <string name="settings_reminder_fast_complete_title">Fast complete</string>
+    <string name="settings_reminder_fast_complete_desc">Celebrate when you reach your fasting goal</string>
+    <string name="settings_lead_time_title">Lead time</string>
+    <string name="settings_lead_time_value">%1$d min</string>
+    <string name="settings_quiet_hours_title">Quiet hours</string>
+    <string name="settings_quiet_hours_desc">Suppress the fast-complete reminder during this time</string>
+    <string name="settings_quiet_start">Start</string>
+    <string name="settings_quiet_end">End</string>
+    <string name="settings_exact_alarm_title">Enable precise reminders</string>
+    <string name="settings_exact_alarm_desc">Allow exact alarms so reminders fire on time</string>
+    <string name="settings_notifications_blocked_title">Notifications are off</string>
+    <string name="settings_notifications_blocked_desc">Turn on notifications so reminders can be delivered</string>
 </resources>
