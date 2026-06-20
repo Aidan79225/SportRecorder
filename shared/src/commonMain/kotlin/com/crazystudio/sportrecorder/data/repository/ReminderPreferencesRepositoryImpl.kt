@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import java.io.IOException
+import okio.IOException
 
 private val WINDOW_CLOSING_KEY = booleanPreferencesKey(Constants.REMINDER_WINDOW_CLOSING_ENABLED)
 private val FAST_COMPLETE_KEY = booleanPreferencesKey(Constants.REMINDER_FAST_COMPLETE_ENABLED)
