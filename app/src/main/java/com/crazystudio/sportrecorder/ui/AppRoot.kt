@@ -225,6 +225,7 @@ fun AppRoot() {
 
                     EatTimeEditorSheet(
                         state = state,
+                        photoModel = vm::photoModel,
                         onPickDate = {
                             val cal = calendarAt(vm.currentMillis)
                             DatePickerDialog(

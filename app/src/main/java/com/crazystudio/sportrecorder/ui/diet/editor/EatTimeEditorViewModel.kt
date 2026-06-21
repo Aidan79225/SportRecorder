@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.data.PhotoFileStore
+import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
@@ -26,15 +27,20 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-@Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
+// LongParameterList: these are injected DI dependencies, not logic params.
+@Suppress("TooManyFunctions", "LongParameterList") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel constructor(
     private val loadEatRecord: LoadEatRecordUseCase,
     private val saveEatRecord: SaveEatRecordUseCase,
     private val locationProvider: LocationProvider,
     private val photoImporter: PhotoImporter,
     private val photoFileStore: PhotoFileStore,
+    private val photoImageSource: PhotoImageSource,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /** Resolves a stored photo's file name into a Coil-loadable model for the editor's thumbnails. */
+    fun photoModel(fileName: String): Any? = photoImageSource.modelFor(fileName)
 
     // Route arg: type-safe route field name "eatTimeId". 0 = create, >0 = edit.
     private val eatTimeId: Int = savedStateHandle.get<Int>("eatTimeId") ?: 0

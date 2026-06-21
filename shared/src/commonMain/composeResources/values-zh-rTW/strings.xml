@@ -62,4 +62,18 @@
     <string name="diet_create_fasting_hours">斷食時數</string>
     <string name="diet_create_eating_hours">進食時數</string>
     <string name="diet_create_fasting_name">名稱（選填）</string>
+
+    <string name="diet_create_eating_date_title">日期</string>
+    <string name="diet_create_eating_time_title">時間</string>
+    <string name="diet_eat_note">備註</string>
+    <string name="diet_eat_location">位置</string>
+    <string name="diet_eat_location_loading">定位中…</string>
+    <string name="diet_eat_location_none">無位置</string>
+    <string name="diet_eat_recapture_location">重新定位</string>
+    <string name="diet_eat_clear_location">清除位置</string>
+    <string name="photo_add">拍照</string>
+    <string name="photo_select">從相簿選擇</string>
+    <string name="diet_eat_remove_photo">移除照片</string>
+    <string name="diet_eat_create">新增</string>
+    <string name="diet_eat_save">儲存</string>
 </resources>
