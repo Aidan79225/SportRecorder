@@ -91,6 +91,7 @@ dependencies {
 
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
+    implementation(libs.koin.compose.viewmodel)
 
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
