@@ -1,10 +1,9 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
-import java.util.Calendar
 
 data class EatTimeEditorUiState(
-    val date: Calendar,
+    val dateMillis: Long = 0L, // the meal's date+time as epoch millis; formatted for display
     val isEditMode: Boolean = false,
     val note: String = "",
     val existingPhotos: List<EatPhoto> = emptyList(), // already-saved photos (edit mode)

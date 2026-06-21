@@ -17,7 +17,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel constructor(
@@ -33,12 +40,16 @@ class EatTimeEditorViewModel constructor(
     private val eatTimeId: Int = savedStateHandle.get<Int>("eatTimeId") ?: 0
     private val isEditMode: Boolean = eatTimeId > 0
 
-    val currentCalendar: Calendar = Calendar.getInstance()
+    // The meal's date+time being edited, as epoch millis. Read by the host to seed the platform
+    // date/time pickers; mutated by updateDate/updateTime.
+    var currentMillis: Long = Clock.System.now().toEpochMilliseconds()
+        private set
     private var committed = false
     private val photosToDelete = mutableListOf<EatPhoto>()
+    private val zone get() = TimeZone.currentSystemDefault()
 
     private val _uiState = MutableStateFlow(
-        EatTimeEditorUiState(date = currentCalendar.clone() as Calendar, isEditMode = isEditMode),
+        EatTimeEditorUiState(dateMillis = currentMillis, isEditMode = isEditMode),
     )
     val uiState: StateFlow<EatTimeEditorUiState> = _uiState.asStateFlow()
 
@@ -46,11 +57,11 @@ class EatTimeEditorViewModel constructor(
         if (isEditMode) {
             viewModelScope.launch {
                 val record = loadEatRecord(eatTimeId) ?: return@launch
-                currentCalendar.timeInMillis = record.time
+                currentMillis = record.time
                 val loc = record.location?.let { EatTimeEditorUiState.LatLng(it.lat, it.lng) }
                 _uiState.update {
                     it.copy(
-                        date = currentCalendar.clone() as Calendar,
+                        dateMillis = currentMillis,
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         location = loc,
@@ -125,7 +136,7 @@ class EatTimeEditorViewModel constructor(
         val state = _uiState.value
         val record = EatRecord(
             id = eatTimeId,
-            time = currentCalendar.timeInMillis,
+            time = currentMillis,
             location = state.location?.let { GeoPoint(it.lat, it.lng) },
             note = state.note.ifBlank { null },
             photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
@@ -135,20 +146,22 @@ class EatTimeEditorViewModel constructor(
         return ok
     }
 
+    /** [month] is 0-based (Android DatePickerDialog convention); kotlinx-datetime is 1-based. */
     fun updateDate(year: Int, month: Int, dayOfMonth: Int) {
-        currentCalendar.set(Calendar.YEAR, year)
-        currentCalendar.set(Calendar.MONTH, month)
-        currentCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+        val dt = Instant.fromEpochMilliseconds(currentMillis).toLocalDateTime(zone)
+        val newDate = LocalDate(year, month + 1, dayOfMonth)
+        currentMillis = LocalDateTime(newDate, dt.time).toInstant(zone).toEpochMilliseconds()
         publishDate()
     }
 
     fun updateTime(hourOfDay: Int, minute: Int) {
-        currentCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
-        currentCalendar.set(Calendar.MINUTE, minute)
+        val dt = Instant.fromEpochMilliseconds(currentMillis).toLocalDateTime(zone)
+        val newTime = LocalTime(hourOfDay, minute, dt.time.second, dt.time.nanosecond)
+        currentMillis = LocalDateTime(dt.date, newTime).toInstant(zone).toEpochMilliseconds()
         publishDate()
     }
 
-    private fun publishDate() = _uiState.update { it.copy(date = currentCalendar.clone() as Calendar) }
+    private fun publishDate() = _uiState.update { it.copy(dateMillis = currentMillis) }
 
     override fun onCleared() {
         super.onCleared()

@@ -36,7 +36,9 @@ import coil.compose.AsyncImage
 import com.crazystudio.sportrecorder.R
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.util.PhotoStorage
-import java.text.SimpleDateFormat
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 @Composable
 @Suppress("LongMethod", "LongParameterList") // cohesive editor sheet; params are Compose event slots
@@ -70,7 +72,7 @@ fun EatTimeEditorSheet(
         HeaderRow(
             icon = R.drawable.ic_baseline_date_range_24,
             title = stringResource(id = R.string.diet_create_eating_date_title),
-            content = SimpleDateFormat("yyyy/MM/dd").format(state.date.time),
+            content = formatDate(state.dateMillis),
             actionIcon = R.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickDate,
         )
@@ -78,7 +80,7 @@ fun EatTimeEditorSheet(
         HeaderRow(
             icon = R.drawable.ic_baseline_access_time_24,
             title = stringResource(id = R.string.diet_create_eating_time_title),
-            content = SimpleDateFormat("HH:mm").format(state.date.time),
+            content = formatTime(state.dateMillis),
             actionIcon = R.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickTime,
         )
@@ -299,4 +301,18 @@ private fun HeaderRow(
                 .clickable { onActionClick() },
         )
     }
+}
+
+private fun pad2(n: Int): String = n.toString().padStart(2, '0')
+
+/** "yyyy/MM/dd" in the system timezone (kotlinx-datetime; no java SimpleDateFormat on Native). */
+private fun formatDate(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${dt.year}/${pad2(dt.month.ordinal + 1)}/${pad2(dt.day)}"
+}
+
+/** "HH:mm" in the system timezone. */
+private fun formatTime(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${pad2(dt.hour)}:${pad2(dt.minute)}"
 }
