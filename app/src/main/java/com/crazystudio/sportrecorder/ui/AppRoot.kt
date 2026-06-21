@@ -231,7 +231,7 @@ fun AppRoot() {
                     EatTimeEditorSheet(
                         state = state,
                         onPickDate = {
-                            val cal = vm.currentCalendar
+                            val cal = calendarAt(vm.currentMillis)
                             DatePickerDialog(
                                 context,
                                 R.style.DialogStyle,
@@ -244,7 +244,7 @@ fun AppRoot() {
                             ).show()
                         },
                         onPickTime = {
-                            val cal = vm.currentCalendar
+                            val cal = calendarAt(vm.currentMillis)
                             TimePickerDialog(
                                 context,
                                 R.style.TimeDialogStyle,
@@ -289,3 +289,7 @@ fun AppRoot() {
         }
     }
 }
+
+/** Calendar at [millis], used to seed the Android date/time picker dialogs. */
+private fun calendarAt(millis: Long): java.util.Calendar =
+    java.util.Calendar.getInstance().apply { timeInMillis = millis }
