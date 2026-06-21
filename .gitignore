@@ -17,5 +17,10 @@ local.properties
 *.aab
 # Play upload service-account key — never commit
 play-service-account.json
+# Release/upload signing keystores — never commit (debug.keystore is intentionally kept)
+/release.keystore
+*.jks
+*.p12
+upload_certificate.pem
 # Visual companion (brainstorming) scratch
 .superpowers/
