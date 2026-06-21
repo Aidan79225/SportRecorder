@@ -5,7 +5,16 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import java.util.Calendar
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 class ObserveDietStateUseCase constructor(
     private val eatRecordRepository: EatRecordRepository,
@@ -28,25 +37,21 @@ class ObserveDietStateUseCase constructor(
         }
     }
 
-    private fun dayStart(now: Long, dayOffset: Int): Long =
-        Calendar.getInstance().apply {
-            timeInMillis = now
-            set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR) + dayOffset)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+    /** Local midnight [dayOffset] days from [now], as epoch millis (kotlinx-datetime; no Calendar). */
+    private fun dayStart(now: Long, dayOffset: Int): Long {
+        val date = Instant.fromEpochMilliseconds(now).toLocalDateTime(zone).date
+            .plus(dayOffset, DateTimeUnit.DAY)
+        return date.atStartOfDayIn(zone).toEpochMilliseconds()
+    }
 
-    private fun windowStart(now: Long): Long =
-        Calendar.getInstance().apply {
-            timeInMillis = now
-            set(Calendar.DAY_OF_YEAR, get(Calendar.DAY_OF_YEAR) - RECENT_WINDOW_DAYS)
-            set(Calendar.HOUR_OF_DAY, WINDOW_START_HOUR)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+    /** [WINDOW_START_HOUR]:00 local, [RECENT_WINDOW_DAYS] days before [now], as epoch millis. */
+    private fun windowStart(now: Long): Long {
+        val date = Instant.fromEpochMilliseconds(now).toLocalDateTime(zone).date
+            .minus(RECENT_WINDOW_DAYS, DateTimeUnit.DAY)
+        return LocalDateTime(date, LocalTime(WINDOW_START_HOUR, 0)).toInstant(zone).toEpochMilliseconds()
+    }
+
+    private val zone get() = TimeZone.currentSystemDefault()
 
     private companion object {
         const val DAY_OFFSET_TOMORROW = 1
