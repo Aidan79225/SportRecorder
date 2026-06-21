@@ -201,7 +201,7 @@ fun AppRoot() {
                     ) { success ->
                         val file = captureFile
                         if (success && file != null) {
-                            vm.addCapturedPhoto(file)
+                            vm.addCapturedPhoto(file.absolutePath)
                         } else {
                             file?.delete()
                         }
@@ -210,7 +210,7 @@ fun AppRoot() {
                     val photoPickerLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.PickVisualMedia()
                     ) { uri ->
-                        if (uri != null) vm.addPickedPhoto(uri)
+                        if (uri != null) vm.addPickedPhoto(uri.toString())
                     }
                     val locationPermLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestMultiplePermissions()

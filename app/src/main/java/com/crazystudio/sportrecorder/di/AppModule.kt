@@ -32,7 +32,9 @@ import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
 import com.crazystudio.sportrecorder.platform.AndroidLocationProvider
+import com.crazystudio.sportrecorder.platform.AndroidPhotoImporter
 import com.crazystudio.sportrecorder.platform.LocationProvider
+import com.crazystudio.sportrecorder.platform.PhotoImporter
 import com.crazystudio.sportrecorder.reminder.AlarmReminderScheduler
 import com.crazystudio.sportrecorder.reminder.ReminderNotifier
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
@@ -70,6 +72,7 @@ val appModule = module {
     single<PhotoFileStore> { AndroidPhotoFileStore(androidContext()) }
     single<PhotoImageSource> { AndroidPhotoImageSource(androidContext()) }
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
+    single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get()) }
@@ -97,5 +100,5 @@ val appModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
-    viewModel { EatTimeEditorViewModel(androidContext(), get(), get(), get(), get()) }
+    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get()) }
 }
