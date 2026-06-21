@@ -1,33 +1,31 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crazystudio.sportrecorder.data.PhotoFileStore
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.platform.LocationProvider
-import com.crazystudio.sportrecorder.util.PhotoStorage
+import com.crazystudio.sportrecorder.platform.PhotoImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.Calendar
 
 @Suppress("TooManyFunctions") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel constructor(
-    private val appContext: Context,
     private val loadEatRecord: LoadEatRecordUseCase,
     private val saveEatRecord: SaveEatRecordUseCase,
     private val locationProvider: LocationProvider,
+    private val photoImporter: PhotoImporter,
+    private val photoFileStore: PhotoFileStore,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -69,23 +67,24 @@ class EatTimeEditorViewModel constructor(
 
     fun setNote(value: String) = _uiState.update { it.copy(note = value) }
 
-    fun addCapturedPhoto(tempFile: File) {
+    /** Import a just-captured photo. [sourcePath] is the camera temp file's path. */
+    fun addCapturedPhoto(sourcePath: String) {
         viewModelScope.launch {
-            val name = withContext(Dispatchers.IO) { PhotoStorage.convertToWebp(appContext, tempFile) }
+            val name = photoImporter.importCapture(sourcePath) ?: return@launch
             _uiState.update { it.copy(pendingPhotos = it.pendingPhotos + name) }
         }
     }
 
-    /** Import an existing photo picked from the gallery. The source file is kept intact. */
-    fun addPickedPhoto(uri: Uri) {
+    /** Import an existing photo picked from the gallery. [sourceUri] is the picker URI; source kept intact. */
+    fun addPickedPhoto(sourceUri: String) {
         viewModelScope.launch {
-            val name = withContext(Dispatchers.IO) { PhotoStorage.importFromUri(appContext, uri) }
+            val name = photoImporter.importPicked(sourceUri) ?: return@launch
             _uiState.update { it.copy(pendingPhotos = it.pendingPhotos + name) }
         }
     }
 
     fun removePendingPhoto(fileName: String) {
-        viewModelScope.launch(Dispatchers.IO) { PhotoStorage.deleteByName(appContext, fileName) }
+        viewModelScope.launch(Dispatchers.IO) { photoFileStore.delete(fileName) }
         _uiState.update { it.copy(pendingPhotos = it.pendingPhotos - fileName) }
     }
 
@@ -155,7 +154,7 @@ class EatTimeEditorViewModel constructor(
         super.onCleared()
         if (!committed) {
             // Dismissed without saving — delete only the newly-captured (unsaved) files.
-            _uiState.value.pendingPhotos.forEach { PhotoStorage.deleteByName(appContext, it) }
+            _uiState.value.pendingPhotos.forEach { photoFileStore.delete(it) }
         }
     }
 }
