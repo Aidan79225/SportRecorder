@@ -64,4 +64,18 @@
     <string name="diet_create_fasting_hours">Fasting hours</string>
     <string name="diet_create_eating_hours">Eating hours</string>
     <string name="diet_create_fasting_name">Name (optional)</string>
+
+    <string name="diet_create_eating_date_title">Date</string>
+    <string name="diet_create_eating_time_title">Time</string>
+    <string name="diet_eat_note">Note</string>
+    <string name="diet_eat_location">Location</string>
+    <string name="diet_eat_location_loading">Locating…</string>
+    <string name="diet_eat_location_none">No location</string>
+    <string name="diet_eat_recapture_location">Re-capture location</string>
+    <string name="diet_eat_clear_location">Clear location</string>
+    <string name="photo_add">Take photo</string>
+    <string name="photo_select">Choose from gallery</string>
+    <string name="diet_eat_remove_photo">Remove photo</string>
+    <string name="diet_eat_create">CREATE</string>
+    <string name="diet_eat_save">SAVE</string>
 </resources>

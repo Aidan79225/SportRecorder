@@ -7,8 +7,7 @@
 
     <!-- diet_status_* / diet_fasting_time / diet_remaining_time 已移至 :shared composeResources。 -->
 
-    <string name="diet_create_eating_date_title">日期</string>
-    <string name="diet_create_eating_time_title">時間</string>
+    <!-- diet_create_eating_date_title/time_title 已移至 :shared composeResources。 -->
     <string name="diet_create_eating_error">不能設定超過目前的時間</string>
     <string name="diet_create_food_title">食物</string>
     <string name="diet_food_record_title">食物紀錄</string>
@@ -26,20 +25,10 @@
     <string name="yes">是</string>
     <string name="no">否</string>
 
-    <string name="photo_add">拍照</string>
-    <string name="photo_select">從相簿選擇</string>
     <string name="photo_saved">已儲存到相簿</string>
     <string name="photo_save_failed">儲存照片失敗</string>
-
-    <string name="diet_eat_note">備註</string>
-    <string name="diet_eat_location">位置</string>
-    <string name="diet_eat_location_loading">定位中…</string>
-    <string name="diet_eat_location_none">無位置</string>
-    <string name="diet_eat_create">新增</string>
-    <string name="diet_eat_save">儲存</string>
-    <string name="diet_eat_recapture_location">重新定位</string>
-    <string name="diet_eat_clear_location">清除位置</string>
-    <string name="diet_eat_remove_photo">移除照片</string>
+    <!-- photo_add/select, diet_eat_note/location*/create/save/recapture/clear/remove_photo
+         已移至 :shared composeResources（編輯畫面已共用）。 -->
 
     <!-- diet_no_record / fast_*_label / day_* 已移至 :shared composeResources。 -->
 

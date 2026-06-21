@@ -1,12 +1,13 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -27,23 +28,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.crazystudio.sportrecorder.R
+import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
-import com.crazystudio.sportrecorder.util.PhotoStorage
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_title
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_clear_location
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_location
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_none
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_access_time_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_date_range_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_delete_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_library_24
+import com.crazystudio.sportrecorder.shared.resources.photo_add
+import com.crazystudio.sportrecorder.shared.resources.photo_select
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
+import kotlin.math.roundToLong
 import kotlin.time.Instant
 
 @Composable
 @Suppress("LongMethod", "LongParameterList") // cohesive editor sheet; params are Compose event slots
 fun EatTimeEditorSheet(
     state: EatTimeEditorUiState,
+    photoModel: (String) -> Any?,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
     onNoteChange: (String) -> Unit,
@@ -56,7 +78,6 @@ fun EatTimeEditorSheet(
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     Column(
         // Insets + scroll keep the whole sheet reachable no matter how tall it grows
@@ -66,29 +87,29 @@ fun EatTimeEditorSheet(
             .navigationBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp)
+            .padding(20.dp),
     ) {
         // DATE row
         HeaderRow(
-            icon = R.drawable.ic_baseline_date_range_24,
-            title = stringResource(id = R.string.diet_create_eating_date_title),
+            icon = Res.drawable.ic_baseline_date_range_24,
+            title = stringResource(Res.string.diet_create_eating_date_title),
             content = formatDate(state.dateMillis),
-            actionIcon = R.drawable.ic_baseline_arrow_drop_down,
+            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickDate,
         )
         // TIME row
         HeaderRow(
-            icon = R.drawable.ic_baseline_access_time_24,
-            title = stringResource(id = R.string.diet_create_eating_time_title),
+            icon = Res.drawable.ic_baseline_access_time_24,
+            title = stringResource(Res.string.diet_create_eating_time_title),
             content = formatTime(state.dateMillis),
-            actionIcon = R.drawable.ic_baseline_arrow_drop_down,
+            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickTime,
         )
         // NOTE field
         OutlinedTextField(
             value = state.note,
             onValueChange = onNoteChange,
-            label = { Text(stringResource(id = R.string.diet_eat_note)) },
+            label = { Text(stringResource(Res.string.diet_eat_note)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -105,25 +126,25 @@ fun EatTimeEditorSheet(
         )
         // LOCATION row — custom Row with two action icons
         val locationText = when (state.locationStatus) {
-            EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(id = R.string.diet_eat_location_loading)
+            EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(Res.string.diet_eat_location_loading)
             EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
-                String.format(java.util.Locale.ROOT, "%.5f, %.5f", it.lat, it.lng)
-            } ?: stringResource(id = R.string.diet_eat_location_none)
-            else -> stringResource(id = R.string.diet_eat_location_none)
+                "${fmt5(it.lat)}, ${fmt5(it.lng)}"
+            } ?: stringResource(Res.string.diet_eat_location_none)
+            else -> stringResource(Res.string.diet_eat_location_none)
         }
         Row(
             modifier = Modifier,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_baseline_date_range_24),
+                painter = painterResource(Res.drawable.ic_baseline_date_range_24),
                 contentDescription = "",
                 modifier = Modifier
                     .padding(10.dp)
                     .size(36.dp),
             )
             Text(
-                text = stringResource(id = R.string.diet_eat_location),
+                text = stringResource(Res.string.diet_eat_location),
                 style = MaterialTheme.typography.bodyLarge,
                 color = colorScheme.onSurface,
             )
@@ -138,8 +159,8 @@ fun EatTimeEditorSheet(
             )
             // Re-capture location icon (ic_baseline_add_24 — no refresh drawable available)
             Image(
-                painter = painterResource(id = R.drawable.ic_baseline_add_24),
-                contentDescription = stringResource(id = R.string.diet_eat_recapture_location),
+                painter = painterResource(Res.drawable.ic_baseline_add_24),
+                contentDescription = stringResource(Res.string.diet_eat_recapture_location),
                 modifier = Modifier
                     .padding(4.dp)
                     .size(36.dp)
@@ -148,8 +169,8 @@ fun EatTimeEditorSheet(
             // Clear location icon — only shown when location is set
             if (state.location != null) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                    contentDescription = stringResource(id = R.string.diet_eat_clear_location),
+                    painter = painterResource(Res.drawable.ic_baseline_delete_24),
+                    contentDescription = stringResource(Res.string.diet_eat_clear_location),
                     modifier = Modifier
                         .padding(4.dp)
                         .size(36.dp)
@@ -159,18 +180,18 @@ fun EatTimeEditorSheet(
         }
         // TAKE PHOTO (camera) row
         HeaderRow(
-            icon = R.drawable.ic_baseline_add_24,
-            title = stringResource(id = R.string.photo_add),
+            icon = Res.drawable.ic_baseline_add_24,
+            title = stringResource(Res.string.photo_add),
             content = "",
-            actionIcon = R.drawable.ic_baseline_add_24,
+            actionIcon = Res.drawable.ic_baseline_add_24,
             onActionClick = onAddPhoto,
         )
         // SELECT PHOTO (gallery) row
         HeaderRow(
-            icon = R.drawable.ic_baseline_photo_library_24,
-            title = stringResource(id = R.string.photo_select),
+            icon = Res.drawable.ic_baseline_photo_library_24,
+            title = stringResource(Res.string.photo_select),
             content = "",
-            actionIcon = R.drawable.ic_baseline_photo_library_24,
+            actionIcon = Res.drawable.ic_baseline_photo_library_24,
             onActionClick = onSelectPhoto,
         )
         // EXISTING photos (edit mode)
@@ -181,29 +202,11 @@ fun EatTimeEditorSheet(
                     .padding(vertical = 10.dp),
             ) {
                 items(state.existingPhotos, key = { it.id }) { photo ->
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 10.dp)
-                            .size(80.dp),
-                    ) {
-                        AsyncImage(
-                            model = PhotoStorage.fileFor(context, photo.fileName),
-                            contentDescription = photo.fileName,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                        )
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                            contentDescription = stringResource(id = R.string.diet_eat_remove_photo),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(2.dp)
-                                .size(24.dp)
-                                .clickable { onRemoveExistingPhoto(photo) },
-                        )
-                    }
+                    PhotoTile(
+                        model = photoModel(photo.fileName),
+                        contentDescription = photo.fileName,
+                        onRemove = { onRemoveExistingPhoto(photo) },
+                    )
                 }
             }
         }
@@ -215,29 +218,11 @@ fun EatTimeEditorSheet(
                     .padding(vertical = 10.dp),
             ) {
                 items(state.pendingPhotos, key = { it }) { name ->
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 10.dp)
-                            .size(80.dp),
-                    ) {
-                        AsyncImage(
-                            model = PhotoStorage.fileFor(context, name),
-                            contentDescription = name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                        )
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_baseline_delete_24),
-                            contentDescription = stringResource(id = R.string.diet_eat_remove_photo),
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(2.dp)
-                                .size(24.dp)
-                                .clickable { onRemovePendingPhoto(name) },
-                        )
-                    }
+                    PhotoTile(
+                        model = photoModel(name),
+                        contentDescription = name,
+                        onRemove = { onRemovePendingPhoto(name) },
+                    )
                 }
             }
         }
@@ -250,7 +235,7 @@ fun EatTimeEditorSheet(
         ) {
             Text(
                 text = stringResource(
-                    id = if (state.isEditMode) R.string.diet_eat_save else R.string.diet_eat_create,
+                    if (state.isEditMode) Res.string.diet_eat_save else Res.string.diet_eat_create,
                 ),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
@@ -260,11 +245,38 @@ fun EatTimeEditorSheet(
 }
 
 @Composable
+private fun PhotoTile(model: Any?, contentDescription: String, onRemove: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .padding(end = 10.dp)
+            .size(80.dp),
+    ) {
+        AsyncImage(
+            model = model,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(80.dp)
+                .clip(RoundedCornerShape(8.dp)),
+        )
+        Image(
+            painter = painterResource(Res.drawable.ic_baseline_delete_24),
+            contentDescription = stringResource(Res.string.diet_eat_remove_photo),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .size(24.dp)
+                .clickable { onRemove() },
+        )
+    }
+}
+
+@Composable
 private fun HeaderRow(
-    @DrawableRes icon: Int,
+    icon: DrawableResource,
     title: String,
     content: String,
-    @DrawableRes actionIcon: Int,
+    actionIcon: DrawableResource,
     onActionClick: () -> Unit,
 ) {
     Row(
@@ -272,7 +284,7 @@ private fun HeaderRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter = painterResource(id = icon),
+            painter = painterResource(icon),
             contentDescription = "",
             modifier = Modifier
                 .padding(10.dp)
@@ -293,7 +305,7 @@ private fun HeaderRow(
                 .padding(horizontal = 10.dp),
         )
         Image(
-            painter = painterResource(id = actionIcon),
+            painter = painterResource(actionIcon),
             contentDescription = "",
             modifier = Modifier
                 .padding(10.dp)
@@ -315,4 +327,12 @@ private fun formatDate(millis: Long): String {
 private fun formatTime(millis: Long): String {
     val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
     return "${pad2(dt.hour)}:${pad2(dt.minute)}"
+}
+
+/** Formats a coordinate to 5 decimals without java's String.format (unavailable on Native). */
+private fun fmt5(value: Double): String {
+    val scaled = (value * 100_000).roundToLong()
+    val sign = if (scaled < 0) "-" else ""
+    val a = abs(scaled)
+    return "$sign${a / 100_000}.${(a % 100_000).toString().padStart(5, '0')}"
 }

@@ -8,8 +8,7 @@
     <!-- diet_status_* / diet_fasting_time / diet_remaining_time moved to :shared composeResources. -->
     <!-- diet_create_fasting_hours/eating_hours/fasting_name moved to :shared composeResources. -->
 
-    <string name="diet_create_eating_date_title">Date</string>
-    <string name="diet_create_eating_time_title">Time</string>
+    <!-- diet_create_eating_date_title/time_title moved to :shared composeResources. -->
     <string name="diet_create_eating_error">You can\'t set time over than current time</string>
     <string name="diet_create_food_title">Food</string>
     <string name="diet_food_record_title">Food Record</string>
@@ -28,20 +27,10 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
 
-    <string name="photo_add">Take photo</string>
-    <string name="photo_select">Choose from gallery</string>
     <string name="photo_saved">Saved to gallery</string>
     <string name="photo_save_failed">Couldn\'t save photo</string>
-
-    <string name="diet_eat_note">Note</string>
-    <string name="diet_eat_location">Location</string>
-    <string name="diet_eat_location_loading">Locating…</string>
-    <string name="diet_eat_location_none">No location</string>
-    <string name="diet_eat_create">CREATE</string>
-    <string name="diet_eat_save">SAVE</string>
-    <string name="diet_eat_recapture_location">Re-capture location</string>
-    <string name="diet_eat_clear_location">Clear location</string>
-    <string name="diet_eat_remove_photo">Remove photo</string>
+    <!-- photo_add/select, diet_eat_note/location*/create/save/recapture/clear/remove_photo
+         moved to :shared composeResources (editor sheet is shared). -->
 
     <!-- diet_no_record / fast_*_label / day_* moved to :shared composeResources. -->
 
