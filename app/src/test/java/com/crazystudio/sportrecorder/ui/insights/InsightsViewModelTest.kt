@@ -6,6 +6,7 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import com.crazystudio.sportrecorder.fake.FakeDietSettingsRepository
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
+import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -29,6 +30,7 @@ class InsightsViewModelTest {
     private fun viewModel(repo: FakeEatRecordRepository) = InsightsViewModel(
         observeEatRecords = ObserveEatRecordsUseCase(repo),
         dietSettingsRepository = FakeDietSettingsRepository(),
+        photoImageSource = FakePhotoImageSource(),
         now = { fixedNow },
     )
 

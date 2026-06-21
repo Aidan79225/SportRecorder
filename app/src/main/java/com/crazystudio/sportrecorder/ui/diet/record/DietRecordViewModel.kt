@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.ui.diet.record
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 class DietRecordViewModel constructor(
     observeEatRecords: ObserveEatRecordsUseCase,
     private val deleteEatRecord: DeleteEatRecordUseCase,
+    private val photoImageSource: PhotoImageSource,
 ) : ViewModel() {
 
     val records: StateFlow<List<EatRecord>> = observeEatRecords()
@@ -21,4 +23,7 @@ class DietRecordViewModel constructor(
     fun deleteRecord(record: EatRecord) {
         viewModelScope.launch { deleteEatRecord(record.id) }
     }
+
+    /** Resolves a stored photo's file name into a Coil-loadable model for the UI. */
+    fun photoModel(fileName: String): Any? = photoImageSource.modelFor(fileName)
 }

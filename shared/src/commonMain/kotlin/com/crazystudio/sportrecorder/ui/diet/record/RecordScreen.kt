@@ -34,36 +34,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.crazystudio.sportrecorder.R
+import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatRecord
-import com.crazystudio.sportrecorder.util.PhotoStorage
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-private val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
-private val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.jetbrains.compose.resources.painterResource
+import kotlin.math.abs
+import kotlin.math.roundToLong
+import kotlin.time.Instant
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-@Suppress("LongMethod") // cohesive screen: list + delete dialog + full-screen photo overlay
+@Suppress("LongMethod") // cohesive screen: list + delete dialog
 fun RecordScreen(
     records: List<EatRecord>,
     onDelete: (EatRecord) -> Unit,
     onEditRecord: (Int) -> Unit,
+    photoModel: (String) -> Any?,
+    onPhotoClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
-    var fullScreenPhotos by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surface),
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -74,7 +73,8 @@ fun RecordScreen(
                 RecordCard(
                     record = record,
                     onLongClick = { recordToDelete = record },
-                    onThumbnailClick = { fileNames, index -> fullScreenPhotos = fileNames to index },
+                    photoModel = photoModel,
+                    onThumbnailClick = onPhotoClick,
                     onEditRecord = onEditRecord,
                 )
             }
@@ -101,14 +101,6 @@ fun RecordScreen(
             },
         )
     }
-
-    fullScreenPhotos?.let { (fileNames, index) ->
-        FullScreenPhotoViewer(
-            fileNames = fileNames,
-            initialIndex = index,
-            onDismiss = { fullScreenPhotos = null },
-        )
-    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -117,11 +109,11 @@ fun RecordScreen(
 private fun RecordCard(
     record: EatRecord,
     onLongClick: () -> Unit,
+    photoModel: (String) -> Any?,
     onThumbnailClick: (List<String>, Int) -> Unit,
     onEditRecord: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
     Column(
@@ -144,18 +136,18 @@ private fun RecordCard(
         ) {
             Column {
                 Text(
-                    text = dateFormat.format(Date(record.time)),
+                    text = formatDate(record.time),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
                 Text(
-                    text = timeFormat.format(Date(record.time)),
+                    text = formatTime(record.time),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
             }
             Icon(
-                painter = painterResource(R.drawable.ic_baseline_edit_24),
+                painter = painterResource(Res.drawable.ic_baseline_edit_24),
                 contentDescription = "Edit",
                 tint = colorScheme.primary,
                 modifier = Modifier
@@ -184,7 +176,7 @@ private fun RecordCard(
             ) { page ->
                 val photo = record.photos[page]
                 AsyncImage(
-                    model = PhotoStorage.fileFor(context, photo.fileName),
+                    model = photoModel(photo.fileName),
                     contentDescription = null,
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier
@@ -211,7 +203,7 @@ private fun RecordCard(
                                         colorScheme.primary
                                     } else {
                                         colorScheme.onSurfaceVariant
-                                    }
+                                    },
                                 ),
                         )
                     }
@@ -222,10 +214,32 @@ private fun RecordCard(
         // Location
         record.location?.let { loc ->
             Text(
-                text = "📍 ${String.format(Locale.ROOT, "%.4f, %.4f", loc.lat, loc.lng)}",
+                text = "📍 ${fmt4(loc.lat)}, ${fmt4(loc.lng)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurfaceVariant,
             )
         }
     }
+}
+
+private fun pad2(n: Int): String = n.toString().padStart(2, '0')
+
+/** "yyyy/MM/dd" in the system timezone (kotlinx-datetime; no java SimpleDateFormat on Native). */
+private fun formatDate(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${dt.year}/${pad2(dt.month.ordinal + 1)}/${pad2(dt.day)}"
+}
+
+/** "HH:mm" in the system timezone. */
+private fun formatTime(millis: Long): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${pad2(dt.hour)}:${pad2(dt.minute)}"
+}
+
+/** Formats a coordinate to 4 decimals without java's String.format (unavailable on Native). */
+private fun fmt4(value: Double): String {
+    val scaled = (value * 10_000).roundToLong()
+    val sign = if (scaled < 0) "-" else ""
+    val a = abs(scaled)
+    return "$sign${a / 10_000}.${(a % 10_000).toString().padStart(4, '0')}"
 }

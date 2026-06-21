@@ -37,7 +37,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
@@ -56,7 +55,6 @@ import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -134,29 +132,26 @@ fun AppRoot() {
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = koinViewModel()
                     val records by vm.records.collectAsStateWithLifecycle()
-                    RecordScreen(
-                        records = records,
-                        onDelete = vm::deleteRecord,
-                        onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
-                    )
+                    PhotoViewerHost { onPhotoClick ->
+                        RecordScreen(
+                            records = records,
+                            onDelete = vm::deleteRecord,
+                            onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
+                            photoModel = vm::photoModel,
+                            onPhotoClick = onPhotoClick,
+                        )
+                    }
                 }
                 composable<Route.Insights> {
                     val vm: InsightsViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
-                    val photoImageSource: PhotoImageSource = koinInject()
-                    var fullScreen by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
-                    InsightsScreen(
-                        state = state,
-                        onSelectPeriod = vm::setPeriod,
-                        onShiftMonth = vm::shiftMonth,
-                        photoModel = { photoImageSource.modelFor(it) },
-                        onPhotoClick = { names, index -> fullScreen = names to index },
-                    )
-                    fullScreen?.let { (names, index) ->
-                        FullScreenPhotoViewer(
-                            fileNames = names,
-                            initialIndex = index,
-                            onDismiss = { fullScreen = null },
+                    PhotoViewerHost { onPhotoClick ->
+                        InsightsScreen(
+                            state = state,
+                            onSelectPeriod = vm::setPeriod,
+                            onShiftMonth = vm::shiftMonth,
+                            photoModel = vm::photoModel,
+                            onPhotoClick = onPhotoClick,
                         )
                     }
                 }
@@ -287,6 +282,26 @@ fun AppRoot() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Hosts the Android-only [FullScreenPhotoViewer] (share/save-to-gallery) for a shared screen.
+ * [content] receives an `onPhotoClick(fileNames, index)` to open the viewer, keeping the
+ * platform-coupled viewer in :app while the screen itself lives in commonMain.
+ */
+@Composable
+private fun PhotoViewerHost(
+    content: @Composable (onPhotoClick: (List<String>, Int) -> Unit) -> Unit,
+) {
+    var fullScreen by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
+    content { names, index -> fullScreen = names to index }
+    fullScreen?.let { (names, index) ->
+        FullScreenPhotoViewer(
+            fileNames = names,
+            initialIndex = index,
+            onDismiss = { fullScreen = null },
+        )
     }
 }
 
