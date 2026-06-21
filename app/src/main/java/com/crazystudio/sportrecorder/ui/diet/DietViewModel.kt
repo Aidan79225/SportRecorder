@@ -22,10 +22,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class DietViewModel(
     observeDietState: ObserveDietStateUseCase,
@@ -33,13 +33,13 @@ class DietViewModel(
 ) : ViewModel() {
 
     constructor(observeDietState: ObserveDietStateUseCase) :
-        this(observeDietState, System::currentTimeMillis)
+        this(observeDietState, { Clock.System.now().toEpochMilliseconds() })
 
     /** Per-second ticker so elapsedText / progress recompute every second. */
     private val tickerFlow: Flow<Long> = flow {
         while (true) {
             emit(now())
-            delay(TimeUnit.SECONDS.toMillis(1))
+            delay(MILLIS_PER_SECOND)
         }
     }
 
@@ -51,7 +51,7 @@ class DietViewModel(
     private fun buildState(snapshot: ObserveDietStateUseCase.DietSnapshot, now: Long): DietUiState {
         val eatingHours = snapshot.settings.eatingHours
         val fastingHours = snapshot.settings.fastingHours
-        val fastingLabel = "%d : %d".format(fastingHours, eatingHours)
+        val fastingLabel = "$fastingHours : $eatingHours"
 
         val s = DietWindow.compute(
             eatTimesAsc = snapshot.eatTimesAsc,
@@ -98,27 +98,28 @@ class DietViewModel(
 
     private fun timeLabel(millis: Long?, now: Long): FastTimeLabel? {
         if (millis == null) return null
-        val date = Date(millis)
+        val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
         return FastTimeLabel(
-            time = HM_FORMAT.format(date),
+            time = "${pad2(dt.hour.toLong())}:${pad2(dt.minute.toLong())}", // "HH:mm"
             day = relativeDay(now, millis),
-            date = DATE_FORMAT.format(date),
+            date = "${dt.month.ordinal + 1}/${dt.day}", // "M/d", non-padded (shown only when day == OTHER)
         )
     }
 
     private fun formatElapsed(timestamp: Long): String {
-        var temp = timestamp
-        val hours = TimeUnit.MILLISECONDS.toHours(temp)
-        temp -= TimeUnit.HOURS.toMillis(hours)
-        val mins = TimeUnit.MILLISECONDS.toMinutes(temp)
-        temp -= TimeUnit.MINUTES.toMillis(mins)
-        val ses = TimeUnit.MILLISECONDS.toSeconds(temp)
-        // Matches R.string.diet_time_format = "%02d:%02d:%02d"
-        return "%02d:%02d:%02d".format(hours, mins, ses)
+        val totalSeconds = timestamp / MILLIS_PER_SECOND
+        val hours = totalSeconds / SECONDS_PER_HOUR
+        val mins = (totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE
+        val secs = totalSeconds % SECONDS_PER_MINUTE
+        // Matches the legacy "%02d:%02d:%02d" formatting.
+        return "${pad2(hours)}:${pad2(mins)}:${pad2(secs)}"
     }
 
-    companion object {
-        private val HM_FORMAT = SimpleDateFormat("HH:mm", Locale.getDefault())
-        private val DATE_FORMAT = SimpleDateFormat("M/d", Locale.getDefault())
+    private fun pad2(n: Long): String = n.toString().padStart(2, '0')
+
+    private companion object {
+        const val MILLIS_PER_SECOND = 1000L
+        const val SECONDS_PER_MINUTE = 60L
+        const val SECONDS_PER_HOUR = 3600L
     }
 }
