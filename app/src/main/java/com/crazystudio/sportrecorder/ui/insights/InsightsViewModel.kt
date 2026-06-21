@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.ui.insights
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
@@ -16,13 +17,15 @@ import java.util.Calendar
 class InsightsViewModel(
     observeEatRecords: ObserveEatRecordsUseCase,
     dietSettingsRepository: DietSettingsRepository,
+    private val photoImageSource: PhotoImageSource,
     private val now: () -> Long,
 ) : ViewModel() {
 
     constructor(
         observeEatRecords: ObserveEatRecordsUseCase,
         dietSettingsRepository: DietSettingsRepository,
-    ) : this(observeEatRecords, dietSettingsRepository, System::currentTimeMillis)
+        photoImageSource: PhotoImageSource,
+    ) : this(observeEatRecords, dietSettingsRepository, photoImageSource, System::currentTimeMillis)
 
     private val period = MutableStateFlow(Period.MONTH)
     private val monthAnchor = MutableStateFlow(now())
@@ -51,4 +54,7 @@ class InsightsViewModel(
             add(Calendar.MONTH, months)
         }.timeInMillis
     }
+
+    /** Resolves a stored photo's file name into a Coil-loadable model for the UI. */
+    fun photoModel(fileName: String): Any? = photoImageSource.modelFor(fileName)
 }

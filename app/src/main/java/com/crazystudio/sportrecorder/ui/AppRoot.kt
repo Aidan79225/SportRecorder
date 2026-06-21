@@ -37,7 +37,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
-import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
@@ -56,7 +55,6 @@ import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -134,13 +132,12 @@ fun AppRoot() {
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = koinViewModel()
                     val records by vm.records.collectAsStateWithLifecycle()
-                    val photoImageSource: PhotoImageSource = koinInject()
                     PhotoViewerHost { onPhotoClick ->
                         RecordScreen(
                             records = records,
                             onDelete = vm::deleteRecord,
                             onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
-                            photoModel = { photoImageSource.modelFor(it) },
+                            photoModel = vm::photoModel,
                             onPhotoClick = onPhotoClick,
                         )
                     }
@@ -148,13 +145,12 @@ fun AppRoot() {
                 composable<Route.Insights> {
                     val vm: InsightsViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
-                    val photoImageSource: PhotoImageSource = koinInject()
                     PhotoViewerHost { onPhotoClick ->
                         InsightsScreen(
                             state = state,
                             onSelectPeriod = vm::setPeriod,
                             onShiftMonth = vm::shiftMonth,
-                            photoModel = { photoImageSource.modelFor(it) },
+                            photoModel = vm::photoModel,
                             onPhotoClick = onPhotoClick,
                         )
                     }

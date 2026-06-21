@@ -95,8 +95,8 @@ val appModule = module {
 
     // ViewModels
     viewModel { DietViewModel(get()) }
-    viewModel { DietRecordViewModel(get(), get()) }
-    viewModel { InsightsViewModel(get(), get()) }
+    viewModel { DietRecordViewModel(get(), get(), get()) }
+    viewModel { InsightsViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
