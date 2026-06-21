@@ -12,7 +12,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import java.util.Calendar
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 class InsightsViewModel(
     observeEatRecords: ObserveEatRecordsUseCase,
@@ -49,10 +54,10 @@ class InsightsViewModel(
     }
 
     fun shiftMonth(months: Int) {
-        monthAnchor.value = Calendar.getInstance().apply {
-            timeInMillis = monthAnchor.value
-            add(Calendar.MONTH, months)
-        }.timeInMillis
+        val zone = TimeZone.currentSystemDefault()
+        val date = Instant.fromEpochMilliseconds(monthAnchor.value).toLocalDateTime(zone).date
+        // Aggregator reads only the month from monthAnchor, so start-of-day is fine.
+        monthAnchor.value = date.plus(months, DateTimeUnit.MONTH).atStartOfDayIn(zone).toEpochMilliseconds()
     }
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the UI. */
