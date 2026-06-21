@@ -134,29 +134,28 @@ fun AppRoot() {
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = koinViewModel()
                     val records by vm.records.collectAsStateWithLifecycle()
-                    RecordScreen(
-                        records = records,
-                        onDelete = vm::deleteRecord,
-                        onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
-                    )
+                    val photoImageSource: PhotoImageSource = koinInject()
+                    PhotoViewerHost { onPhotoClick ->
+                        RecordScreen(
+                            records = records,
+                            onDelete = vm::deleteRecord,
+                            onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
+                            photoModel = { photoImageSource.modelFor(it) },
+                            onPhotoClick = onPhotoClick,
+                        )
+                    }
                 }
                 composable<Route.Insights> {
                     val vm: InsightsViewModel = koinViewModel()
                     val state by vm.uiState.collectAsStateWithLifecycle()
                     val photoImageSource: PhotoImageSource = koinInject()
-                    var fullScreen by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
-                    InsightsScreen(
-                        state = state,
-                        onSelectPeriod = vm::setPeriod,
-                        onShiftMonth = vm::shiftMonth,
-                        photoModel = { photoImageSource.modelFor(it) },
-                        onPhotoClick = { names, index -> fullScreen = names to index },
-                    )
-                    fullScreen?.let { (names, index) ->
-                        FullScreenPhotoViewer(
-                            fileNames = names,
-                            initialIndex = index,
-                            onDismiss = { fullScreen = null },
+                    PhotoViewerHost { onPhotoClick ->
+                        InsightsScreen(
+                            state = state,
+                            onSelectPeriod = vm::setPeriod,
+                            onShiftMonth = vm::shiftMonth,
+                            photoModel = { photoImageSource.modelFor(it) },
+                            onPhotoClick = onPhotoClick,
                         )
                     }
                 }
@@ -287,6 +286,26 @@ fun AppRoot() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Hosts the Android-only [FullScreenPhotoViewer] (share/save-to-gallery) for a shared screen.
+ * [content] receives an `onPhotoClick(fileNames, index)` to open the viewer, keeping the
+ * platform-coupled viewer in :app while the screen itself lives in commonMain.
+ */
+@Composable
+private fun PhotoViewerHost(
+    content: @Composable (onPhotoClick: (List<String>, Int) -> Unit) -> Unit,
+) {
+    var fullScreen by remember { mutableStateOf<Pair<List<String>, Int>?>(null) }
+    content { names, index -> fullScreen = names to index }
+    fullScreen?.let { (names, index) ->
+        FullScreenPhotoViewer(
+            fileNames = names,
+            initialIndex = index,
+            onDismiss = { fullScreen = null },
+        )
     }
 }
 
