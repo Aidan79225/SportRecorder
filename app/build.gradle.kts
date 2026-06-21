@@ -1,9 +1,21 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
 }
+
+// Release/upload signing secrets are read from the environment (CI) or local.properties (local
+// dev) — never committed. Required keys: UPLOAD_KEYSTORE_FILE, UPLOAD_KEYSTORE_PASSWORD,
+// UPLOAD_KEY_ALIAS, UPLOAD_KEY_PASSWORD. When absent, release builds are produced unsigned.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingSecret(name: String): String? = System.getenv(name) ?: localProps.getProperty(name)
+val hasUploadSigning = signingSecret("UPLOAD_KEYSTORE_FILE") != null
 
 android {
     namespace = "com.crazystudio.sportrecorder"
@@ -17,10 +29,12 @@ android {
             keyPassword = "android"
         }
         create("release") {
-            storeFile = rootProject.file("release.keystore")
-            storePassword = "aa555051"
-            keyAlias = "Sport"
-            keyPassword = "aa555051"
+            if (hasUploadSigning) {
+                storeFile = file(signingSecret("UPLOAD_KEYSTORE_FILE")!!)
+                storePassword = signingSecret("UPLOAD_KEYSTORE_PASSWORD")
+                keyAlias = signingSecret("UPLOAD_KEY_ALIAS")
+                keyPassword = signingSecret("UPLOAD_KEY_PASSWORD")
+            }
         }
     }
 
@@ -42,7 +56,10 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // Sign only when upload credentials are present (CI/local dev); otherwise unsigned.
+            if (hasUploadSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

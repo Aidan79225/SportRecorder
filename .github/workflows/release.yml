@@ -6,10 +6,14 @@ name: Release to Play
 # version in app/build.gradle.kts and updated distribution/whatsnew/*. Or run manually from
 # the Actions tab to pick the track / release status.
 #
-# Required repo secret:
-#   PLAY_SERVICE_ACCOUNT_JSON — full JSON key of a Google Cloud service account that has been
-#   granted access to this app in the Play Console (Users & permissions).
-# Signing needs no secret: the release keystore + passwords live in the repo.
+# Required repo secrets:
+#   PLAY_SERVICE_ACCOUNT_JSON  — full JSON key of a Google Cloud service account granted access
+#                                to this app in the Play Console (Users & permissions).
+#   UPLOAD_KEYSTORE_BASE64     — the upload keystore (.p12/.jks), base64-encoded
+#                                (e.g. `base64 -w0 sportrecorder-upload.p12`).
+#   UPLOAD_KEYSTORE_PASSWORD   — the keystore password.
+#   UPLOAD_KEY_PASSWORD        — the key password (same as the keystore password for PKCS12).
+# The keystore is no longer kept in the repo; it's decoded from the secret at build time.
 
 on:
   push:
@@ -56,7 +60,17 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      - name: Decode upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.p12"
+
       - name: Build signed AAB
+        env:
+          UPLOAD_KEYSTORE_FILE: ${{ runner.temp }}/upload.p12
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: upload
+          UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
         run: ./gradlew bundleRelease --stacktrace
 
       - name: Upload to Google Play
