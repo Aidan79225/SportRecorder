@@ -39,6 +39,10 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            // Multiplatform ViewModel + SavedStateHandle (JetBrains lifecycle) for the shared VMs.
+            // api: :app references the VM types (which extend androidx.lifecycle.ViewModel).
+            api(libs.jetbrains.lifecycle.viewmodel)
+            api(libs.jetbrains.lifecycle.viewmodel.savedstate)
             // Generated Res class + stringResource() for shared string/image resources.
             // api: shared UI state (e.g. DietUiState) exposes DrawableResource/StringResource,
             // so :app needs these types on its compile classpath too.
