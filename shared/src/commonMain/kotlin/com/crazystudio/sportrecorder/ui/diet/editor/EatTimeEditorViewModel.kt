@@ -101,7 +101,7 @@ class EatTimeEditorViewModel constructor(
     }
 
     fun removePendingPhoto(fileName: String) {
-        viewModelScope.launch(Dispatchers.IO) { photoFileStore.delete(fileName) }
+        viewModelScope.launch(Dispatchers.Default) { photoFileStore.delete(fileName) }
         _uiState.update { it.copy(pendingPhotos = it.pendingPhotos - fileName) }
     }
 
