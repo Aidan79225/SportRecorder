@@ -17,6 +17,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 import kotlin.time.Instant
 
 class InsightsViewModel(
@@ -30,7 +31,12 @@ class InsightsViewModel(
         observeEatRecords: ObserveEatRecordsUseCase,
         dietSettingsRepository: DietSettingsRepository,
         photoImageSource: PhotoImageSource,
-    ) : this(observeEatRecords, dietSettingsRepository, photoImageSource, System::currentTimeMillis)
+    ) : this(
+        observeEatRecords,
+        dietSettingsRepository,
+        photoImageSource,
+        { Clock.System.now().toEpochMilliseconds() },
+    )
 
     private val period = MutableStateFlow(Period.MONTH)
     private val monthAnchor = MutableStateFlow(now())

@@ -50,11 +50,9 @@ jobs:
           if-no-files-found: ignore
 
   ios-shared:
-    # iOS (Kotlin/Native) targets require macOS, which GitHub bills at 10x Linux minutes.
-    # Gated to manual runs (Actions tab -> "CI" -> "Run workflow") to conserve the minutes
-    # budget while iOS verification moves to Xcode Cloud. Run this before merging shared/ changes
-    # that could break the iOS build.
-    if: github.event_name == 'workflow_dispatch'
+    # iOS (Kotlin/Native) targets require macOS; verify the shared module compiles + tests on iOS.
+    # Runs on every PR/push again now that the repo is public (GitHub Actions is free for public
+    # repos, including macOS runners).
     runs-on: macos-latest
     steps:
       - name: Checkout
