@@ -7,6 +7,7 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
 import kotlinx.coroutines.flow.first
+import kotlin.time.Clock
 
 /**
  * Reads the current records + settings + reminder prefs once, runs the pure [ReminderPlanner],
@@ -31,7 +32,7 @@ class RescheduleRemindersUseCase(
         dietSettingsRepository,
         reminderPreferencesRepository,
         scheduler,
-        System::currentTimeMillis,
+        { Clock.System.now().toEpochMilliseconds() },
     )
 
     override suspend fun reschedule() {

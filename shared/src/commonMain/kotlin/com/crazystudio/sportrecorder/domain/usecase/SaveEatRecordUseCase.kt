@@ -4,6 +4,7 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
+import kotlin.time.Clock
 
 class SaveEatRecordUseCase constructor(
     private val repository: EatRecordRepository,
@@ -14,7 +15,7 @@ class SaveEatRecordUseCase constructor(
         record: EatRecord,
         newPhotoFileNames: List<String>,
         removedPhotos: List<EatPhoto>,
-        now: Long = System.currentTimeMillis(),
+        now: Long = Clock.System.now().toEpochMilliseconds(),
     ): Boolean {
         if (record.time > now) return false
         repository.save(record, newPhotoFileNames, removedPhotos)
