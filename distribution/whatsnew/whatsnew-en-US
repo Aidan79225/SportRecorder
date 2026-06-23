@@ -1,3 +1,2 @@
-Fixes & improvements
-• A meal logged slightly past your eating window now merges into it, instead of starting a new window.
-• The meal editor is fully scrollable (nothing gets cut off) and properly shows Chinese.
+Maintenance update
+• Internal improvements to prepare for future updates. No changes to existing features.
