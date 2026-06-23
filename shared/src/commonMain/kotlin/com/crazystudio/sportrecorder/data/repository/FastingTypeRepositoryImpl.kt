@@ -32,4 +32,19 @@ class FastingTypeRepositoryImpl constructor(
             ),
         )
     }
+
+    override suspend fun replaceAllCustom(types: List<CustomFastingType>) {
+        fastingTypeDao.deleteAll()
+        val base = Clock.System.now().toEpochMilliseconds()
+        types.forEachIndexed { index, type ->
+            fastingTypeDao.insert(
+                FastingType(
+                    fastingHours = type.fastingHours,
+                    eatingHours = type.eatingHours,
+                    name = type.name,
+                    timestamp = base - index,
+                ),
+            )
+        }
+    }
 }

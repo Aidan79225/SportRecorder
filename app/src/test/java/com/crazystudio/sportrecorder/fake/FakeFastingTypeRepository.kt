@@ -31,4 +31,8 @@ class FakeFastingTypeRepository(
         added.add(window)
         addedNames.add(name)
     }
+
+    override suspend fun replaceAllCustom(types: List<CustomFastingType>) {
+        state.value = types
+    }
 }

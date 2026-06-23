@@ -19,4 +19,7 @@ interface PhotoDao {
 
     @Query("DELETE FROM photo WHERE eat_time_id = :eatTimeId")
     suspend fun deleteByEatTimeId(eatTimeId: Int)
+
+    @Query("DELETE FROM photo")
+    suspend fun deleteAll()
 }

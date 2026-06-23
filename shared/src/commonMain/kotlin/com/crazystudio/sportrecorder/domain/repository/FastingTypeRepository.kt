@@ -16,4 +16,7 @@ interface FastingTypeRepository {
 
     /** Persist a new custom window with an optional [name] (stamped with the current time). */
     suspend fun add(window: FastingWindow, name: String?)
+
+    /** Restore: delete all custom types, then insert [types]. */
+    suspend fun replaceAllCustom(types: List<CustomFastingType>)
 }

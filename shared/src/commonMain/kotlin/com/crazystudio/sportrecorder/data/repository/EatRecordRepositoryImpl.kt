@@ -89,4 +89,28 @@ class EatRecordRepositoryImpl(
         // File deletes happen only after the DB transaction succeeds (non-transactional).
         photos.forEach { photoFileStore.delete(it.fileName) }
     }
+
+    override suspend fun replaceAll(records: List<EatRecord>) {
+        appDatabase.useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                photoDao.deleteAll()
+                eatTimeDao.deleteAll()
+                records.forEach { record ->
+                    val newId = eatTimeDao.insert(
+                        EatTime(
+                            time = record.time,
+                            lat = record.location?.lat,
+                            lng = record.location?.lng,
+                            note = record.note,
+                        ),
+                    ).toInt()
+                    record.photos.forEach { photo ->
+                        photoDao.insert(
+                            Photo(eatTimeId = newId, fileName = photo.fileName, createdAt = photo.createdAt),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
