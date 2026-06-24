@@ -1,7 +1,10 @@
 package com.crazystudio.sportrecorder.data.repository
 
+import androidx.room.immediateTransaction
+import androidx.room.useWriterConnection
 import com.crazystudio.sportrecorder.dao.FastingTypeDao
 import com.crazystudio.sportrecorder.data.mapper.toCustomType
+import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
@@ -13,6 +16,7 @@ import kotlinx.coroutines.flow.map
 private const val RECENT_CUSTOM_LIMIT = 10
 
 class FastingTypeRepositoryImpl constructor(
+    private val appDatabase: AppDatabase,
     private val fastingTypeDao: FastingTypeDao,
 ) : FastingTypeRepository {
 
@@ -34,17 +38,21 @@ class FastingTypeRepositoryImpl constructor(
     }
 
     override suspend fun replaceAllCustom(types: List<CustomFastingType>) {
-        fastingTypeDao.deleteAll()
         val base = Clock.System.now().toEpochMilliseconds()
-        types.forEachIndexed { index, type ->
-            fastingTypeDao.insert(
-                FastingType(
-                    fastingHours = type.fastingHours,
-                    eatingHours = type.eatingHours,
-                    name = type.name,
-                    timestamp = base - index,
-                ),
-            )
+        appDatabase.useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                fastingTypeDao.deleteAll()
+                types.forEachIndexed { index, type ->
+                    fastingTypeDao.insert(
+                        FastingType(
+                            fastingHours = type.fastingHours,
+                            eatingHours = type.eatingHours,
+                            name = type.name,
+                            timestamp = base - index,
+                        ),
+                    )
+                }
+            }
         }
     }
 }

@@ -75,7 +75,7 @@ val appModule = module {
     single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
-    single<FastingTypeRepository> { FastingTypeRepositoryImpl(get()) }
+    single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
     single<ReminderPreferencesRepository> { ReminderPreferencesRepositoryImpl(get()) }
 
     // Reminders (Android side) + rescheduler
