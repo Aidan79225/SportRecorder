@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -49,9 +50,12 @@ kotlin {
             api(compose.components.resources)
             // Coil 3 (multiplatform) — AsyncImage for shared photo UI.
             implementation(libs.coil3.compose)
+            // kotlinx.serialization for backup DTOs.
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

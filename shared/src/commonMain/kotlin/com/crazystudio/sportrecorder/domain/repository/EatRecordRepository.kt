@@ -26,4 +26,7 @@ interface EatRecordRepository {
 
     /** Delete the record, its photo rows, and its photo files. */
     suspend fun delete(recordId: Int)
+
+    /** Restore: delete all meals + photo rows, then insert [records] with their photos. Files untouched. */
+    suspend fun replaceAll(records: List<EatRecord>)
 }

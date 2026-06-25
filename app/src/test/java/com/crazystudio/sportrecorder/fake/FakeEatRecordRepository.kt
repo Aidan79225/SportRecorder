@@ -35,4 +35,8 @@ class FakeEatRecordRepository(
     override suspend fun delete(recordId: Int) {
         deletedIds.add(recordId)
     }
+
+    override suspend fun replaceAll(records: List<EatRecord>) {
+        state.value = records
+    }
 }

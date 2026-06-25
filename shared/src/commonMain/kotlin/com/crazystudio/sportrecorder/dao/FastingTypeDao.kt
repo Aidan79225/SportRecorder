@@ -20,4 +20,7 @@ interface FastingTypeDao {
             "ORDER BY timestamp DESC LIMIT 1"
     )
     suspend fun findByHours(fastingHours: Long, eatingHours: Long): List<FastingType>
+
+    @Query("DELETE FROM ${FastingType.tableName}")
+    suspend fun deleteAll()
 }

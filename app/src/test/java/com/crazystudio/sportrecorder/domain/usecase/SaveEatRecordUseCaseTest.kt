@@ -28,6 +28,7 @@ private class FakeEatRecordRepository : EatRecordRepository {
         return record.id
     }
     override suspend fun delete(recordId: Int) = TODO()
+    override suspend fun replaceAll(records: List<EatRecord>) = TODO()
 }
 
 private fun record(time: Long) = EatRecord(id = 0, time = time, location = null, note = null, photos = emptyList())

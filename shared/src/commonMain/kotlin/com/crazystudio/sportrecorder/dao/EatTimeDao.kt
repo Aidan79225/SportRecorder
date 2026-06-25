@@ -45,4 +45,7 @@ interface EatTimeDao {
 
     @Query("DELETE FROM ${EatTime.tableName} WHERE id = :id")
     suspend fun deleteById(id: Int)
+
+    @Query("DELETE FROM ${EatTime.tableName}")
+    suspend fun deleteAll()
 }
