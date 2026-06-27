@@ -127,6 +127,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.play.services.location)
+    implementation(libs.play.services.auth)
+    implementation(libs.okhttp)
     implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.junit)
