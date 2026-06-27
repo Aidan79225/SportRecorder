@@ -48,6 +48,8 @@ class GoogleBackupAuth(
         val result = authorizationClient.authorize(request).await()
         if (!result.hasResolution()) {
             result.accessToken?.let { updateAccount(it) }
+        } else {
+            _account.value = null
         }
     }
 
