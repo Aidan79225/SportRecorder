@@ -15,6 +15,10 @@ import java.io.IOException
 import java.util.UUID
 
 private const val DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
+
+// Single-page listing (no nextPageToken handling). Fine for keep-last-3 with modest photo
+// counts; if appDataFolder ever exceeds 1000 files a truncated listing could make prune treat
+// still-referenced photos as orphans. Add paging before users accumulate large libraries.
 private const val DRIVE_LIST_URL =
     "https://www.googleapis.com/drive/v3/files" +
         "?spaces=appDataFolder&pageSize=1000&fields=files(id,name,size,appProperties)"
@@ -74,6 +78,8 @@ class GoogleDriveBackupStore(
         photoFileNames: List<String>,
     ): SnapshotInfo = withContext(Dispatchers.IO) {
         val token = auth.accessToken()
+        // Parse first so a malformed manifest fails before any photo is uploaded (no orphans).
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), manifestJson)
         val existingPhotos = listFiles(token)
             .filter { it.appProperties[KIND] == KIND_PHOTO }
             .map { it.name }
@@ -84,7 +90,6 @@ class GoogleDriveBackupStore(
                 val bytes = PhotoStorage.fileFor(context, name).readBytes()
                 uploadMultipart(token, name, MIME_WEBP, mapOf(KIND to KIND_PHOTO), bytes)
             }
-        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), manifestJson)
         val snapshotId = UUID.randomUUID().toString()
         val manifestBytes = manifestJson.encodeToByteArray()
         val props = mapOf(
