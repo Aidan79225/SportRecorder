@@ -121,6 +121,10 @@ class GoogleDriveBackupStore(
             .filter { it.appProperties[KIND] == KIND_PHOTO }
             .associate { it.name to it.id }
         referenced.forEach { name ->
+            // Guard: names come from a downloaded manifest; never let one escape the photos dir.
+            require(!name.contains('/') && !name.contains('\\')) {
+                "Snapshot $id has an illegal photo file name: $name"
+            }
             val fileId = photoIdByName[name]
                 ?: throw IOException("Snapshot $id references a photo missing from Drive: $name")
             PhotoStorage.fileFor(context, name).writeBytes(downloadBytes(token, fileId))
