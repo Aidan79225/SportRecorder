@@ -31,7 +31,6 @@ fun BackupRoute(onBack: () -> Unit) {
     ) { result ->
         scope.launch {
             runCatching { auth.onAuthorizationResult(result.data) }
-                .onSuccess { vm.refreshSnapshots() }
         }
     }
 
@@ -45,7 +44,6 @@ fun BackupRoute(onBack: () -> Unit) {
         onSignIn = {
             scope.launch {
                 runCatching { auth.accessToken() } // populates account on success
-                    .onSuccess { vm.refreshSnapshots() }
                     .onFailure { e ->
                         if (e is BackupAuthorizationRequiredException) {
                             consentLauncher.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
