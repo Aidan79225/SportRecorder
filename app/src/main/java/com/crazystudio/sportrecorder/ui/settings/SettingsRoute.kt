@@ -26,7 +26,7 @@ private const val MINUTES_PER_HOUR = 60
 /** Wires [SettingsScreen] to the ViewModel plus the Android-only bits: notification permission,
  *  exact-alarm status/deep-link, and the quiet-hours time pickers. */
 @Composable
-fun SettingsRoute(onBack: () -> Unit) {
+fun SettingsRoute(onBack: () -> Unit, onOpenBackup: () -> Unit) {
     val vm: SettingsViewModel = koinViewModel()
     val state by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -75,6 +75,7 @@ fun SettingsRoute(onBack: () -> Unit) {
         },
         onOpenExactAlarmSettings = { openExactAlarmSettings(context) },
         onOpenNotificationSettings = { openNotificationSettings(context) },
+        onOpenBackup = onOpenBackup,
         onBack = onBack,
     )
 }

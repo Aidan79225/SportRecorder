@@ -52,6 +52,27 @@
     <string name="settings_exact_alarm_desc">允許精準鬧鐘，提醒才能準時送達</string>
     <string name="settings_notifications_blocked_title">通知已關閉</string>
     <string name="settings_notifications_blocked_desc">請開啟通知，提醒才能送達</string>
+    <string name="settings_backup_row_title">備份與還原</string>
+    <string name="settings_backup_row_desc">把你的紀錄存到自己的 Google Drive</string>
+    <string name="backup_title">備份與還原</string>
+    <string name="backup_intro">把你的紀錄備份到自己的 Google Drive，換手機或重裝也不會弄丟任何一個當下。這是選用的，而且只有你看得到。</string>
+    <string name="backup_sign_in">使用 Google 登入</string>
+    <string name="backup_signed_in_as">已登入：%1$s</string>
+    <string name="backup_sign_out">登出</string>
+    <string name="backup_now">立即備份</string>
+    <string name="backup_last_backed_up">上次備份：%1$s</string>
+    <string name="backup_never">還沒有備份</string>
+    <string name="backup_restore_heading">從備份還原</string>
+    <string name="backup_restore_empty">還沒有任何備份</string>
+    <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>
+    <string name="backup_restore_confirm_title">要還原這份備份嗎？</string>
+    <string name="backup_restore_confirm_message">還原會用 %1$s 的備份覆蓋這台裝置上的資料。</string>
+    <string name="backup_restore_confirm_button">還原</string>
+    <string name="backup_cancel">取消</string>
+    <string name="backup_msg_backup_complete">已備份。</string>
+    <string name="backup_msg_restore_complete">已還原。</string>
+    <string name="backup_msg_schema_too_new">這份備份來自較新版本的 App，請先更新才能還原。</string>
+    <string name="backup_msg_failed">發生了一點問題，請再試一次。</string>
 
     <string name="diet_fasting_type_title">斷食類型</string>
     <string name="diet_fasting_type_trainee">新手</string>
