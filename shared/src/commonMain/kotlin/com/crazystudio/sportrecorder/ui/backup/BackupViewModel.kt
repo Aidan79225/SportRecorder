@@ -70,4 +70,7 @@ class BackupViewModel(
 
     /** Clear the transient result message after the UI has shown it. */
     fun consumeMessage() = _uiState.update { it.copy(message = null) }
+
+    /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
+    fun reportFailure() = _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) }
 }

@@ -30,13 +30,13 @@ fun BackupRoute(onBack: () -> Unit) {
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
         scope.launch {
-            auth.onAuthorizationResult(result.data)
-            vm.refreshSnapshots()
+            runCatching { auth.onAuthorizationResult(result.data) }
+                .onSuccess { vm.refreshSnapshots() }
         }
     }
 
     // On open, silently populate the signed-in account if consent was already granted.
-    LaunchedEffect(Unit) { auth.refreshAccount() }
+    LaunchedEffect(Unit) { runCatching { auth.refreshAccount() } }
     // Once signed in, load the snapshot list.
     LaunchedEffect(state.isSignedIn) { if (state.isSignedIn) vm.refreshSnapshots() }
 
@@ -44,12 +44,15 @@ fun BackupRoute(onBack: () -> Unit) {
         state = state,
         onSignIn = {
             scope.launch {
-                try {
-                    auth.accessToken() // populates account on success
-                    vm.refreshSnapshots()
-                } catch (e: BackupAuthorizationRequiredException) {
-                    consentLauncher.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
-                }
+                runCatching { auth.accessToken() } // populates account on success
+                    .onSuccess { vm.refreshSnapshots() }
+                    .onFailure { e ->
+                        if (e is BackupAuthorizationRequiredException) {
+                            consentLauncher.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
+                        } else {
+                            vm.reportFailure()
+                        }
+                    }
             }
         },
         onSignOut = { auth.signOut() },
