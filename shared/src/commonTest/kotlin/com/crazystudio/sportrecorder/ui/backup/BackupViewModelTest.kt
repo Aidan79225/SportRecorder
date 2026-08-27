@@ -156,4 +156,19 @@ class BackupViewModelTest {
         assertFalse(vm.uiState.value.isSignedIn)
         assertTrue(vm.uiState.value.snapshots.isEmpty())
     }
+
+    @Test fun reportFailure_carriesTheGivenMessageAndDefaultsToFailed() = runTest(dispatcher) {
+        val auth = FakeBackupAuth(BackupAccount("me@x.com"))
+        val vm = BackupViewModel(service(FakeBackupStore()), auth)
+        testScheduler.advanceUntilIdle()
+
+        vm.reportFailure(BackupMessage.SignOutFailed)
+        assertEquals(BackupMessage.SignOutFailed, vm.uiState.value.message)
+        // A sign-out that didn't hold leaves the account connected, and the screen still says so.
+        assertTrue(vm.uiState.value.isSignedIn)
+
+        vm.consumeMessage()
+        vm.reportFailure()
+        assertEquals(BackupMessage.Failed, vm.uiState.value.message)
+    }
 }

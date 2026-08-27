@@ -31,6 +31,7 @@ fun BackupRoute(onBack: () -> Unit) {
     ) { result ->
         scope.launch {
             runCatching { auth.onAuthorizationResult(result.data) }
+                .onSuccess { granted -> if (granted) vm.onAuthorized() }
         }
     }
 
@@ -44,6 +45,7 @@ fun BackupRoute(onBack: () -> Unit) {
         onSignIn = {
             scope.launch {
                 runCatching { auth.accessToken() } // populates account on success
+                    .onSuccess { vm.onAuthorized() }
                     .onFailure { e ->
                         if (e is BackupAuthorizationRequiredException) {
                             consentLauncher.launch(IntentSenderRequest.Builder(e.pendingIntent).build())
@@ -53,7 +55,14 @@ fun BackupRoute(onBack: () -> Unit) {
                     }
             }
         },
-        onSignOut = { auth.signOut() },
+        onSignOut = {
+            // Sign-out revokes the grant over the network; if that fails the account is still
+            // connected, so say so instead of showing a sign-out that wouldn't survive a restart.
+            scope.launch {
+                runCatching { auth.signOut() }
+                    .onFailure { vm.reportFailure(BackupMessage.SignOutFailed) }
+            }
+        },
         onBackup = vm::backup,
         onRestore = { snapshot -> vm.restore(snapshot.id) },
         onConsumeMessage = vm::consumeMessage,

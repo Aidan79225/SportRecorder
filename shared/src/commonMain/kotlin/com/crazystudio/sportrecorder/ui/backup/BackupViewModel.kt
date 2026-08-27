@@ -91,7 +91,8 @@ class BackupViewModel(
     fun consumeMessage() = _uiState.update { it.copy(message = null) }
 
     /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
-    fun reportFailure() = _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) }
+    fun reportFailure(message: BackupMessage = BackupMessage.Failed) =
+        _uiState.update { it.copy(phase = BackupPhase.Idle, message = message) }
 
     /** The :app layer got consent back — drop the "needs authorization" state and carry on. */
     fun onAuthorized() = _uiState.update { it.copy(needsAuthorization = false) }

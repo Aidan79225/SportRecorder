@@ -14,10 +14,12 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 private const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
 private const val ABOUT_URL = "https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)"
+private const val REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 
 /**
  * Authorizes the app for Drive's appDataFolder scope and exposes the resulting access token.
@@ -53,13 +55,30 @@ class GoogleBackupAuth(
         }
     }
 
-    /** Complete authorization after the UI launched the consent PendingIntent. */
-    suspend fun onAuthorizationResult(data: Intent?) {
+    /**
+     * Complete authorization after the UI launched the consent PendingIntent. Returns whether we
+     * ended up signed in — cancelling the sheet yields no token and leaves the user signed out.
+     */
+    suspend fun onAuthorizationResult(data: Intent?): Boolean {
         val result = authorizationClient.getAuthorizationResultFromIntent(data)
-        result.accessToken?.let { updateAccount(it) }
+        val token = result.accessToken
+        if (token == null) {
+            _account.value = null
+        } else {
+            updateAccount(token)
+        }
+        return _account.value != null
     }
 
-    fun signOut() {
+    /**
+     * Revoke the Drive grant, then forget the account — so signing in again really asks which
+     * account to use. Revocation needs the network, and throwing when it fails is deliberate: a
+     * grant we couldn't revoke would silently sign the user back in on the next launch, so we
+     * leave them signed in and let the UI say so rather than showing a sign-out that didn't hold.
+     */
+    suspend fun signOut() {
+        val token = authorizationClient.authorize(request).await().accessToken
+        if (token != null) revokeToken(token)
         _account.value = null
     }
 
@@ -72,6 +91,16 @@ class GoogleBackupAuth(
         val token = result.accessToken ?: error("Authorization returned no access token")
         updateAccount(token)
         return token
+    }
+
+    private suspend fun revokeToken(token: String) = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url("$REVOKE_URL?token=$token")
+            .post("".toRequestBody())
+            .build()
+        httpClient.newCall(req).execute().use { response ->
+            check(response.isSuccessful) { "Revoking the Drive grant failed (HTTP ${response.code})" }
+        }
     }
 
     private suspend fun updateAccount(token: String) {

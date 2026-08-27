@@ -25,4 +25,4 @@ data class BackupUiState(
 enum class BackupPhase { Idle, Loading, BackingUp, Restoring }
 
 /** Semantic result — the UI maps each to a localized string (the VM holds no user-facing copy). */
-enum class BackupMessage { BackupComplete, RestoreComplete, RestoreSchemaTooNew, Failed }
+enum class BackupMessage { BackupComplete, RestoreComplete, RestoreSchemaTooNew, SignOutFailed, Failed }
