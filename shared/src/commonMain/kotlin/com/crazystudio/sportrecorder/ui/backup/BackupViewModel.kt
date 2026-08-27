@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.ui.backup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.backup.BackupAuth
+import com.crazystudio.sportrecorder.backup.BackupAuthorizationRequired
 import com.crazystudio.sportrecorder.backup.BackupSchemaTooNewException
 import com.crazystudio.sportrecorder.backup.BackupService
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,17 @@ class BackupViewModel(
 
     init {
         viewModelScope.launch {
-            backupAuth.account.collect { account -> _uiState.update { it.copy(account = account) } }
+            backupAuth.account.collect { account ->
+                // Signing out drops the snapshot list too, so a different account never briefly
+                // sees the previous one's backups.
+                _uiState.update {
+                    if (account == null) {
+                        it.copy(account = null, snapshots = emptyList())
+                    } else {
+                        it.copy(account = account)
+                    }
+                }
+            }
         }
     }
 
@@ -36,7 +47,7 @@ class BackupViewModel(
             _uiState.update { it.copy(phase = BackupPhase.Loading) }
             runCatching { backupService.listSnapshots() }
                 .onSuccess { snapshots -> _uiState.update { it.copy(snapshots = snapshots, phase = BackupPhase.Idle) } }
-                .onFailure { _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) } }
+                .onFailure { error -> onOperationFailure(error) }
         }
     }
 
@@ -51,20 +62,28 @@ class BackupViewModel(
                         it.copy(snapshots = snapshots, phase = BackupPhase.Idle, message = BackupMessage.BackupComplete)
                     }
                 }
-                .onFailure { _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) } }
+                .onFailure { error -> onOperationFailure(error) }
         }
     }
 
     fun restore(snapshotId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(phase = BackupPhase.Restoring, message = null) }
-            val result = runCatching { backupService.restore(snapshotId) }
-            val message = when {
-                result.isSuccess -> BackupMessage.RestoreComplete
-                result.exceptionOrNull() is BackupSchemaTooNewException -> BackupMessage.RestoreSchemaTooNew
-                else -> BackupMessage.Failed
-            }
-            _uiState.update { it.copy(phase = BackupPhase.Idle, message = message) }
+            runCatching { backupService.restore(snapshotId) }
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(phase = BackupPhase.Idle, message = BackupMessage.RestoreComplete)
+                    }
+                }
+                .onFailure { error ->
+                    if (error is BackupSchemaTooNewException) {
+                        _uiState.update { state ->
+                            state.copy(phase = BackupPhase.Idle, message = BackupMessage.RestoreSchemaTooNew)
+                        }
+                    } else {
+                        onOperationFailure(error)
+                    }
+                }
         }
     }
 
@@ -73,4 +92,21 @@ class BackupViewModel(
 
     /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
     fun reportFailure() = _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) }
+
+    /** The :app layer got consent back — drop the "needs authorization" state and carry on. */
+    fun onAuthorized() = _uiState.update { it.copy(needsAuthorization = false) }
+
+    /**
+     * A lapsed grant isn't an error the user can do anything about, so instead of "something went
+     * wrong" we fall back to the signed-out view, where "Sign in with Google" re-runs consent.
+     */
+    private fun onOperationFailure(error: Throwable) {
+        if (error is BackupAuthorizationRequired) {
+            _uiState.update {
+                it.copy(phase = BackupPhase.Idle, needsAuthorization = true, snapshots = emptyList())
+            }
+        } else {
+            _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) }
+        }
+    }
 }

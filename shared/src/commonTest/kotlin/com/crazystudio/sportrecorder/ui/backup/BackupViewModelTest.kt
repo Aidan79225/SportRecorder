@@ -7,6 +7,7 @@ import com.crazystudio.sportrecorder.backup.BackupJson
 import com.crazystudio.sportrecorder.backup.BackupReminderPrefs
 import com.crazystudio.sportrecorder.backup.BackupService
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
+import com.crazystudio.sportrecorder.backup.fakes.FakeAuthorizationRequiredException
 import com.crazystudio.sportrecorder.backup.fakes.FakeBackupAuth
 import com.crazystudio.sportrecorder.backup.fakes.FakeBackupStore
 import com.crazystudio.sportrecorder.backup.fakes.FakeDietSettingsRepository
@@ -25,6 +26,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BackupViewModelTest {
     private val dispatcher = StandardTestDispatcher()
@@ -75,5 +79,81 @@ class BackupViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(BackupMessage.RestoreSchemaTooNew, vm.uiState.value.message)
+    }
+
+    @Test fun authorizationRequired_fallsBackToSignedOutInsteadOfError() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        val vm = BackupViewModel(service(store), FakeBackupAuth(BackupAccount("me@x.com")))
+        testScheduler.advanceUntilIdle()
+        store.failWith = FakeAuthorizationRequiredException()
+
+        vm.backup()
+        testScheduler.advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertTrue(state.needsAuthorization)
+        assertFalse(state.isSignedIn) // the screen offers "Sign in with Google" again
+        assertNull(state.message) // a lapsed grant is not "something went wrong"
+        assertEquals(BackupPhase.Idle, state.phase)
+    }
+
+    @Test fun authorizationRequired_onListing_dropsStaleSnapshots() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s1", 1L, "9", 10L), "{}")
+        val vm = BackupViewModel(service(store), FakeBackupAuth(BackupAccount("me@x.com")))
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.snapshots.size)
+
+        store.failWith = FakeAuthorizationRequiredException()
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.needsAuthorization)
+        assertTrue(vm.uiState.value.snapshots.isEmpty())
+    }
+
+    @Test fun onAuthorized_restoresSignedInState() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        val vm = BackupViewModel(service(store), FakeBackupAuth(BackupAccount("me@x.com")))
+        testScheduler.advanceUntilIdle()
+        store.failWith = FakeAuthorizationRequiredException()
+        vm.backup()
+        testScheduler.advanceUntilIdle()
+
+        store.failWith = null
+        vm.onAuthorized()
+
+        assertFalse(vm.uiState.value.needsAuthorization)
+        assertTrue(vm.uiState.value.isSignedIn)
+    }
+
+    @Test fun ordinaryFailure_stillReportsFailedMessage() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        val vm = BackupViewModel(service(store), FakeBackupAuth(BackupAccount("me@x.com")))
+        testScheduler.advanceUntilIdle()
+        store.failWith = IllegalStateException("network down")
+
+        vm.backup()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BackupMessage.Failed, vm.uiState.value.message)
+        assertFalse(vm.uiState.value.needsAuthorization)
+    }
+
+    @Test fun signOut_clearsAccountAndSnapshots() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s1", 1L, "9", 10L), "{}")
+        val auth = FakeBackupAuth(BackupAccount("me@x.com"))
+        val vm = BackupViewModel(service(store), auth)
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.snapshots.size)
+
+        auth.accountState.value = null
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isSignedIn)
+        assertTrue(vm.uiState.value.snapshots.isEmpty())
     }
 }

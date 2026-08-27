@@ -26,6 +26,9 @@ class FakeBackupStore : BackupStore {
     /** When true, [downloadPhotos] throws (simulates an interrupted restore). */
     var failDownloadPhotos = false
 
+    /** When set, [listSnapshots] and [uploadSnapshot] throw it (simulates an auth/network failure). */
+    var failWith: Throwable? = null
+
     private var nextId = 1
     private val snapshots = mutableListOf<SnapshotInfo>() // newest-first
     private val manifestsById = mutableMapOf<String, String>()
@@ -36,9 +39,13 @@ class FakeBackupStore : BackupStore {
         manifestsById[info.id] = manifestJson
     }
 
-    override suspend fun listSnapshots(): List<SnapshotInfo> = snapshots.toList()
+    override suspend fun listSnapshots(): List<SnapshotInfo> {
+        failWith?.let { throw it }
+        return snapshots.toList()
+    }
 
     override suspend fun uploadSnapshot(manifestJson: String, photoFileNames: List<String>): SnapshotInfo {
+        failWith?.let { throw it }
         val newPhotos = photoFileNames.filterNot { it in existingPhotos }
         existingPhotos.addAll(newPhotos)
         val info = SnapshotInfo(
