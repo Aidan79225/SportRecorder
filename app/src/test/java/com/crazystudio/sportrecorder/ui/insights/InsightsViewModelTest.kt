@@ -87,13 +87,23 @@ class InsightsViewModelTest {
     }
 
     @Test
-    fun shiftMonth_doesNotPageIntoTheFuture() {
+    fun shiftMonth_doesNotPageIntoTheFuture() = runTest(mainRule.testDispatcher.scheduler) {
         val vm = viewModel(FakeEatRecordRepository())
-        val before = vm.uiState.value.monthAnchor
 
-        vm.shiftMonth(1)
+        vm.uiState.test {
+            awaitItem()
+            val initial = awaitItem()
+            assertTrue(initial.result.isAnchorCurrentMonth)
 
-        assertEquals(before, vm.uiState.value.monthAnchor)
+            vm.shiftMonth(1)
+            // Force an emission so a moved anchor could not hide behind StateFlow conflation.
+            vm.setPeriod(Period.WEEK)
+            val after = awaitItem()
+
+            assertEquals(Period.WEEK, after.period)
+            assertEquals(initial.monthAnchor, after.monthAnchor)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
