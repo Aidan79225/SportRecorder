@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -53,17 +54,28 @@ class InsightsViewModel(
                 monthAnchor = anchor,
                 result = InsightsAggregator.compute(records, settings, now(), selectedPeriod, anchor),
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsUiState())
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            // Seed with the real anchor: a 0L default would flash a January 1970 calendar.
+            InsightsUiState(period = period.value, monthAnchor = monthAnchor.value),
+        )
 
     fun setPeriod(value: Period) {
         period.value = value
     }
 
+    /** Pages the calendar. Forward paging stops at the current month — there is nothing yet. */
     fun shiftMonth(months: Int) {
         val zone = TimeZone.currentSystemDefault()
         val date = Instant.fromEpochMilliseconds(monthAnchor.value).toLocalDateTime(zone).date
         // Aggregator reads only the month from monthAnchor, so start-of-day is fine.
-        monthAnchor.value = date.plus(months, DateTimeUnit.MONTH).atStartOfDayIn(zone).toEpochMilliseconds()
+        val shifted = date.plus(months, DateTimeUnit.MONTH)
+        val today = Instant.fromEpochMilliseconds(now()).toLocalDateTime(zone).date
+        val isFuture = shifted.year > today.year ||
+            (shifted.year == today.year && shifted.month.number > today.month.number)
+        if (isFuture) return
+        monthAnchor.value = shifted.atStartOfDayIn(zone).toEpochMilliseconds()
     }
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the UI. */

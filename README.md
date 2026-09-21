@@ -35,10 +35,12 @@ each good moment, and to grow with you, slowly, on the path to self-awareness.*
 
 ## 開發 · Development
 
+- **目前開發現況、進行中的工作與文件索引:`docs/DEVELOPMENT.md`。**
 - 設計文件(spec)與實作計畫(plan)放在 `docs/superpowers/`。
 - 每份 spec 在定案前都會做一次**初衷對照**(見 `CLAUDE.md` 的 North Star check)。
-- 技術:Kotlin · Jetpack Compose · Hilt · Room · DataStore(clean architecture)。
+- 技術:Kotlin Multiplatform · Compose Multiplatform · Koin · Room · DataStore(clean architecture);
+  `:shared` 放邏輯與畫面,`:app` 只留 Android host 與平台實作。
 - 建置/驗證:`JAVA_HOME` 指向 Android Studio JBR,然後
-  `./gradlew testDebugUnitTest :app:detekt :app:lintDebug`。
+  `./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest`。
 - 發布:bump 版號 + 更新 `distribution/whatsnew/*` → 打 tag → GitHub Action 自動上傳到 Play
   (詳見 `.claude/skills/release`)。

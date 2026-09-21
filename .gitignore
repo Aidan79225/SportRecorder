@@ -24,3 +24,5 @@ play-service-account.json
 upload_certificate.pem
 # Visual companion (brainstorming) scratch
 .superpowers/
+# Agent worktrees (throwaway checkouts created by tooling)
+.claude/worktrees/

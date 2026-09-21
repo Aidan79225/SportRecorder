@@ -7,8 +7,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * In-memory fake. [observeRecentCustomTypes] surfaces the backing list (newest-first
- * is the caller's responsibility). [exists] is seeded; [add] is recorded.
+ * In-memory fake. [exists] is seeded via [existing]; [add] is recorded in [added] / [addedNames]
+ * **and** prepended to the backing list, so [observeRecentCustomTypes] is newest-first like
+ * `FastingTypeDao.flowLast` (`ORDER BY timestamp DESC`).
  */
 class FakeFastingTypeRepository(
     initial: List<CustomFastingType> = emptyList(),
@@ -30,6 +31,9 @@ class FakeFastingTypeRepository(
     override suspend fun add(window: FastingWindow, name: String?) {
         added.add(window)
         addedNames.add(name)
+        state.value = listOf(
+            CustomFastingType(window.fastingHours, window.eatingHours, name),
+        ) + state.value
     }
 
     override suspend fun replaceAllCustom(types: List<CustomFastingType>) {
