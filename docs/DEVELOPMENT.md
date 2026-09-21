@@ -60,10 +60,10 @@
 
 1. **Google Drive 備份 Phase 3 — PR #58 `claude/drive-backup-phase3`(open,尚未合併)**
    內容:`BackupViewModel`(commonMain)+ Koin wiring + Settings「備份與還原」畫面與 `BackupRoute`。
-   合併前/後還缺:
+   CI 在 `b5ff100` 上跑過且**全綠**(`build` + `ios-shared`,run #125),base 也沒有衝突 —
+   技術面已經可以合併。真正卡住的是需要人的兩件事:
    - OAuth consent screen 設定與審核(`drive.appdata` 屬 sensitive scope,有審核前置時間)
    - 實機端到端測試(PR 內附 10 項 checklist:登入 → 備份 → 重裝 → 還原)
-   - PR 上目前沒有 CI 檢查結果,合併前需確認 `ci` 與 `ios-shared` 跑過
 2. **備份引擎已知取捨(Phase 3 PR 明列,尚未處理)**
    - 自訂斷食類型備份上限 ≤ 10 筆
    - Drive 檔案列表未分頁(>1000 檔案有風險,已在程式碼註解)
