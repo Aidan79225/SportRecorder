@@ -35,7 +35,10 @@ If a feature leans that way, prefer **neutral reflection** ("here's your pattern
 ## Build & verify
 
 - `JAVA_HOME` must point to the Android Studio JBR (Java isn't on PATH here).
-- Full local gate (matches CI): `./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug`.
+- Full local gate (matches CI): `./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest`.
+- Touching `commonMain`? iOS must compile too: `:shared:iosSimulatorArm64Test` (macOS only; CI's
+  `ios-shared` job covers it on every PR).
 - Domain calculators (`DietWindow`, `InsightsAggregator`, `ReminderPlanner`) are pure and
   unit-tested — keep new logic there, Android-free.
-- Specs/plans live in `docs/superpowers/`. Release flow: `.claude/skills/release`.
+- Specs/plans live in `docs/superpowers/`; current status + doc index: `docs/DEVELOPMENT.md`.
+  Release flow: `.claude/skills/release`.
