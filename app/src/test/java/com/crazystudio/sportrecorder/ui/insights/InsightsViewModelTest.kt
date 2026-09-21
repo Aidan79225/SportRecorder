@@ -64,18 +64,52 @@ class InsightsViewModelTest {
     }
 
     @Test
+    fun initialState_seedsMonthAnchorWithNow() {
+        // A 0L seed would flash a January 1970 calendar before the first combined emission.
+        assertEquals(fixedNow, viewModel(FakeEatRecordRepository()).uiState.value.monthAnchor)
+    }
+
+    @Test
     fun shiftMonth_movesAnchorBackward() = runTest(mainRule.testDispatcher.scheduler) {
         val repo = FakeEatRecordRepository()
         val vm = viewModel(repo)
 
         vm.uiState.test {
-            // First item is the stateIn default (monthAnchor = 0L); skip it.
+            // First item is the stateIn seed; skip it.
             awaitItem()
             // Second item is the real combined state produced by now() = fixedNow.
             val initial = awaitItem()
             vm.shiftMonth(-1)
             val shifted = awaitItem()
             assertTrue(shifted.monthAnchor < initial.monthAnchor)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun shiftMonth_doesNotPageIntoTheFuture() {
+        val vm = viewModel(FakeEatRecordRepository())
+        val before = vm.uiState.value.monthAnchor
+
+        vm.shiftMonth(1)
+
+        assertEquals(before, vm.uiState.value.monthAnchor)
+    }
+
+    @Test
+    fun shiftMonth_canReturnAfterPagingBack() = runTest(mainRule.testDispatcher.scheduler) {
+        val vm = viewModel(FakeEatRecordRepository())
+
+        vm.uiState.test {
+            awaitItem()
+            val initial = awaitItem()
+            vm.shiftMonth(-1)
+            val back = awaitItem()
+            vm.shiftMonth(1)
+            val forward = awaitItem()
+            assertTrue(back.monthAnchor < initial.monthAnchor)
+            assertTrue(forward.monthAnchor > back.monthAnchor)
+            assertTrue(forward.result.isAnchorCurrentMonth)
             cancelAndIgnoreRemainingEvents()
         }
     }

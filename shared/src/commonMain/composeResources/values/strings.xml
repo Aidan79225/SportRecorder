@@ -1,17 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="title_insights">Insights</string>
-    <string name="insights_card_adherence">Fasting adherence</string>
+    <string name="insights_card_rhythm">Your rhythm</string>
     <string name="insights_card_stats">Stats</string>
     <string name="insights_card_photos">Meals</string>
     <string name="insights_card_locations">Places</string>
-    <string name="insights_streak">%1$d-day streak</string>
+    <string name="insights_month_summary">Days recorded this month: %1$d · within your window: %2$d</string>
+    <string name="insights_streak">%1$d-day run within your window</string>
+    <string name="insights_legend_within">Within your window</string>
+    <string name="insights_legend_longer">A longer window</string>
+    <string name="insights_legend_none">No record</string>
+    <string name="insights_prev_month">Previous month</string>
+    <string name="insights_next_month">Next month</string>
+    <string name="insights_day_description">%1$d: %2$s</string>
+    <string name="insights_empty_title">Nothing here yet</string>
+    <string name="insights_empty_body">Record your first meal — your rhythm will grow here, quietly.</string>
+    <string name="insights_period_caption">The cards below cover</string>
+    <string name="insights_period_range">%1$s – %2$s</string>
+    <string name="insights_date_short">%1$d/%2$d</string>
     <string name="insights_period_week">Week</string>
     <string name="insights_period_month">Month</string>
     <string name="insights_stat_meals">Meals</string>
+    <string name="insights_stat_days">Days recorded</string>
     <string name="insights_stat_first">Avg first meal</string>
     <string name="insights_stat_last">Avg last meal</string>
-    <string name="insights_stat_late">Late-night days</string>
+    <string name="insights_stat_window">Avg eating window</string>
+    <string name="insights_stat_late">Days with a meal after %1$d:00</string>
+    <string name="insights_duration_hm">%1$dh %2$dm</string>
+    <string name="insights_photo_count">Photos in this period: %1$d</string>
     <string name="insights_empty_photos">No meal photos in this period</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none">—</string>
