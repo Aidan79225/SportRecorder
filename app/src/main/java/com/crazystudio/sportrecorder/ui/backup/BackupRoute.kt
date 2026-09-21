@@ -36,8 +36,9 @@ fun BackupRoute(onBack: () -> Unit) {
 
     // On open, silently populate the signed-in account if consent was already granted.
     LaunchedEffect(Unit) { runCatching { auth.refreshAccount() } }
-    // Once signed in, load the snapshot list.
-    LaunchedEffect(state.isSignedIn) { if (state.isSignedIn) vm.refreshSnapshots() }
+    // Once signed in, load the snapshot list — keyed on the account itself, so switching
+    // accounts (not just signing out and back in) reloads it.
+    LaunchedEffect(state.account?.email) { if (state.isSignedIn) vm.refreshSnapshots() }
 
     BackupScreen(
         state = state,

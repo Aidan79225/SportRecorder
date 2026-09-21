@@ -58,6 +58,24 @@ class BackupViewModelTest {
         assertEquals("me@x.com", vm.uiState.value.account?.email)
     }
 
+    @Test fun accountChange_clearsPreviousAccountsSnapshots() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        val auth = FakeBackupAuth(BackupAccount("me@x.com"))
+        val vm = BackupViewModel(service(store), auth)
+
+        vm.backup()
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.snapshots.size)
+
+        auth.accountState.value = null // signed out
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots)
+
+        auth.accountState.value = BackupAccount("someone-else@x.com") // a different account
+        testScheduler.advanceUntilIdle()
+        assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots)
+    }
+
     @Test fun restore_tooNewSchema_setsSchemaMessage() = runTest(dispatcher) {
         val store = FakeBackupStore()
         val tooNew = BackupDocument(

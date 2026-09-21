@@ -26,7 +26,18 @@ class BackupViewModel(
 
     init {
         viewModelScope.launch {
-            backupAuth.account.collect { account -> _uiState.update { it.copy(account = account) } }
+            backupAuth.account.collect { account ->
+                _uiState.update { state ->
+                    // Snapshots belong to the account that listed them: drop them whenever the
+                    // account changes (sign-out, or switching to another Google account) so the
+                    // restore list / "last backed up" never shows the previous account's data.
+                    if (state.account?.email == account?.email) {
+                        state.copy(account = account)
+                    } else {
+                        state.copy(account = account, snapshots = emptyList())
+                    }
+                }
+            }
         }
     }
 
