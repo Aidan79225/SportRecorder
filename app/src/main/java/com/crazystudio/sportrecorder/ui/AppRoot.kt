@@ -37,6 +37,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.crazystudio.sportrecorder.R
+import com.crazystudio.sportrecorder.ui.backup.BackupRoute
 import com.crazystudio.sportrecorder.ui.diet.DietScreen
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
@@ -127,7 +128,13 @@ fun AppRoot() {
                     )
                 }
                 composable<Route.Settings> {
-                    SettingsRoute(onBack = { navController.popBackStack() })
+                    SettingsRoute(
+                        onBack = { navController.popBackStack() },
+                        onOpenBackup = { navController.navigate(Route.Backup) },
+                    )
+                }
+                composable<Route.Backup> {
+                    BackupRoute(onBack = { navController.popBackStack() })
                 }
                 composable<Route.Record> {
                     val vm: DietRecordViewModel = koinViewModel()

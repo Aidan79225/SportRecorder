@@ -69,6 +69,27 @@
     <string name="settings_exact_alarm_desc">Allow exact alarms so reminders fire on time</string>
     <string name="settings_notifications_blocked_title">Notifications are off</string>
     <string name="settings_notifications_blocked_desc">Turn on notifications so reminders can be delivered</string>
+    <string name="settings_backup_row_title">Backup &amp; restore</string>
+    <string name="settings_backup_row_desc">Save your records to your own Google Drive</string>
+    <string name="backup_title">Backup &amp; restore</string>
+    <string name="backup_intro">Back up your records to your own Google Drive, so a new phone or a reinstall never loses a moment. It\'s optional, and only you can see it.</string>
+    <string name="backup_sign_in">Sign in with Google</string>
+    <string name="backup_signed_in_as">Signed in as %1$s</string>
+    <string name="backup_sign_out">Sign out</string>
+    <string name="backup_now">Back up now</string>
+    <string name="backup_last_backed_up">Last backed up %1$s</string>
+    <string name="backup_never">Not backed up yet</string>
+    <string name="backup_restore_heading">Restore from a backup</string>
+    <string name="backup_restore_empty">No backups yet</string>
+    <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>
+    <string name="backup_restore_confirm_title">Restore this backup?</string>
+    <string name="backup_restore_confirm_message">This replaces the data on this device with the backup from %1$s.</string>
+    <string name="backup_restore_confirm_button">Restore</string>
+    <string name="backup_cancel">Cancel</string>
+    <string name="backup_msg_backup_complete">Backed up.</string>
+    <string name="backup_msg_restore_complete">Restored.</string>
+    <string name="backup_msg_schema_too_new">This backup is from a newer version of the app. Please update to restore it.</string>
+    <string name="backup_msg_failed">Something went wrong. Please try again.</string>
 
     <string name="diet_fasting_type_title">Fasting type</string>
     <string name="diet_fasting_type_trainee">Trainee</string>

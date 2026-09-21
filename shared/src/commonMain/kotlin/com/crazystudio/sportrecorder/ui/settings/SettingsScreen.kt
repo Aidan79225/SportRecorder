@@ -26,6 +26,8 @@ import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_arrow_left_24dp
 import com.crazystudio.sportrecorder.shared.resources.settings_back
+import com.crazystudio.sportrecorder.shared.resources.settings_backup_row_desc
+import com.crazystudio.sportrecorder.shared.resources.settings_backup_row_title
 import com.crazystudio.sportrecorder.shared.resources.settings_exact_alarm_desc
 import com.crazystudio.sportrecorder.shared.resources.settings_exact_alarm_title
 import com.crazystudio.sportrecorder.shared.resources.settings_lead_time_title
@@ -59,6 +61,7 @@ fun SettingsScreen(
     onPickQuietEnd: () -> Unit,
     onOpenExactAlarmSettings: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
+    onOpenBackup: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -123,6 +126,12 @@ fun SettingsScreen(
                 onClick = onPickQuietEnd,
             )
         }
+
+        BannerRow(
+            titleRes = Res.string.settings_backup_row_title,
+            descRes = Res.string.settings_backup_row_desc,
+            onClick = onOpenBackup,
+        )
     }
 }
 

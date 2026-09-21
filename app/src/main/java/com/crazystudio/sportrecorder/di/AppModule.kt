@@ -6,6 +6,12 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
+import com.crazystudio.sportrecorder.BuildConfig
+import com.crazystudio.sportrecorder.backup.BackupAuth
+import com.crazystudio.sportrecorder.backup.BackupService
+import com.crazystudio.sportrecorder.backup.BackupStore
+import com.crazystudio.sportrecorder.backup.GoogleBackupAuth
+import com.crazystudio.sportrecorder.backup.GoogleDriveBackupStore
 import com.crazystudio.sportrecorder.data.AndroidPhotoFileStore
 import com.crazystudio.sportrecorder.data.AndroidPhotoImageSource
 import com.crazystudio.sportrecorder.data.PhotoFileStore
@@ -37,6 +43,7 @@ import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.platform.PhotoImporter
 import com.crazystudio.sportrecorder.reminder.AlarmReminderScheduler
 import com.crazystudio.sportrecorder.reminder.ReminderNotifier
+import com.crazystudio.sportrecorder.ui.backup.BackupViewModel
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
@@ -78,6 +85,14 @@ val appModule = module {
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
     single<ReminderPreferencesRepository> { ReminderPreferencesRepositoryImpl(get()) }
 
+    // Backup
+    single { GoogleBackupAuth(androidContext()) }
+    single<BackupAuth> { get<GoogleBackupAuth>() }
+    single<BackupStore> { GoogleDriveBackupStore(get(), androidContext()) }
+    single {
+        BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
+    }
+
     // Reminders (Android side) + rescheduler
     single { ReminderNotifier(androidContext()) }
     single<ReminderScheduler> { AlarmReminderScheduler(androidContext(), get()) }
@@ -101,4 +116,5 @@ val appModule = module {
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
     viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { BackupViewModel(get(), get()) }
 }
