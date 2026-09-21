@@ -6,7 +6,6 @@
     <string name="insights_card_photos">Meals</string>
     <string name="insights_card_locations">Places</string>
     <string name="insights_month_summary">Days recorded this month: %1$d · within your window: %2$d</string>
-    <string name="insights_streak">%1$d-day run within your window</string>
     <string name="insights_legend_within">Within your window</string>
     <string name="insights_legend_longer">A longer window</string>
     <string name="insights_legend_none">No record</string>

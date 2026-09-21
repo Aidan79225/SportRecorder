@@ -6,7 +6,6 @@
     <string name="insights_card_photos">餐點</string>
     <string name="insights_card_locations">地點</string>
     <string name="insights_month_summary">這個月有 %1$d 天留下紀錄,其中 %2$d 天在你的視窗內</string>
-    <string name="insights_streak">最近連續 %1$d 天都在視窗內</string>
     <string name="insights_legend_within">在你的視窗內</string>
     <string name="insights_legend_longer">視窗長一些</string>
     <string name="insights_legend_none">還沒有紀錄</string>

@@ -51,30 +51,6 @@ object InsightsAggregator {
         records.groupBy { dayStart(it.time, timeZone) }
             .mapValues { entry -> entry.value.map { it.time }.sorted() }
 
-    /** Consecutive within-window days ending at the most recent day; an empty today is neutral. */
-    fun computeStreak(
-        records: List<EatRecord>,
-        eatingHours: Long,
-        now: Long,
-        timeZone: TimeZone = TimeZone.currentSystemDefault(),
-    ): Int {
-        val byDay = mealTimesByDay(records, timeZone)
-        fun key(date: LocalDate) = date.atStartOfDayIn(timeZone).toEpochMilliseconds()
-
-        var date = Instant.fromEpochMilliseconds(now).toLocalDateTime(timeZone).date
-        // Skip an empty in-progress today so it does not zero the streak.
-        if (byDay[key(date)].isNullOrEmpty()) {
-            date = date.minus(1, DateTimeUnit.DAY)
-        }
-
-        var streak = 0
-        while (windowStateFor(byDay[key(date)].orEmpty(), eatingHours) == DayWindowState.WITHIN_WINDOW) {
-            streak++
-            date = date.minus(1, DateTimeUnit.DAY)
-        }
-        return streak
-    }
-
     /** One [DayCell] per day of the month containing [monthAnchor]; [now] marks today's cell. */
     fun monthCells(
         records: List<EatRecord>,
@@ -172,7 +148,6 @@ object InsightsAggregator {
             calendarDays = calendarDays,
             monthSummary = MonthSummary.of(calendarDays),
             isAnchorCurrentMonth = anchorDate.year == todayDate.year && anchorDate.month == todayDate.month,
-            streak = computeStreak(records, settings.eatingHours, now, timeZone),
             periodStart = from,
             periodEnd = now,
             stats = statsFor(inPeriod, timeZone),

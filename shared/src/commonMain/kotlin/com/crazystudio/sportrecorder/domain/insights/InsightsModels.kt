@@ -40,7 +40,8 @@ data class LocationCount(val lat: Double, val lng: Double, val count: Int)
 
 /**
  * Neutral summary of the month the calendar is showing: how many days hold a record, and how
- * many of those stayed inside the eating window. A count, not a streak — nothing to break.
+ * many of those stayed inside the eating window. A count, not a run — nothing to break, and
+ * nothing to keep up (see the spec's 初衷對照: no pressure mechanics on this page).
  */
 data class MonthSummary(val recordedDays: Int, val withinWindowDays: Int) {
     companion object {
@@ -59,7 +60,6 @@ data class InsightsResult(
     val calendarDays: List<DayCell>,
     val monthSummary: MonthSummary,
     val isAnchorCurrentMonth: Boolean,
-    val streak: Int,
     val periodStart: Long,
     val periodEnd: Long,
     val stats: InsightsStats,
@@ -72,7 +72,6 @@ data class InsightsResult(
             calendarDays = emptyList(),
             monthSummary = MonthSummary.EMPTY,
             isAnchorCurrentMonth = true,
-            streak = 0,
             periodStart = 0L,
             periodEnd = 0L,
             stats = InsightsStats(

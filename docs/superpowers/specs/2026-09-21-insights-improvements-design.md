@@ -1,7 +1,10 @@
 # 回顧 / Insights — improvements design
 
 - **Date:** 2026-09-21
-- **Status:** Bucket (A) implemented on `claude/insights-improvements`; bucket (B) awaiting the owner's decision
+- **Status:** Bucket (A) implemented (PR #60). **B1 implemented** on the same branch — the streak
+  is gone. **B4 / B6 / B7 approved by the owner and planned** in
+  `docs/superpowers/plans/2026-09-21-insights-improvements.md` (not yet implemented).
+  B2 / B3 / B5 / B8 remain open.
 - **Supersedes nothing** — builds on `docs/superpowers/specs/2026-06-16-insights-reflection-design.md`
 
 ## Goal
@@ -125,6 +128,10 @@ a **three-item legend** in neutral words, a **ring on today**, and a per-cell
 「這個月有 12 天留下紀錄,其中 9 天在你的視窗內」 — a count, not a chain. The streak line is
 demoted to a quiet secondary line and **hidden entirely when it is 0**.
 
+> **Superseded by B1 (2026-09-21).** The owner chose to remove the streak outright, so
+> `computeStreak`, `InsightsResult.streak`, the UI line and `insights_streak` in both locales are
+> gone. The month summary is now the card's only count. A3's month-summary half stands.
+
 **A4 · Screen-level empty state.**
 `InsightsResult.hasAnyRecords`. With no records at all, the four cards are replaced by one gentle
 card instead of a wall of zeroes.
@@ -165,13 +172,13 @@ the Android fakes) and gains forward-clamp / initial-anchor cases.
 
 | # | Idea | Why it needs a decision | Recommendation |
 |---|---|---|---|
-| **B1** | **Remove the streak entirely**, leaving only 「這個月 N 天在你的視窗內」 | CLAUDE.md names streaks as borderline-by-design; A3 only softens it. Deleting a shipped feature is the owner’s call. | **Do it.** It is the last pressure mechanic on the page, and the month summary already says the same thing without a chain that can break. |
+| **B1** ✅ *done* | **Remove the streak entirely**, leaving only 「這個月 N 天在你的視窗內」 | CLAUDE.md names streaks as borderline-by-design; A3 only softens it. Deleting a shipped feature is the owner’s call. | **Do it.** It is the last pressure mechanic on the page, and the month summary already says the same thing without a chain that can break. |
 | **B2** | Per-day **historical fasting targets** | Only the current `eatingHours` is stored; every past day is re-scored whenever the goal changes. Needs a stored goal history + migration. | Worth doing — until then the calendar quietly rewrites the past. Medium effort, no UI. |
 | **B3** | Turn coordinates into **place names** (`expect/actual` geocoder) or a small static map | Platform APIs on both targets, and a privacy question (whether any lookup leaves the device). | Do the on-device geocoder; skip the map SDK. If it can’t stay on-device, drop the card instead of shipping coordinates. |
-| **B4** | **Tap a calendar day → that day’s meals** | The biggest content win, but it needs navigation design (filtered Record tab vs. a sheet) beyond the Insights feature. | Do it next. It is what turns a pattern back into a moment, and closes the loop to Re-engage. |
+| **B4** 📋 *planned* | **Tap a calendar day → that day’s meals** | The biggest content win, but it needs navigation design (filtered Record tab vs. a sheet) beyond the Insights feature. | Do it next. It is what turns a pattern back into a moment, and closes the loop to Re-engage. |
 | **B5** | Rewrite the screen as a `LazyColumn` with a fully lazy photo wall | Structural refactor of the whole screen; A7 caps the cost instead. | Do it when the wall becomes a real browsing surface (i.e. alongside B4). |
-| **B6** | Drop 「22:00 後有紀錄的天數」, or make the hour user-set | Even re-worded, it is the one metric with an implicit norm baked in. | Make the hour a setting, or drop it. A fixed 22:00 is someone else’s opinion of a late meal. |
-| **B7** | A **rhythm chart** — first/last meal per day as bands across the period | New drawing code (hand-rolled Canvas; no chart lib in CMP), and it is the page’s next big feature, not a fix. | Do it. A band chart says 「這是你的模式」 better than any four numbers can. |
+| **B6** 📋 *planned* | Drop 「22:00 後有紀錄的天數」, or make the hour user-set | Even re-worded, it is the one metric with an implicit norm baked in. | Make the hour a setting, or drop it. A fixed 22:00 is someone else’s opinion of a late meal. |
+| **B7** 📋 *planned* | A **rhythm chart** — first/last meal per day as bands across the period | New drawing code (hand-rolled Canvas; no chart lib in CMP), and it is the page’s next big feature, not a fix. | Do it. A band chart says 「這是你的模式」 better than any four numbers can. |
 | **B8** | Make Week/Month drive the calendar too (one period control) | Changes the card’s information model; A6 disambiguates the current split instead. | Only alongside B4/B7, when the page is re-laid-out anyway. |
 
 ## Testing

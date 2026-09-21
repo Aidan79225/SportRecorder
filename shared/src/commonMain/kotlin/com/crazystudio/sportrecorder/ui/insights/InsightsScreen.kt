@@ -70,7 +70,6 @@ import com.crazystudio.sportrecorder.shared.resources.insights_stat_last
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_late
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
-import com.crazystudio.sportrecorder.shared.resources.insights_streak
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
@@ -121,7 +120,6 @@ fun InsightsScreen(
         RhythmCard(
             days = state.result.calendarDays,
             summary = state.result.monthSummary,
-            streak = state.result.streak,
             monthAnchor = state.monthAnchor,
             canShowNextMonth = !state.result.isAnchorCurrentMonth,
             onShiftMonth = onShiftMonth,
@@ -193,7 +191,6 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 private fun RhythmCard(
     days: List<DayCell>,
     summary: MonthSummary,
-    streak: Int,
     monthAnchor: Long,
     canShowNextMonth: Boolean,
     onShiftMonth: (Int) -> Unit,
@@ -210,14 +207,6 @@ private fun RhythmCard(
             ),
             style = MaterialTheme.typography.bodyMedium,
         )
-        // A count that cannot break is the headline; the run is a quiet aside, and 0 is not news.
-        if (streak > 0) {
-            Text(
-                text = stringResource(Res.string.insights_streak, streak),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

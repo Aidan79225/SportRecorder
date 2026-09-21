@@ -118,46 +118,6 @@ class InsightsAggregatorTest {
         assertEquals(2, summary.withinWindowDays)
     }
 
-    // --- streak -------------------------------------------------------------
-
-    @Test fun streak_countsConsecutiveWithinWindowDays() {
-        val records = listOf(
-            rec(at(2026, 3, 14, 9)),
-            rec(at(2026, 3, 14, 12)),
-            rec(at(2026, 3, 15, 9)),
-            rec(at(2026, 3, 15, 13)),
-        )
-        assertEquals(2, InsightsAggregator.computeStreak(records, eatingHours, at(2026, 3, 15, 20), zone))
-    }
-
-    @Test fun streak_emptyTodayDoesNotBreak() {
-        // 14th is within window; 15th (today) has no meals yet.
-        val records = listOf(rec(at(2026, 3, 14, 9)), rec(at(2026, 3, 14, 12)))
-        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, at(2026, 3, 15, 10), zone))
-    }
-
-    @Test fun streak_longerWindowDayBreaks() {
-        val records = listOf(
-            rec(at(2026, 3, 13, 9)),
-            rec(at(2026, 3, 13, 12)),
-            rec(at(2026, 3, 14, 8)),
-            rec(at(2026, 3, 14, 22)), // 14h window
-            rec(at(2026, 3, 15, 9)),
-            rec(at(2026, 3, 15, 12)),
-        )
-        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, at(2026, 3, 15, 20), zone))
-    }
-
-    @Test fun streak_gapDayBreaks() {
-        val records = listOf(
-            rec(at(2026, 3, 13, 9)),
-            rec(at(2026, 3, 13, 12)),
-            rec(at(2026, 3, 15, 9)),
-            rec(at(2026, 3, 15, 12)),
-        )
-        assertEquals(1, InsightsAggregator.computeStreak(records, eatingHours, at(2026, 3, 15, 20), zone))
-    }
-
     // --- stats --------------------------------------------------------------
 
     @Test fun statsFor_countsAndAverages() {
@@ -255,7 +215,6 @@ class InsightsAggregatorTest {
         assertEquals(28, result.calendarDays.size)
         assertEquals(MonthSummary(recordedDays = 1, withinWindowDays = 1), result.monthSummary)
         assertTrue(result.isAnchorCurrentMonth)
-        assertEquals(1, result.streak)
         assertEquals(2, result.stats.mealCount)
         assertEquals(4 * 60, result.stats.avgWindowMinutes)
         assertEquals(at(2026, 2, 1, 0), result.periodStart)
@@ -292,7 +251,6 @@ class InsightsAggregatorTest {
         assertFalse(result.hasAnyRecords)
         assertEquals(28, result.calendarDays.size)
         assertEquals(MonthSummary.EMPTY, result.monthSummary)
-        assertEquals(0, result.streak)
         assertEquals(0, result.stats.mealCount)
         assertEquals(emptyList<String>(), result.photoFileNames)
         assertEquals(emptyList<LocationCount>(), result.locations)
