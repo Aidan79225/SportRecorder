@@ -1,2 +1,4 @@
-Maintenance update
-• Internal improvements to prepare for future updates. No changes to existing features.
+New in 0.7.0
+• Back up to Google Drive (optional): Settings → Backup & restore. Sign in, back up any time, and restore on a new device. Only you can see your backups.
+• A calmer Insights page: shows your eating rhythm and average eating window as plain facts, with no grades. Adds a calendar legend, a marker for today, and a friendly welcome when you have no records yet.
+• Fixes: the calendar no longer opens on the wrong month, and every number now shows its unit.
