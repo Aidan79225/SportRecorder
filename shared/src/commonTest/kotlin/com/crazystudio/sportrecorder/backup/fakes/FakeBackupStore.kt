@@ -6,15 +6,32 @@ import com.crazystudio.sportrecorder.backup.SnapshotInfo
 /**
  * In-memory [BackupStore]. Records uploads, models incremental photo skip via [existingPhotos],
  * and can simulate a photo-download failure ([failDownloadPhotos]) for the restore-failure test.
+ *
+ * Snapshots, manifests and already-uploaded photos are partitioned per [account] — the real store
+ * is scoped to one Google account's Drive appDataFolder, so switching accounts must reveal a
+ * different set of snapshots. Snapshot ids stay globally unique, so another account's id is
+ * genuinely unreadable rather than accidentally colliding.
  */
 class FakeBackupStore : BackupStore {
     data class Upload(val info: SnapshotInfo, val manifestJson: String, val uploadedPhotos: List<String>)
 
-    /** Every uploadSnapshot call, in order. [uploadedPhotos] excludes photos already present. */
+    private class AccountState {
+        val snapshots = mutableListOf<SnapshotInfo>() // newest-first
+        val manifestsById = mutableMapOf<String, String>()
+        val photos = mutableSetOf<String>()
+    }
+
+    /** The signed-in account this store is currently scoped to. Set it to model a switch. */
+    var account: String = DEFAULT_ACCOUNT
+
+    private val accounts = mutableMapOf<String, AccountState>()
+    private val current: AccountState get() = accounts.getOrPut(account) { AccountState() }
+
+    /** Every uploadSnapshot call, in order, across all accounts. [uploadedPhotos] excludes skips. */
     val uploads = mutableListOf<Upload>()
 
-    /** Photos considered already-present in the cloud (seed before a test to exercise skip). */
-    val existingPhotos = mutableSetOf<String>()
+    /** Photos considered already-present for the current [account] (seed before a test). */
+    val existingPhotos: MutableSet<String> get() = current.photos
 
     /** Snapshot ids whose downloadPhotos was invoked. */
     val downloadedPhotosFor = mutableListOf<String>()
@@ -27,20 +44,19 @@ class FakeBackupStore : BackupStore {
     var failDownloadPhotos = false
 
     private var nextId = 1
-    private val snapshots = mutableListOf<SnapshotInfo>() // newest-first
-    private val manifestsById = mutableMapOf<String, String>()
 
-    /** Pre-seed a committed snapshot for restore/list tests (added as newest). */
+    /** Pre-seed a committed snapshot for the current [account] (added as newest). */
     fun seedSnapshot(info: SnapshotInfo, manifestJson: String) {
-        snapshots.add(0, info)
-        manifestsById[info.id] = manifestJson
+        current.snapshots.add(0, info)
+        current.manifestsById[info.id] = manifestJson
     }
 
-    override suspend fun listSnapshots(): List<SnapshotInfo> = snapshots.toList()
+    override suspend fun listSnapshots(): List<SnapshotInfo> = current.snapshots.toList()
 
     override suspend fun uploadSnapshot(manifestJson: String, photoFileNames: List<String>): SnapshotInfo {
-        val newPhotos = photoFileNames.filterNot { it in existingPhotos }
-        existingPhotos.addAll(newPhotos)
+        val state = current
+        val newPhotos = photoFileNames.filterNot { it in state.photos }
+        state.photos.addAll(newPhotos)
         val info = SnapshotInfo(
             id = "snapshot-${nextId++}",
             createdAt = 0L,
@@ -48,13 +64,13 @@ class FakeBackupStore : BackupStore {
             sizeBytes = manifestJson.length.toLong(),
         )
         uploads.add(Upload(info, manifestJson, newPhotos))
-        snapshots.add(0, info)
-        manifestsById[info.id] = manifestJson
+        state.snapshots.add(0, info)
+        state.manifestsById[info.id] = manifestJson
         return info
     }
 
     override suspend fun downloadManifest(id: String): String =
-        manifestsById[id] ?: error("no manifest for $id")
+        current.manifestsById[id] ?: error("no manifest for $id")
 
     override suspend fun downloadPhotos(id: String) {
         if (failDownloadPhotos) throw IllegalStateException("simulated photo download failure")
@@ -63,6 +79,11 @@ class FakeBackupStore : BackupStore {
 
     override suspend fun prune(keepLast: Int) {
         pruneKeepLast = keepLast
-        while (snapshots.size > keepLast) snapshots.removeAt(snapshots.size - 1)
+        val state = current
+        while (state.snapshots.size > keepLast) state.snapshots.removeAt(state.snapshots.size - 1)
+    }
+
+    private companion object {
+        const val DEFAULT_ACCOUNT = "primary@example.com"
     }
 }
