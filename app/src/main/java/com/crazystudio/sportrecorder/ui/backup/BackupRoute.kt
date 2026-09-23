@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.ui.backup
 
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,7 +31,10 @@ fun BackupRoute(onBack: () -> Unit) {
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
         scope.launch {
+            // Surface any failure after consent — otherwise the dialog just closes and nothing
+            // happens. A plain user cancel (no result data) stays quiet.
             runCatching { auth.onAuthorizationResult(result.data) }
+                .onFailure { if (result.resultCode == Activity.RESULT_OK || result.data != null) vm.reportFailure() }
         }
     }
 
