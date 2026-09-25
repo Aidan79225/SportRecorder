@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.backup
 
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
@@ -18,6 +19,7 @@ import org.json.JSONObject
 
 private const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
 private const val ABOUT_URL = "https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)"
+private const val TAG = "GoogleBackupAuth"
 
 /**
  * Authorizes the app for Drive's appDataFolder scope and exposes the resulting access token.
@@ -53,10 +55,19 @@ class GoogleBackupAuth(
         }
     }
 
-    /** Complete authorization after the UI launched the consent PendingIntent. */
+    /**
+     * Complete authorization after the UI launched the consent PendingIntent. Throws if consent
+     * failed or no account could be resolved, so the caller can surface it instead of the dialog
+     * just closing with nothing happening.
+     */
     suspend fun onAuthorizationResult(data: Intent?) {
-        val result = authorizationClient.getAuthorizationResultFromIntent(data)
-        result.accessToken?.let { updateAccount(it) }
+        // An ApiException here usually means an OAuth client / SHA-1 mismatch (DEVELOPER_ERROR)
+        // or the user backing out of the consent screen.
+        val result = runCatching { authorizationClient.getAuthorizationResultFromIntent(data) }
+            .onFailure { Log.w(TAG, "authorization result carried an error", it) }
+            .getOrThrow()
+        val token = result.accessToken ?: error("Authorization returned no access token")
+        updateAccount(token)
     }
 
     fun signOut() {
@@ -75,19 +86,25 @@ class GoogleBackupAuth(
     }
 
     private suspend fun updateAccount(token: String) {
-        val email = fetchEmail(token)
-        if (email != null) _account.value = BackupAccount(email)
+        _account.value = BackupAccount(fetchEmail(token))
     }
 
-    private suspend fun fetchEmail(token: String): String? = withContext(Dispatchers.IO) {
+    /** Reads the account email from Drive `about`; throws (and logs the response) on failure. */
+    private suspend fun fetchEmail(token: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder()
             .url(ABOUT_URL)
             .header("Authorization", "Bearer $token")
             .build()
         httpClient.newCall(req).execute().use { response ->
-            if (!response.isSuccessful) return@withContext null
-            val body = response.body?.string() ?: return@withContext null
-            JSONObject(body).optJSONObject("user")?.optString("emailAddress")?.takeIf { it.isNotEmpty() }
+            val body = response.body?.string()
+            if (!response.isSuccessful) {
+                // e.g. 403 accessNotConfigured when the Drive API isn't enabled for the project.
+                Log.w(TAG, "Drive about failed: HTTP ${response.code} $body")
+                error("Drive about request failed: HTTP ${response.code}")
+            }
+            body?.let { JSONObject(it).optJSONObject("user")?.optString("emailAddress") }
+                ?.takeIf { it.isNotEmpty() }
+                ?: error("Drive about response had no user email")
         }
     }
 }
