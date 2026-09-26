@@ -15,6 +15,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 private const val DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files"
 
@@ -44,6 +45,9 @@ private const val TAG = "BackupStore"
 /** Drive's JSON error body says *why* (accessNotConfigured, insufficientPermissions, quota…). */
 private const val ERROR_BODY_LIMIT = 400
 
+private const val CONNECT_TIMEOUT_SECONDS = 30L
+private const val IO_TIMEOUT_SECONDS = 120L
+
 /**
  * Android [BackupStore] backed by Google Drive's `appDataFolder` over the Drive v3 REST API.
  *
@@ -55,7 +59,14 @@ private const val ERROR_BODY_LIMIT = 400
 class GoogleDriveBackupStore(
     private val auth: GoogleBackupAuth,
     private val context: Context,
-    private val httpClient: OkHttpClient = OkHttpClient(),
+    // OkHttp's 10-second defaults are too tight here: a backup uploads every photo as its own
+    // request over whatever connection the phone has, so an upload that is merely slow can
+    // outlive them and fail a whole backup that was otherwise working.
+    private val httpClient: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(IO_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .writeTimeout(IO_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build(),
 ) : BackupStore {
 
     private data class DriveFile(
@@ -239,20 +250,22 @@ class GoogleDriveBackupStore(
             if (!response.isSuccessful) response.fail("Drive delete")
         }
     }
+}
 
-    /**
-     * Fail a Drive call with the reason Drive actually gave. The HTTP code alone does not say
-     * whether the Drive API is disabled for the project, the grant is missing the appdata scope,
-     * or the account is out of storage — the JSON error body does, so carry it into the message
-     * and the log. Nothing above this layer keeps the exception, so without the log line a failed
-     * backup leaves no trace at all.
-     */
-    private fun Response.fail(what: String): Nothing {
-        val detail = runCatching { body?.string().orEmpty() }.getOrDefault("")
-            .replace('\n', ' ')
-            .trim()
-            .take(ERROR_BODY_LIMIT)
-        Log.w(TAG, "$what failed: HTTP $code ${detail.ifBlank { "(no body)" }}")
-        throw IOException("$what failed: HTTP $code${if (detail.isBlank()) "" else " — $detail"}")
-    }
+/**
+ * Fail a Drive call with the reason Drive actually gave. The HTTP code alone does not say whether
+ * the Drive API is disabled for the project, the grant is missing the appdata scope, or the account
+ * is out of storage — the JSON error body does, so carry it into the message and the log. Nothing
+ * above this layer keeps the exception, so without the log line a failed backup leaves no trace.
+ *
+ * Top-level rather than a member: the class already sits on detekt's TooManyFunctions threshold.
+ */
+private fun Response.fail(what: String): Nothing {
+    val detail = runCatching { body?.string().orEmpty() }
+        .getOrDefault("")
+        .replace('\n', ' ')
+        .trim()
+        .take(ERROR_BODY_LIMIT)
+    Log.w(TAG, "$what failed: HTTP $code ${detail.ifBlank { "(no body)" }}")
+    throw IOException("$what failed: HTTP $code${if (detail.isBlank()) "" else " — $detail"}")
 }
