@@ -13,15 +13,15 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-// Moved from :app into :shared/commonTest (kotlin.test). Runs on JVM locally and on the
-// iosSimulatorArm64 target in CI. Every case pins [zone] so results never depend on the
-// machine's default time zone.
+// Lives in :shared/commonTest (kotlin.test): runs on JVM locally and on the iosSimulatorArm64
+// target in CI. Every case pins [zone] so results never depend on the machine's default zone.
 class InsightsAggregatorTest {
     private val zone = TimeZone.UTC
     private val eatingHours = 8L
     private val settings = DietSettings(fastingHours = 16, eatingHours = eatingHours)
     private val base = 1_700_000_000_000L
     private fun h(n: Long) = n * 3_600_000L
+    private fun min(n: Long) = n * 60_000L
 
     /** Epoch millis for a wall-clock moment in [zone]. `month` is 1-based. */
     private fun at(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0): Long =
@@ -38,6 +38,11 @@ class InsightsAggregatorTest {
             location = if (lat != null && lng != null) GeoPoint(lat, lng) else null,
             photos = photos.mapIndexed { i, name -> EatPhoto(id = i, fileName = name, createdAt = time) },
         )
+
+    private fun byDay(vararg records: EatRecord) = InsightsAggregator.mealsByEatingDay(records.toList(), settings, zone)
+
+    private fun cellsOf(period: Period, anchor: Long, days: Map<Long, List<EatRecord>>, now: Long) =
+        InsightsAggregator.dayCells(InsightsRange.of(anchor, period, zone), days, eatingHours, now, zone)
 
     // --- window state -------------------------------------------------------
 
@@ -64,195 +69,234 @@ class InsightsAggregatorTest {
         assertEquals(DayWindowState.LONGER_WINDOW, state)
     }
 
+    // --- eating days (the Home/Insights agreement) --------------------------
+
+    @Test fun mealsByEatingDay_bucketsByCalendarDateWhenNothingCrossesMidnight() {
+        val days = byDay(rec(at(2026, 3, 10, 9)), rec(at(2026, 3, 10, 18)), rec(at(2026, 3, 11, 12)))
+        assertEquals(listOf(at(2026, 3, 10, 0), at(2026, 3, 11, 0)), days.keys.toList())
+        assertEquals(2, days.getValue(at(2026, 3, 10, 0)).size)
+    }
+
+    @Test fun mealsByEatingDay_lateNightSnackStaysWithTheDinnerBeforeIt() {
+        // 20:00 dinner, 00:30 snack: same eating window on Home, so the same day here.
+        val days = byDay(rec(at(2026, 3, 10, 20)), rec(at(2026, 3, 11, 0, 30)))
+        assertEquals(listOf(at(2026, 3, 10, 0)), days.keys.toList())
+        assertEquals(2, days.getValue(at(2026, 3, 10, 0)).size)
+    }
+
+    @Test fun mealsByEatingDay_aMealAfterARealFastOpensTheNextDay() {
+        // 08:00 breakfast, then 00:30 the next night: 16.5h > the 16h merge limit → a new day.
+        val days = byDay(rec(at(2026, 3, 10, 8)), rec(at(2026, 3, 11, 0, 30)))
+        assertEquals(listOf(at(2026, 3, 10, 0), at(2026, 3, 11, 0)), days.keys.toList())
+    }
+
+    @Test fun mealsByEatingDay_valuesAreAscendingEvenWhenInputIsNewestFirst() {
+        val days = byDay(rec(at(2026, 3, 10, 18)), rec(at(2026, 3, 10, 9)), rec(at(2026, 3, 10, 13)))
+        assertEquals(
+            listOf(at(2026, 3, 10, 9), at(2026, 3, 10, 13), at(2026, 3, 10, 18)),
+            days.getValue(at(2026, 3, 10, 0)).map { it.time },
+        )
+    }
+
     // --- calendar -----------------------------------------------------------
 
-    @Test fun monthCells_lengthMatchesDaysInMonth() {
-        // March 2026 has 31 days.
+    @Test fun dayCells_oneCellPerDayOfTheRange() {
         val now = at(2026, 3, 15, 12)
-        val cells = InsightsAggregator.monthCells(emptyList(), eatingHours, now, now, zone)
-        assertEquals(31, cells.size)
-        assertEquals(1, cells.first().dayOfMonth)
-        assertEquals(31, cells.last().dayOfMonth)
+        val month = cellsOf(Period.MONTH, now, emptyMap(), now)
+        assertEquals(31, month.size)
+        assertEquals(1, month.first().dayOfMonth)
+        assertEquals(31, month.last().dayOfMonth)
+        val week = cellsOf(Period.WEEK, now, emptyMap(), now)
+        assertEquals((9..15).toList(), week.map { it.dayOfMonth })
     }
 
-    @Test fun monthCells_classifiesEachDay() {
-        val records = listOf(
+    @Test fun dayCells_classifiesEachDay() {
+        val days = byDay(
             rec(at(2026, 3, 10, 9)),
-            rec(at(2026, 3, 10, 14)), // 5h window -> within
+            rec(at(2026, 3, 10, 15)), // 6h window → within
             rec(at(2026, 3, 11, 8)),
-            rec(at(2026, 3, 11, 20)), // 12h window -> longer
+            rec(at(2026, 3, 11, 20)), // 12h window → longer
+            rec(at(2026, 3, 12, 20)),
+            rec(at(2026, 3, 13, 0, 30)), // 4.5h across midnight → within, on the 12th
         )
-        val anchor = at(2026, 3, 1, 0)
-        val cells = InsightsAggregator.monthCells(records, eatingHours, anchor, anchor, zone)
-        assertEquals(DayWindowState.WITHIN_WINDOW, cells[9].state) // day 10
-        assertEquals(DayWindowState.LONGER_WINDOW, cells[10].state) // day 11
-        assertEquals(DayWindowState.NO_RECORD, cells[0].state) // day 1
+        val now = at(2026, 3, 15, 12)
+        val cells = cellsOf(Period.MONTH, now, days, now)
+        assertEquals(DayWindowState.WITHIN_WINDOW, cells[9].state)
+        assertEquals(DayWindowState.LONGER_WINDOW, cells[10].state)
+        assertEquals(DayWindowState.WITHIN_WINDOW, cells[11].state)
+        assertEquals(DayWindowState.NO_RECORD, cells[12].state)
     }
 
-    @Test fun monthCells_marksOnlyToday() {
+    @Test fun dayCells_marksTodayAndWhatIsStillAhead() {
         val now = at(2026, 3, 15, 12)
-        val cells = InsightsAggregator.monthCells(emptyList(), eatingHours, now, now, zone)
+        val cells = cellsOf(Period.MONTH, now, emptyMap(), now)
         assertEquals(listOf(15), cells.filter { it.isToday }.map { it.dayOfMonth })
+        assertEquals((16..31).toList(), cells.filter { it.isFuture }.map { it.dayOfMonth })
+        assertFalse(cells[14].isFuture)
     }
 
-    @Test fun monthCells_otherMonthHasNoToday() {
+    @Test fun dayCells_otherMonthHasNoToday() {
         val now = at(2026, 3, 15, 12)
-        val anchor = at(2026, 2, 1, 0)
-        val cells = InsightsAggregator.monthCells(emptyList(), eatingHours, anchor, now, zone)
+        val cells = cellsOf(Period.MONTH, at(2026, 2, 1, 0), emptyMap(), now)
         assertTrue(cells.none { it.isToday })
+        assertTrue(cells.none { it.isFuture })
     }
 
-    @Test fun monthSummary_countsRecordedAndWithinWindowDays() {
-        val records = listOf(
-            rec(at(2026, 3, 10, 9)),
-            rec(at(2026, 3, 10, 14)), // within
-            rec(at(2026, 3, 11, 8)),
-            rec(at(2026, 3, 11, 20)), // longer
-            rec(at(2026, 3, 12, 8)), // single meal -> within
+    @Test fun periodSummary_countsRecordedAndWithinWindowDays() {
+        val cells = listOf(
+            DayCell(0L, 1, DayWindowState.WITHIN_WINDOW),
+            DayCell(0L, 2, DayWindowState.LONGER_WINDOW),
+            DayCell(0L, 3, DayWindowState.NO_RECORD),
+            DayCell(0L, 4, DayWindowState.WITHIN_WINDOW),
         )
-        val anchor = at(2026, 3, 1, 0)
-        val summary = MonthSummary.of(
-            InsightsAggregator.monthCells(records, eatingHours, anchor, anchor, zone)
-        )
-        assertEquals(3, summary.recordedDays)
-        assertEquals(2, summary.withinWindowDays)
+        assertEquals(PeriodSummary(recordedDays = 3, withinWindowDays = 2), PeriodSummary.of(cells))
     }
 
     // --- stats --------------------------------------------------------------
 
     @Test fun statsFor_countsAndAverages() {
-        val records = listOf(
-            rec(at(2026, 3, 10, 8, 0)),
-            rec(at(2026, 3, 10, 18, 0)),
-            rec(at(2026, 3, 11, 10, 0)),
-            rec(at(2026, 3, 11, 20, 0)),
+        val days = byDay(
+            rec(at(2026, 3, 10, 8)),
+            rec(at(2026, 3, 10, 18)),
+            rec(at(2026, 3, 11, 10)),
+            rec(at(2026, 3, 11, 20)),
         )
-        val stats = InsightsAggregator.statsFor(records, zone)
+        val stats = InsightsAggregator.statsFor(days.values, zone)
         assertEquals(4, stats.mealCount)
         assertEquals(2, stats.daysWithRecords)
         assertEquals(9 * 60, stats.avgFirstMealMinutes)
         assertEquals(19 * 60, stats.avgLastMealMinutes)
+        assertEquals(10 * 60, stats.avgWindowMinutes)
     }
 
     @Test fun statsFor_averagesRoundInsteadOfTruncating() {
-        // First meals at 08:00 and 08:01 -> 480.5 minutes, which must round to 481 (08:01).
-        val records = listOf(
-            rec(at(2026, 3, 10, 8, 0)),
-            rec(at(2026, 3, 11, 8, 1)),
-        )
-        assertEquals(481, InsightsAggregator.statsFor(records, zone).avgFirstMealMinutes)
-    }
-
-    @Test fun statsFor_avgWindowAveragesFirstToLastSpan() {
-        val records = listOf(
-            rec(at(2026, 3, 10, 8, 0)),
-            rec(at(2026, 3, 10, 14, 0)), // 6h
-            rec(at(2026, 3, 11, 9, 0)),
-            rec(at(2026, 3, 11, 12, 0)),
-            rec(at(2026, 3, 11, 17, 0)), // 8h
-        )
-        assertEquals(7 * 60, InsightsAggregator.statsFor(records, zone).avgWindowMinutes)
+        val days = byDay(rec(at(2026, 3, 10, 8, 0)), rec(at(2026, 3, 11, 8, 1)), rec(at(2026, 3, 12, 8, 1)))
+        // (480 + 481 + 481) / 3 = 480.67 → 481, not 480.
+        assertEquals(481, InsightsAggregator.statsFor(days.values, zone).avgFirstMealMinutes)
     }
 
     @Test fun statsFor_avgWindowIgnoresSingleMealDays() {
-        val records = listOf(
-            rec(at(2026, 3, 10, 8, 0)),
-            rec(at(2026, 3, 10, 14, 0)), // 6h
-            rec(at(2026, 3, 11, 9, 0)), // single meal, no measurable window
-        )
-        val stats = InsightsAggregator.statsFor(records, zone)
-        assertEquals(6 * 60, stats.avgWindowMinutes)
-        assertEquals(2, stats.daysWithRecords)
+        val days = byDay(rec(at(2026, 3, 10, 8)), rec(at(2026, 3, 10, 14)), rec(at(2026, 3, 11, 12)))
+        assertEquals(6 * 60, InsightsAggregator.statsFor(days.values, zone).avgWindowMinutes)
     }
 
     @Test fun statsFor_avgWindowNullWhenEveryDayHasOneMeal() {
-        val records = listOf(rec(at(2026, 3, 10, 8, 0)), rec(at(2026, 3, 11, 9, 0)))
-        assertNull(InsightsAggregator.statsFor(records, zone).avgWindowMinutes)
+        val days = byDay(rec(at(2026, 3, 10, 8)), rec(at(2026, 3, 11, 12)))
+        assertNull(InsightsAggregator.statsFor(days.values, zone).avgWindowMinutes)
     }
 
-    @Test fun statsFor_lateHourCountsDistinctDays() {
-        val records = listOf(
-            rec(at(2026, 3, 10, 23, 0)),
-            rec(at(2026, 3, 11, 12, 0)),
-            rec(at(2026, 3, 12, 22, 0)),
-            rec(at(2026, 3, 12, 22, 30)),
-        )
-        assertEquals(2, InsightsAggregator.statsFor(records, zone).lateHourDays)
+    @Test fun statsFor_lastMealAfterMidnightRunsPastTwentyFourHours() {
+        // 20:00 → 00:30 is one eating day: last meal at 24h30m, window 4h30m.
+        val days = byDay(rec(at(2026, 3, 10, 20)), rec(at(2026, 3, 11, 0, 30)))
+        val stats = InsightsAggregator.statsFor(days.values, zone)
+        assertEquals(20 * 60, stats.avgFirstMealMinutes)
+        assertEquals(24 * 60 + 30, stats.avgLastMealMinutes)
+        assertEquals(4 * 60 + 30, stats.avgWindowMinutes)
     }
 
     @Test fun statsFor_empty() {
-        val stats = InsightsAggregator.statsFor(emptyList(), zone)
-        assertEquals(0, stats.mealCount)
-        assertEquals(0, stats.daysWithRecords)
-        assertNull(stats.avgFirstMealMinutes)
-        assertNull(stats.avgLastMealMinutes)
-        assertNull(stats.avgWindowMinutes)
-        assertEquals(0, stats.lateHourDays)
+        assertEquals(InsightsStats.EMPTY, InsightsAggregator.statsFor(emptyList(), zone))
     }
 
-    @Test fun periodStart_weekIsSevenDays() {
+    // --- bands --------------------------------------------------------------
+
+    @Test fun bandsFor_oneRowPerDayEmptyDaysIncluded() {
         val now = at(2026, 3, 15, 12)
-        val start = InsightsAggregator.periodStart(now, Period.WEEK, zone)
-        assertEquals(at(2026, 3, 9, 0), start)
+        val days = byDay(rec(at(2026, 3, 10, 9)), rec(at(2026, 3, 10, 17, 30)))
+        val bands = InsightsAggregator.bandsFor(InsightsRange.of(now, Period.WEEK, zone), days, zone)
+        assertEquals((9..15).toList(), bands.map { it.dayOfMonth })
+        val tenth = bands[1]
+        assertEquals(2, tenth.mealCount)
+        assertEquals(9 * 60, tenth.firstMinutes)
+        assertEquals(17 * 60 + 30, tenth.lastMinutes)
+        assertEquals(0, bands[0].mealCount)
+        assertEquals(at(2026, 3, 9, 0), bands[0].dayStart)
     }
 
-    @Test fun periodStart_monthIsFirstOfMonth() {
+    @Test fun bandsFor_singleMealHasNoWidth() {
         val now = at(2026, 3, 15, 12)
-        assertEquals(at(2026, 3, 1, 0), InsightsAggregator.periodStart(now, Period.MONTH, zone))
+        val days = byDay(rec(at(2026, 3, 12, 13)))
+        val bands = InsightsAggregator.bandsFor(InsightsRange.of(now, Period.WEEK, zone), days, zone)
+        val twelfth = bands.single { it.dayOfMonth == 12 }
+        assertEquals(1, twelfth.mealCount)
+        assertEquals(twelfth.firstMinutes, twelfth.lastMinutes)
+    }
+
+    @Test fun bandsFor_windowCrossingMidnightKeepsGoingPastTheDay() {
+        val now = at(2026, 3, 15, 12)
+        val days = byDay(rec(at(2026, 3, 12, 22)), rec(at(2026, 3, 13, 1)))
+        val bands = InsightsAggregator.bandsFor(InsightsRange.of(now, Period.WEEK, zone), days, zone)
+        assertEquals(25 * 60, bands.single { it.dayOfMonth == 12 }.lastMinutes)
+        assertEquals(0, bands.single { it.dayOfMonth == 13 }.mealCount)
     }
 
     // --- compute ------------------------------------------------------------
 
-    @Test fun compute_assemblesAllCards() {
-        val now = at(2026, 2, 15, 21)
+    @Test fun compute_assemblesEveryCardOverTheSameRange() {
+        val now = at(2026, 3, 15, 12)
         val records = listOf(
-            recFull(at(2026, 2, 15, 9), listOf("a.webp"), 25.0, 121.0),
-            recFull(at(2026, 2, 15, 13), listOf("b.webp"), 25.0, 121.0),
+            recFull(at(2026, 3, 14, 9), listOf("a.jpg"), 25.0330, 121.5654),
+            recFull(at(2026, 3, 14, 18), listOf("b.jpg", "c.jpg"), 25.0331, 121.5654), // same ~100m cell
+            recFull(at(2026, 3, 10, 12), emptyList(), 24.1477, 120.6736),
         )
-        val result = InsightsAggregator.compute(records, settings, now, Period.MONTH, now, zone)
+        val result = InsightsAggregator.compute(records, settings, now, Period.WEEK, now, zone)
 
         assertTrue(result.hasAnyRecords)
-        assertEquals(28, result.calendarDays.size)
-        assertEquals(MonthSummary(recordedDays = 1, withinWindowDays = 1), result.monthSummary)
-        assertTrue(result.isAnchorCurrentMonth)
-        assertEquals(2, result.stats.mealCount)
-        assertEquals(4 * 60, result.stats.avgWindowMinutes)
-        assertEquals(at(2026, 2, 1, 0), result.periodStart)
-        assertEquals(now, result.periodEnd)
-        assertEquals(listOf("b.webp", "a.webp"), result.photoFileNames)
-        assertEquals(1, result.locations.size)
+        assertTrue(result.isCurrentPeriod)
+        assertEquals(7, result.calendarDays.size)
+        assertEquals(7, result.bands.size)
+        assertEquals(3, result.stats.mealCount)
+        assertEquals(2, result.stats.daysWithRecords)
+        assertEquals(PeriodSummary(recordedDays = 2, withinWindowDays = 1), result.summary)
+        assertEquals(listOf("b.jpg", "c.jpg", "a.jpg"), result.photoFileNames) // newest record first
+        assertEquals(2, result.locations.size)
         assertEquals(2, result.locations.first().count)
     }
 
-    @Test fun compute_weekPeriodFiltersOutOlderRecords() {
-        val now = at(2026, 2, 15, 21)
-        val records = listOf(
-            recFull(at(2026, 2, 15, 9), listOf("recent.webp"), 25.0, 121.0),
-            recFull(at(2026, 2, 1, 9), listOf("old.webp"), 25.0, 121.0),
-        )
-        val result = InsightsAggregator.compute(records, settings, now, Period.WEEK, now, zone)
-        assertEquals(1, result.stats.mealCount)
-        assertEquals(listOf("recent.webp"), result.photoFileNames)
-        assertEquals(1, result.locations.first().count)
-        // The calendar still sees every record, not just the period's.
-        assertEquals(2, result.monthSummary.recordedDays)
+    @Test fun compute_weekRangeLeavesOlderRecordsOut() {
+        val now = at(2026, 3, 15, 12)
+        val records = listOf(rec(at(2026, 3, 14, 9)), rec(at(2026, 3, 8, 9)))
+        val week = InsightsAggregator.compute(records, settings, now, Period.WEEK, now, zone)
+        assertEquals(1, week.stats.mealCount)
+        val month = InsightsAggregator.compute(records, settings, now, Period.MONTH, now, zone)
+        assertEquals(2, month.stats.mealCount)
     }
 
-    @Test fun compute_pastMonthAnchorIsNotTheCurrentMonth() {
-        val now = at(2026, 2, 15, 21)
-        val result = InsightsAggregator.compute(emptyList(), settings, now, Period.MONTH, at(2026, 1, 3, 0), zone)
-        assertFalse(result.isAnchorCurrentMonth)
-        assertEquals(31, result.calendarDays.size)
+    @Test fun compute_pastMonthIsNotTheCurrentPeriod() {
+        val now = at(2026, 3, 15, 12)
+        val result = InsightsAggregator.compute(emptyList(), settings, now, Period.MONTH, at(2026, 2, 1, 0), zone)
+        assertFalse(result.isCurrentPeriod)
+        assertEquals(28, result.calendarDays.size)
     }
 
-    @Test fun compute_empty_returnsNoRecordsWithFullCalendar() {
-        val now = at(2026, 2, 15, 21)
+    @Test fun compute_futureDatedRecordShowsOnTheCalendarButNotInTheNumbers() {
+        val now = at(2026, 3, 15, 12)
+        val records = listOf(rec(at(2026, 3, 20, 9)))
+        val result = InsightsAggregator.compute(records, settings, now, Period.MONTH, now, zone)
+        assertEquals(DayWindowState.WITHIN_WINDOW, result.calendarDays[19].state)
+        assertEquals(0, result.stats.mealCount)
+        assertEquals(0, result.bands[19].mealCount)
+    }
+
+    @Test fun compute_empty_returnsNoRecordsWithAFullCalendar() {
+        val now = at(2026, 3, 15, 12)
         val result = InsightsAggregator.compute(emptyList(), settings, now, Period.MONTH, now, zone)
         assertFalse(result.hasAnyRecords)
-        assertEquals(28, result.calendarDays.size)
-        assertEquals(MonthSummary.EMPTY, result.monthSummary)
-        assertEquals(0, result.stats.mealCount)
-        assertEquals(emptyList<String>(), result.photoFileNames)
-        assertEquals(emptyList<LocationCount>(), result.locations)
+        assertEquals(31, result.calendarDays.size)
+        assertEquals(InsightsStats.EMPTY, result.stats)
+        assertTrue(result.photoFileNames.isEmpty())
+        assertTrue(result.locations.isEmpty())
+        assertEquals(PeriodSummary.EMPTY, result.summary)
+    }
+
+    @Test fun compute_lateNightMealIsOneDayEverywhere() {
+        val now = at(2026, 3, 15, 12)
+        val records = listOf(rec(at(2026, 3, 12, 20)), rec(at(2026, 3, 13, 0, 30)))
+        val result = InsightsAggregator.compute(records, settings, now, Period.WEEK, now, zone)
+        assertEquals(1, result.stats.daysWithRecords)
+        assertEquals(1, result.summary.recordedDays)
+        assertEquals(DayWindowState.WITHIN_WINDOW, result.calendarDays.single { it.dayOfMonth == 12 }.state)
+        assertEquals(DayWindowState.NO_RECORD, result.calendarDays.single { it.dayOfMonth == 13 }.state)
+        assertEquals(2, result.bands.single { it.dayOfMonth == 12 }.mealCount)
     }
 }

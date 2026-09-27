@@ -22,6 +22,41 @@ object DietWindow {
     /** Grace before the fast clock starts when a window holds a single meal. */
     private val SINGLE_MEAL_FAST_GRACE_MILLIS = 1.hours.inWholeMilliseconds
 
+    /**
+     * Splits meals (ascending by time) into eating windows. A meal joins the current window while
+     * it is within `eatingHours + fastingHours / 2` of that window's **first** meal — a slight
+     * overrun is the same window, not a new one; only a meal after a real fast opens a fresh one.
+     *
+     * This is the single definition of "the same eating day" in the app: Home's ring uses the last
+     * window, Insights buckets every meal by the window it belongs to (so a 00:30 snack after a
+     * 20:00 dinner stays with that dinner instead of becoming tomorrow's first meal).
+     */
+    fun <T> groupIntoWindows(
+        itemsAsc: List<T>,
+        eatingHours: Long,
+        fastingHours: Long,
+        timeOf: (T) -> Long,
+    ): List<List<T>> {
+        if (itemsAsc.isEmpty()) return emptyList()
+        val mergeLimit = eatingHours.hours.inWholeMilliseconds + fastingHours.hours.inWholeMilliseconds / 2
+        val windows = mutableListOf<List<T>>()
+        var current = mutableListOf(itemsAsc[0])
+        var first = timeOf(itemsAsc[0])
+        for (i in 1 until itemsAsc.size) {
+            val item = itemsAsc[i]
+            val t = timeOf(item)
+            if (t - first > mergeLimit) {
+                windows += current
+                current = mutableListOf(item)
+                first = t
+            } else {
+                current += item
+            }
+        }
+        windows += current
+        return windows
+    }
+
     fun compute(
         eatTimesAsc: List<Long>,
         eatingHours: Long,
@@ -32,25 +67,11 @@ object DietWindow {
 
         val ehMillis = eatingHours.hours.inWholeMilliseconds
         val fhMillis = fastingHours.hours.inWholeMilliseconds
-        // A meal stays in the current window while it's within eatingHours + fastingHours/2 of the
-        // window's first meal — a slight overrun is treated as the same window, not a new one.
-        // Only a meal beyond that tolerance (i.e. after a real fast) opens a fresh window.
-        val mergeLimit = ehMillis + fhMillis / 2
-
-        var first = eatTimesAsc[0]
-        var last = eatTimesAsc[0]
-        var mealCount = 1
-        for (i in 1 until eatTimesAsc.size) {
-            val t = eatTimesAsc[i]
-            if (t - first > mergeLimit) {
-                first = t
-                last = t
-                mealCount = 1
-            } else {
-                last = t
-                mealCount++
-            }
-        }
+        // Only the latest window matters for the live state; see [groupIntoWindows] for the rule.
+        val window = groupIntoWindows(eatTimesAsc, eatingHours, fastingHours) { it }.last()
+        val first = window.first()
+        val last = window.last()
+        val mealCount = window.size
 
         // Window extends to the late meal if it overran the nominal eating hours.
         val windowEnd = maxOf(first + ehMillis, last)

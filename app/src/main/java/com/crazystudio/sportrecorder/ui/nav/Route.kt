@@ -18,4 +18,7 @@ sealed interface Route {
     @Serializable data object CreateFastingType : Route
 
     @Serializable data class EatTimeEditor(val eatTimeId: Int = 0) : Route
+
+    /** One eating day's meals, read-only, as a sheet over Insights. [dayStart] is local midnight millis. */
+    @Serializable data class DayRecords(val dayStart: Long) : Route
 }

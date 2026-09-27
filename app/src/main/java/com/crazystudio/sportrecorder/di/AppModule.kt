@@ -49,6 +49,7 @@ import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeVie
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.settings.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
@@ -112,6 +113,7 @@ val appModule = module {
     viewModel { DietViewModel(get()) }
     viewModel { DietRecordViewModel(get(), get(), get()) }
     viewModel { InsightsViewModel(get(), get(), get()) }
+    viewModel { DayRecordsViewModel(get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }

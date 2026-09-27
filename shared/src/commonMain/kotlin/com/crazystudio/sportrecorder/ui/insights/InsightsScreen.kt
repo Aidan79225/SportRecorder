@@ -21,32 +21,35 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.crazystudio.sportrecorder.domain.insights.DayBand
 import com.crazystudio.sportrecorder.domain.insights.DayCell
+import com.crazystudio.sportrecorder.domain.insights.DayRange
 import com.crazystudio.sportrecorder.domain.insights.DayWindowState
-import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
 import com.crazystudio.sportrecorder.domain.insights.InsightsStats
 import com.crazystudio.sportrecorder.domain.insights.LocationCount
-import com.crazystudio.sportrecorder.domain.insights.MonthSummary
 import com.crazystudio.sportrecorder.domain.insights.Period
+import com.crazystudio.sportrecorder.domain.insights.PeriodSummary
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.day_today
 import com.crazystudio.sportrecorder.shared.resources.ic_arrow_left_24dp
 import com.crazystudio.sportrecorder.shared.resources.ic_arrow_right_24dp
+import com.crazystudio.sportrecorder.shared.resources.insights_card_chart
 import com.crazystudio.sportrecorder.shared.resources.insights_card_locations
 import com.crazystudio.sportrecorder.shared.resources.insights_card_photos
 import com.crazystudio.sportrecorder.shared.resources.insights_card_rhythm
 import com.crazystudio.sportrecorder.shared.resources.insights_card_stats
 import com.crazystudio.sportrecorder.shared.resources.insights_date_short
 import com.crazystudio.sportrecorder.shared.resources.insights_day_description
+import com.crazystudio.sportrecorder.shared.resources.insights_day_open
 import com.crazystudio.sportrecorder.shared.resources.insights_duration_hm
 import com.crazystudio.sportrecorder.shared.resources.insights_empty_body
 import com.crazystudio.sportrecorder.shared.resources.insights_empty_locations
@@ -55,23 +58,22 @@ import com.crazystudio.sportrecorder.shared.resources.insights_empty_title
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_longer
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_none
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_within
-import com.crazystudio.sportrecorder.shared.resources.insights_location_count
-import com.crazystudio.sportrecorder.shared.resources.insights_month_summary
-import com.crazystudio.sportrecorder.shared.resources.insights_next_month
-import com.crazystudio.sportrecorder.shared.resources.insights_period_caption
+import com.crazystudio.sportrecorder.shared.resources.insights_map_summary
+import com.crazystudio.sportrecorder.shared.resources.insights_next_period
 import com.crazystudio.sportrecorder.shared.resources.insights_period_month
 import com.crazystudio.sportrecorder.shared.resources.insights_period_range
+import com.crazystudio.sportrecorder.shared.resources.insights_period_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_period_week
 import com.crazystudio.sportrecorder.shared.resources.insights_photo_count
-import com.crazystudio.sportrecorder.shared.resources.insights_prev_month
+import com.crazystudio.sportrecorder.shared.resources.insights_prev_period
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_days
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_first
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_last
-import com.crazystudio.sportrecorder.shared.resources.insights_stat_late
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
+import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -80,28 +82,33 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
-import kotlin.math.roundToLong
 import kotlin.time.Instant
 
 private const val WEEK_COLUMNS = 7
 private const val PHOTO_COLUMNS = 3
 
-/** The wall is a taste of the period, not the archive — the Record tab holds every photo. */
+/** The wall is a taste of the period, not the archive — the day sheet and the Record tab hold the rest. */
 private const val MAX_WALL_PHOTOS = 12
 
 private const val MINUTES_PER_HOUR = 60
+private const val HOURS_PER_DAY = 24
+
+/** Days of the current month that have not happened yet are drawn, but quietly. */
+private const val FUTURE_DAY_ALPHA = 0.4f
 
 /**
- * 回顧 / Insights. Reflects the user's eating back to them — a rhythm, never a grade. See
+ * 回顧 / Insights. Reflects the user's eating back to them — a rhythm, never a grade. One period
+ * control (Week / Month, paged) scopes every card below it. See
  * `docs/superpowers/specs/2026-09-21-insights-improvements-design.md` for the tone rules that
  * shape the copy and colours here.
  */
 @Composable
+@Suppress("LongParameterList") // Compose event slots for the host, as the other shared screens
 fun InsightsScreen(
     state: InsightsUiState,
     onSelectPeriod: (Period) -> Unit,
-    onShiftMonth: (Int) -> Unit,
+    onShiftPeriod: (Int) -> Unit,
+    onDayClick: (Long) -> Unit,
     photoModel: (String) -> Any?,
     onPhotoClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -113,18 +120,23 @@ fun InsightsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        // Nothing is drawn before the first real state: painting the empty card for that frame
+        // would greet every returning user with 「這裡還空著」.
+        if (!state.isLoaded) return@Column
         if (!state.result.hasAnyRecords) {
             NothingYetCard()
             return@Column
         }
-        RhythmCard(
-            days = state.result.calendarDays,
-            summary = state.result.monthSummary,
-            monthAnchor = state.monthAnchor,
-            canShowNextMonth = !state.result.isAnchorCurrentMonth,
-            onShiftMonth = onShiftMonth,
+        PeriodHeader(
+            period = state.period,
+            range = state.result.range,
+            canGoForward = !state.result.isCurrentPeriod,
+            onSelectPeriod = onSelectPeriod,
+            onShiftPeriod = onShiftPeriod,
         )
-        PeriodSelector(state.period, state.result.periodStart, state.result.periodEnd, onSelectPeriod)
+        RhythmCard(state.period, state.result.calendarDays, state.result.summary, onDayClick)
+        // Seven rows read as a shape; thirty-one read as a barcode. The chart is a week thing.
+        if (state.period == Period.WEEK) RhythmChartCard(state.result.bands, onDayClick)
         StatsCard(state.result.stats)
         PhotoWallCard(state.result.photoFileNames, photoModel, onPhotoClick)
         LocationsCard(state.result.locations)
@@ -148,31 +160,48 @@ private fun NothingYetCard() {
     }
 }
 
+/** Week / Month chips plus the pager: the one control every card below answers to. */
 @Composable
-private fun PeriodSelector(period: Period, from: Long, to: Long, onSelect: (Period) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(Res.string.insights_period_caption),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun PeriodHeader(
+    period: Period,
+    range: DayRange,
+    canGoForward: Boolean,
+    onSelectPeriod: (Period) -> Unit,
+    onShiftPeriod: (Int) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = period == Period.WEEK,
-                onClick = { onSelect(Period.WEEK) },
+                onClick = { onSelectPeriod(Period.WEEK) },
                 label = { Text(stringResource(Res.string.insights_period_week)) },
             )
             FilterChip(
                 selected = period == Period.MONTH,
-                onClick = { onSelect(Period.MONTH) },
+                onClick = { onSelectPeriod(Period.MONTH) },
                 label = { Text(stringResource(Res.string.insights_period_month)) },
             )
         }
-        Text(
-            text = stringResource(Res.string.insights_period_range, shortDate(from), shortDate(to)),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onShiftPeriod(-1) }) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_arrow_left_24dp),
+                    contentDescription = stringResource(Res.string.insights_prev_period),
+                )
+            }
+            Text(
+                text = rangeLabel(period, range),
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            IconButton(onClick = { onShiftPeriod(1) }, enabled = canGoForward) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_arrow_right_24dp),
+                    contentDescription = stringResource(Res.string.insights_next_period),
+                )
+            }
+        }
     }
 }
 
@@ -189,19 +218,17 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 
 @Composable
 private fun RhythmCard(
+    period: Period,
     days: List<DayCell>,
-    summary: MonthSummary,
-    monthAnchor: Long,
-    canShowNextMonth: Boolean,
-    onShiftMonth: (Int) -> Unit,
+    summary: PeriodSummary,
+    onDayClick: (Long) -> Unit,
 ) {
     SectionCard(stringResource(Res.string.insights_card_rhythm)) {
-        MonthPager(monthAnchor, canShowNextMonth, onShiftMonth)
-        CalendarGrid(days)
+        CalendarGrid(period, days, onDayClick)
         CalendarLegend()
         Text(
             text = stringResource(
-                Res.string.insights_month_summary,
+                Res.string.insights_period_summary,
                 summary.recordedDays,
                 summary.withinWindowDays,
             ),
@@ -211,42 +238,29 @@ private fun RhythmCard(
 }
 
 @Composable
-private fun MonthPager(monthAnchor: Long, canShowNextMonth: Boolean, onShiftMonth: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onShiftMonth(-1) }) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_arrow_left_24dp),
-                contentDescription = stringResource(Res.string.insights_prev_month),
-            )
-        }
-        Text(
-            text = monthLabel(monthAnchor),
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        IconButton(onClick = { onShiftMonth(1) }, enabled = canShowNextMonth) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_arrow_right_24dp),
-                contentDescription = stringResource(Res.string.insights_next_month),
-            )
-        }
+private fun RhythmChartCard(bands: List<DayBand>, onDayClick: (Long) -> Unit) {
+    SectionCard(stringResource(Res.string.insights_card_chart)) {
+        RhythmChart(bands = bands, onDayClick = onDayClick)
     }
 }
 
+/**
+ * Month: a Sunday-first grid with leading blanks. Week: one row of the seven days, each column
+ * headed by that day's own initial, so the header always tells the truth about the cell below.
+ */
 @Composable
-private fun CalendarGrid(days: List<DayCell>) {
+private fun CalendarGrid(period: Period, days: List<DayCell>, onDayClick: (Long) -> Unit) {
     if (days.isEmpty()) return
-    val leadingBlanks = remember(days.first().dayStart) {
-        // Sunday-first grid: SUNDAY -> 0, MONDAY -> 1, ... SATURDAY -> 6.
-        val dow = Instant.fromEpochMilliseconds(days.first().dayStart)
-            .toLocalDateTime(TimeZone.currentSystemDefault()).date.dayOfWeek
-        dow.isoDayNumber % WEEK_COLUMNS
+    val initials = stringArrayResource(Res.array.insights_weekday_initials)
+    val zone = TimeZone.currentSystemDefault()
+    val columns: List<Int> = when (period) {
+        Period.WEEK -> days.map { weekdayIndex(it.dayStart, zone) }
+        Period.MONTH -> (0 until WEEK_COLUMNS).toList()
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        stringArrayResource(Res.array.insights_weekday_initials).forEach { label ->
+        columns.forEach { index ->
             Text(
-                text = label,
+                text = initials[index],
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelSmall,
@@ -254,14 +268,19 @@ private fun CalendarGrid(days: List<DayCell>) {
             )
         }
     }
+    val leadingBlanks = if (period == Period.MONTH) weekdayIndex(days.first().dayStart, zone) else 0
     val cells: List<DayCell?> = List(leadingBlanks) { null } + days
     cells.chunked(WEEK_COLUMNS).forEach { week ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            week.forEach { cell -> DayBox(cell, Modifier.weight(1f)) }
+            week.forEach { cell -> DayBox(cell, onDayClick, Modifier.weight(1f)) }
             repeat(WEEK_COLUMNS - week.size) { Box(Modifier.weight(1f)) }
         }
     }
 }
+
+/** Sunday-first column index: SUNDAY -> 0, MONDAY -> 1, ... SATURDAY -> 6. */
+private fun weekdayIndex(dayStart: Long, zone: TimeZone): Int =
+    Instant.fromEpochMilliseconds(dayStart).toLocalDateTime(zone).date.dayOfWeek.isoDayNumber % WEEK_COLUMNS
 
 /** Without this the calendar's colours are an unexplained verdict; with it they are a key. */
 @Composable
@@ -290,23 +309,35 @@ private fun CalendarLegend() {
 }
 
 @Composable
-private fun DayBox(cell: DayCell?, modifier: Modifier) {
+private fun DayBox(cell: DayCell?, onDayClick: (Long) -> Unit, modifier: Modifier) {
     if (cell == null) {
         Box(modifier.aspectRatio(1f).background(Color.Transparent))
         return
     }
     val todayLabel = stringResource(Res.string.day_today)
+    val openLabel = stringResource(Res.string.insights_day_open)
+    val hasRecord = cell.state != DayWindowState.NO_RECORD
     val description = stringResource(Res.string.insights_day_description, cell.dayOfMonth, stateLabel(cell.state))
         .let { if (cell.isToday) "$it · $todayLabel" else it }
     val shape = RoundedCornerShape(6.dp)
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .alpha(if (cell.isFuture) FUTURE_DAY_ALPHA else 1f)
             .clip(shape)
             .background(cellColor(cell.state))
             .then(
                 if (cell.isToday) {
                     Modifier.border(1.5.dp, MaterialTheme.colorScheme.onSurface, shape)
+                } else {
+                    Modifier
+                }
+            )
+            // Only a day with something to show is a button; empty days stay inert — an empty
+            // sheet is a dead end, and "log a meal for this day" would turn a mirror into a nag.
+            .then(
+                if (hasRecord) {
+                    Modifier.clickable(onClickLabel = openLabel) { onDayClick(cell.dayStart) }
                 } else {
                     Modifier
                 }
@@ -372,10 +403,6 @@ private fun StatsCard(stats: InsightsStats) {
         StatRow(stringResource(Res.string.insights_stat_first), clockLabel(stats.avgFirstMealMinutes, none))
         StatRow(stringResource(Res.string.insights_stat_last), clockLabel(stats.avgLastMealMinutes, none))
         StatRow(stringResource(Res.string.insights_stat_window), window)
-        StatRow(
-            stringResource(Res.string.insights_stat_late, InsightsAggregator.LATE_HOUR),
-            stats.lateHourDays.toString(),
-        )
     }
 }
 
@@ -419,23 +446,43 @@ private fun LocationsCard(locations: List<LocationCount>) {
             Text(stringResource(Res.string.insights_empty_locations), style = MaterialTheme.typography.bodyMedium)
             return@SectionCard
         }
-        locations.forEach { loc ->
-            Text(
-                text = stringResource(Res.string.insights_location_count, coord(loc.lat), coord(loc.lng), loc.count),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+        // The map is one picture; the line under it is its text equivalent for screen readers.
+        val summary = stringResource(
+            Res.string.insights_map_summary,
+            locations.size,
+            locations.sumOf { it.count },
+        )
+        PlacesMap(locations = locations, contentDescription = summary)
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-/** "HH:mm" for minutes-since-midnight, or [none] when the period holds no data. */
-private fun clockLabel(minutes: Int?, none: String): String =
-    if (minutes == null) none else "${pad2(minutes / MINUTES_PER_HOUR)}:${pad2(minutes % MINUTES_PER_HOUR)}"
+/**
+ * "HH:mm" for minutes since the eating day's midnight, wrapped to the clock (an average last
+ * meal of 24 h 30 m reads 00:30), or [none] when the period holds no data.
+ */
+private fun clockLabel(minutes: Int?, none: String): String {
+    if (minutes == null) return none
+    val hour = (minutes / MINUTES_PER_HOUR) % HOURS_PER_DAY
+    return "${pad2(hour)}:${pad2(minutes % MINUTES_PER_HOUR)}"
+}
 
-/** "yyyy / MM" month label, kotlinx-datetime (no java.text.SimpleDateFormat on Native). */
-private fun monthLabel(millis: Long): String {
-    val date = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return "${date.year} / ${pad2(date.month.number)}"
+/** Month: "yyyy / MM"; Week: "m/d – m/d". kotlinx-datetime only (no SimpleDateFormat on Native). */
+@Composable
+private fun rangeLabel(period: Period, range: DayRange): String = when (period) {
+    Period.MONTH -> {
+        val date = Instant.fromEpochMilliseconds(range.start).toLocalDateTime(TimeZone.currentSystemDefault()).date
+        "${date.year} / ${pad2(date.month.number)}"
+    }
+    Period.WEEK -> stringResource(
+        Res.string.insights_period_range,
+        shortDate(range.start),
+        shortDate(range.endInclusive),
+    )
 }
 
 @Composable
@@ -445,14 +492,3 @@ private fun shortDate(millis: Long): String {
 }
 
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
-
-/**
- * Formats a coordinate to 3 decimals — the precision places are actually grouped at — without
- * java's String.format (unavailable on Native).
- */
-private fun coord(value: Double): String {
-    val scaled = (value * 1_000).roundToLong()
-    val sign = if (scaled < 0) "-" else ""
-    val a = abs(scaled)
-    return "$sign${a / 1_000}.${(a % 1_000).toString().padStart(3, '0')}"
-}
