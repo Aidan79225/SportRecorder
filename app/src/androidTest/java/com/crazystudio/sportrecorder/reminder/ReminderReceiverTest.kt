@@ -11,8 +11,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.crazystudio.sportrecorder.backup.activeNotification
 import com.crazystudio.sportrecorder.backup.awaitUntil
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
+import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -40,11 +42,19 @@ class ReminderReceiverTest {
         }
         NotificationManagerCompat.from(context).cancelAll()
         rescheduler = RecordingRescheduler()
-        // Overrides the app's RemindersRescheduler for the rest of the instrumentation process.
+        // Overrides the app's RemindersRescheduler for the duration of this test only; restored below.
         loadKoinModules(module { single<RemindersRescheduler> { rescheduler } })
     }
 
-    @After fun tearDown() { NotificationManagerCompat.from(context).cancelAll() }
+    @After fun tearDown() {
+        NotificationManagerCompat.from(context).cancelAll()
+        // Other instrumented classes share this process (no orchestrator) and some resolve
+        // RemindersRescheduler eagerly (e.g. BackupTestFixtures.loadBackupTestModule's
+        // BackupService) — leaving the RecordingRescheduler in place would hand them a dead one.
+        loadKoinModules(
+            module { single<RemindersRescheduler> { RescheduleRemindersUseCase(get(), get(), get(), get()) } },
+        )
+    }
 
     private fun fire(typeName: String) = context.sendBroadcast(
         Intent(context, ReminderReceiver::class.java)
@@ -56,6 +66,7 @@ class ReminderReceiverTest {
         fire("FAST_COMPLETE")
         awaitUntil(what = "fast-complete notification") { context.activeNotification(2002) != null }
         awaitUntil(what = "reschedule called") { rescheduler.called.isCompleted }
+        assertEquals(1, rescheduler.count)
     }
 
     @Test fun unknownType_doesNothing() {
