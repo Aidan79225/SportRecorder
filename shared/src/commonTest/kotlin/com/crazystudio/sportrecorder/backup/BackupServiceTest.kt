@@ -131,4 +131,28 @@ class BackupServiceTest {
         assertEquals(listOf(99), tgtEat.state.value.map { it.id }) // untouched
         assertEquals(0, resched.rescheduleCount)
     }
+
+    private class RecordingProgress : BackupProgress {
+        val reports = mutableListOf<Triple<BackupStep, Int, Int>>()
+        override fun report(step: BackupStep, done: Int, total: Int) { reports.add(Triple(step, done, total)) }
+        val steps get() = reports.map { it.first }.distinct()
+    }
+
+    @Test fun backup_reportsStepsInOrderWithPhotoCounts() = runTest {
+        val eat = FakeEatRecordRepository(
+            listOf(
+                EatRecord(1, 1_700L, null, "n", listOf(EatPhoto(7, "a.webp", 1_701L))),
+                EatRecord(2, 1_800L, null, "m", listOf(EatPhoto(8, "b.webp", 1_801L))),
+            ),
+        )
+        val progress = RecordingProgress()
+        service(eat, FakeBackupStore()).backup(progress)
+
+        assertEquals(
+            listOf(BackupStep.Preparing, BackupStep.UploadingPhotos, BackupStep.UploadingManifest, BackupStep.Pruning),
+            progress.steps,
+        )
+        assertEquals(Triple(BackupStep.UploadingPhotos, 2, 2), progress.reports.last { it.first == BackupStep.UploadingPhotos })
+        assertEquals(Triple(BackupStep.UploadingManifest, 1, 1), progress.reports.last { it.first == BackupStep.UploadingManifest })
+    }
 }

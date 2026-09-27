@@ -25,7 +25,11 @@ class BackupService(
     private val now: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
     /** Build a snapshot from current data, upload it, prune to the last [KEEP_LAST]. */
-    suspend fun backup(): SnapshotInfo {
+    suspend fun backup(progress: BackupProgress = BackupProgress.None): SnapshotInfo =
+        backupInternal(prune = true, progress = progress)
+
+    private suspend fun backupInternal(prune: Boolean, progress: BackupProgress): SnapshotInfo {
+        progress.report(BackupStep.Preparing, 0, 0)
         val meals = eatRepo.observeAll().first()
         val fastingTypes = fastingRepo.observeRecentCustomTypes().first()
         val settings = settingsRepo.settings.first()
@@ -43,8 +47,11 @@ class BackupService(
         val json = BackupJson.encodeToString(BackupDocument.serializer(), doc)
         val photoNames = meals.flatMap { meal -> meal.photos.map { it.fileName } }.distinct()
 
-        val info = store.uploadSnapshot(json, photoNames)
-        store.prune(KEEP_LAST)
+        val info = store.uploadSnapshot(json, photoNames, progress)
+        if (prune) {
+            progress.report(BackupStep.Pruning, 0, 0)
+            store.prune(KEEP_LAST)
+        }
         return info
     }
 
@@ -56,15 +63,18 @@ class BackupService(
      * and only then swaps local data — so a failed download or an unreadable schema leaves the
      * device's current data untouched.
      */
-    suspend fun restore(snapshotId: String) {
+    suspend fun restore(snapshotId: String, progress: BackupProgress = BackupProgress.None) {
+        progress.report(BackupStep.DownloadingManifest, 0, 0)
         val json = store.downloadManifest(snapshotId)
         val doc = BackupJson.decodeFromString(BackupDocument.serializer(), json)
         if (doc.schemaVersion > BackupDocument.SCHEMA_VERSION) {
             throw BackupSchemaTooNewException(doc.schemaVersion)
         }
         // Download-all-then-swap: a throw here leaves local data intact.
-        store.downloadPhotos(snapshotId)
+        val photoNames = doc.meals.flatMap { meal -> meal.photos.map { it.fileName } }.distinct()
+        store.downloadPhotos(snapshotId, photoNames, progress)
 
+        progress.report(BackupStep.Applying, 0, 0)
         eatRepo.replaceAll(doc.meals.map { it.toDomain() })
         fastingRepo.replaceAllCustom(doc.fastingTypes.map { it.toDomain() })
         settingsRepo.setSelection(
