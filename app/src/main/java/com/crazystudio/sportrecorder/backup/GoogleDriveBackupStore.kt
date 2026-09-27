@@ -117,7 +117,7 @@ class GoogleDriveBackupStore(
         transferAll(missing, BackupStep.DownloadingPhotos, progress) { name ->
             val fileId = photoIdByName[name]
                 ?: throw IOException("Snapshot $id references a photo missing from Drive: $name")
-            localPhoto(name).writeBytes(drive.downloadBytes(token, fileId))
+            writeAtomically(localPhoto(name), drive.downloadBytes(token, fileId))
         }
     }
 
@@ -166,9 +166,25 @@ class GoogleDriveBackupStore(
             names.map { name ->
                 async(Dispatchers.IO) {
                     gate.withPermit { action(name) }
-                    progress.report(step, done.incrementAndGet(), names.size)
+                    // increment-then-report must be one step: two IO threads finishing back to back
+                    // could otherwise report 4/4 then 3/4, since the runner keeps only the latest value.
+                    synchronized(done) { progress.report(step, done.incrementAndGet(), names.size) }
                 }
             }.awaitAll()
         }
+    }
+}
+
+/**
+ * Write [bytes] to [target] without ever leaving a truncated file behind: a process kill or
+ * disk-full mid-write would otherwise leave a non-empty file that the "already on device" skip
+ * check treats as good forever. Written to a sibling temp file first, then renamed into place.
+ */
+private fun writeAtomically(target: File, bytes: ByteArray) {
+    val temp = File(target.parentFile, "${target.name}.part")
+    temp.writeBytes(bytes)
+    if (!temp.renameTo(target)) {
+        temp.delete()
+        throw IOException("Could not save photo to ${target.name}")
     }
 }

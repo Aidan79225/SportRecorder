@@ -15,6 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.IOException
 
 class GoogleDriveBackupStoreTest {
     @get:Rule val photosDir = TemporaryFolder()
@@ -84,6 +85,29 @@ class GoogleDriveBackupStoreTest {
         assertEquals(42L, info.createdAt)
         assertTrue(reports.contains(Triple(BackupStep.UploadingPhotos, 2, 2)))
         assertTrue(reports.contains(Triple(BackupStep.UploadingManifest, 1, 1)))
+    }
+
+    @Test fun uploadSnapshot_onePhotoFailure_failsAndNeverUploadsManifest() = runTest {
+        listOf("a.webp", "b.webp", "c.webp").forEach { File(photosDir.root, it).writeBytes(byteArrayOf(1)) }
+        server.enqueue(MockResponse().setBody("""{"files":[]}""")) // list: nothing already on Drive
+        // Photos run up to 4 at a time, so all three uploads fire together; whichever request the
+        // MockWebServer dequeues first gets the 500. The other two get a normal response — enough
+        // are queued so none of the three photo requests goes unanswered.
+        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"error":{"message":"quotaExceeded"}}"""))
+        server.enqueue(MockResponse().setBody("""{"id":"x"}"""))
+        server.enqueue(MockResponse().setBody("""{"id":"x"}"""))
+
+        val error = runCatching {
+            store.uploadSnapshot(
+                manifestJson(listOf("a.webp", "b.webp", "c.webp")),
+                listOf("a.webp", "b.webp", "c.webp"),
+                progress,
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is IOException)
+        val bodies = drain().drop(1).map { it.body.readUtf8() }
+        assertFalse(bodies.any { it.contains("\"kind\":\"manifest\"") })
     }
 
     @Test fun downloadPhotos_skipsPhotosAlreadyOnDevice() = runTest {

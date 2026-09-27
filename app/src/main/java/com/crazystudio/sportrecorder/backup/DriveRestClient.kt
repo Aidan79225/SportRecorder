@@ -1,7 +1,9 @@
 package com.crazystudio.sportrecorder.backup
 
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -23,7 +25,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 private const val DEFAULT_API_BASE_URL = "https://www.googleapis.com"
@@ -61,7 +62,7 @@ class DriveRestClient(
     )
 
     /** Every file in appDataFolder, across all pages. */
-    suspend fun listAppDataFiles(token: String): List<DriveFile> {
+    suspend fun listAppDataFiles(token: String): List<DriveFile> = withContext(Dispatchers.IO) {
         val all = mutableListOf<DriveFile>()
         var pageToken: String? = null
         do {
@@ -87,7 +88,7 @@ class DriveRestClient(
             }
             pageToken = json["nextPageToken"]?.jsonPrimitive?.contentOrNull
         } while (pageToken != null)
-        return all
+        all
     }
 
     suspend fun uploadMultipart(
@@ -96,7 +97,7 @@ class DriveRestClient(
         mimeType: String,
         appProperties: Map<String, String>,
         bytes: ByteArray,
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val metadata = buildJsonObject {
             put("name", name)
             putJsonArray("parents") { add("appDataFolder") }
@@ -115,17 +116,17 @@ class DriveRestClient(
         execute(request, "Drive upload of $name").close()
     }
 
-    suspend fun downloadBytes(token: String, fileId: String): ByteArray {
+    suspend fun downloadBytes(token: String, fileId: String): ByteArray = withContext(Dispatchers.IO) {
         val url = "$apiBaseUrl$FILES_PATH/$fileId".toHttpUrl().newBuilder()
             .addQueryParameter("alt", "media")
             .build()
         val request = Request.Builder().url(url).header(AUTH_HEADER, "Bearer $token").build()
-        return execute(request, "Drive download").use {
+        execute(request, "Drive download").use {
             it.body?.bytes() ?: throw IOException("Drive download returned an empty body")
         }
     }
 
-    suspend fun deleteFile(token: String, fileId: String) {
+    suspend fun deleteFile(token: String, fileId: String) = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$apiBaseUrl$FILES_PATH/$fileId")
             .header(AUTH_HEADER, "Bearer $token")
@@ -150,12 +151,16 @@ private fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
     .writeTimeout(IO_TIMEOUT_SECONDS, TimeUnit.SECONDS)
     .build()
 
-/** Suspend on an OkHttp call; cancelling the coroutine cancels the HTTP call. */
+/**
+ * Suspend on an OkHttp call; cancelling the coroutine cancels the HTTP call. If cancellation lands
+ * in the same instant the response is delivered, [Response] carries a stream that would otherwise
+ * leak the connection unclosed — the `onCancellation` callback below closes it in that race.
+ */
 private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
     enqueue(
         object : Callback {
             override fun onResponse(call: Call, response: Response) {
-                continuation.resume(response)
+                continuation.resume(response) { _, value, _ -> value.close() }
             }
 
             override fun onFailure(call: Call, e: IOException) {
