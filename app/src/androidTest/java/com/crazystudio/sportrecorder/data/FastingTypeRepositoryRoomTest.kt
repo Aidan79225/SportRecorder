@@ -21,7 +21,13 @@ class FastingTypeRepositoryRoomTest {
     @After fun tearDown() { h.close() }
 
     @Test fun observeRecentCustomTypes_isNewestFirst_andCappedAtTen() = runBlocking {
-        (1..12).forEach { h.fastingRepo.add(FastingWindow(10L + it, 14L - it), "t$it") }
+        (1..12).forEach {
+            h.fastingRepo.add(FastingWindow(10L + it, 14L - it), "t$it")
+            // `add` stamps timestamp = now-millis and the query orders by timestamp DESC with no
+            // tiebreaker; sleep so back-to-back adds land in strictly increasing milliseconds and
+            // the positional assertions below never flake on fast hardware.
+            Thread.sleep(2)
+        }
         val types = h.fastingRepo.observeRecentCustomTypes().first()
         assertEquals(10, types.size)
         assertEquals("t12", types.first().name)

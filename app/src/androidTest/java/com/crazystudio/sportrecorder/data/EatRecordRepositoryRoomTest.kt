@@ -80,7 +80,10 @@ class EatRecordRepositoryRoomTest {
     @Test fun replaceAll_rollsBackWhenAPhotoInsertFails() = runBlocking {
         add(1_000, "keep", listOf("k.webp"))
         val before = h.eatRepo.observeAll().first()
-        h.photoDao.failOnInsertNumber = 2 // first photo of the new data lands, second throws
+        // Setup's k.webp above was insert #1 (cumulative counter). Failing on #3 lets n1.webp
+        // land as #2, then n2.webp throws as #3 -- proving the transaction rolls back even after
+        // one of the new photos was already written.
+        h.photoDao.failOnInsertNumber = 3
 
         val error = assertThrows(IllegalStateException::class.java) {
             runBlocking {

@@ -15,7 +15,11 @@ class RecordingPhotoFileStore : PhotoFileStore {
     override fun delete(fileName: String) { deleted.add(fileName) }
 }
 
-/** Delegating [PhotoDao] that throws on the [failOnInsertNumber]-th insert (1-based); 0 = never. */
+/**
+ * Delegating [PhotoDao] that throws on the [failOnInsertNumber]-th insert (1-based); 0 = never.
+ * The counter is cumulative across this harness's whole lifetime, not per-test-action: any setup
+ * calls that insert photos (e.g. seeding via [RoomHarness.eatRepo]) count toward it too.
+ */
 class ThrowingPhotoDao(private val real: PhotoDao, var failOnInsertNumber: Int = 0) : PhotoDao by real {
     private var inserts = 0
     override suspend fun insert(photo: Photo): Long {
