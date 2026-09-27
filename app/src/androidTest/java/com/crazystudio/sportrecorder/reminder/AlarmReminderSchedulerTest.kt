@@ -44,7 +44,10 @@ class AlarmReminderSchedulerTest {
     @Test fun schedule_bothTypes_thenEmpty_cancelsEverything() {
         val soon = System.currentTimeMillis() + 60_000
         scheduler.schedule(
-            listOf(ScheduledReminder(ReminderType.WINDOW_CLOSING, soon), ScheduledReminder(ReminderType.FAST_COMPLETE, soon + 1)),
+            listOf(
+                ScheduledReminder(ReminderType.WINDOW_CLOSING, soon),
+                ScheduledReminder(ReminderType.FAST_COMPLETE, soon + 1),
+            ),
         )
         assertNotNull(slot(ReminderType.WINDOW_CLOSING)); assertNotNull(slot(ReminderType.FAST_COMPLETE))
 
