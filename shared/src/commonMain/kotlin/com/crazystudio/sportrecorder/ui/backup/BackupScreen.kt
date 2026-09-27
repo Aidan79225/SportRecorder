@@ -118,6 +118,8 @@ private fun messageRes(message: BackupMessage) = when (message) {
     BackupMessage.BackupComplete -> Res.string.backup_msg_backup_complete
     BackupMessage.RestoreComplete -> Res.string.backup_msg_restore_complete
     BackupMessage.RestoreSchemaTooNew -> Res.string.backup_msg_schema_too_new
+    // TODO(Task 5): map to backup_msg_cancelled once that string exists.
+    BackupMessage.Cancelled -> Res.string.backup_msg_failed
     BackupMessage.Failed -> Res.string.backup_msg_failed
 }
 
