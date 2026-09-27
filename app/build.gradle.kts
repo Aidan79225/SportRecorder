@@ -76,6 +76,11 @@ android {
     lint {
         baseline = file("lint-baseline.xml")
     }
+
+    testOptions {
+        // Drive client tests run on the JVM and touch android.util.Log; stub it instead of crashing.
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 kotlin {
@@ -139,6 +144,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
