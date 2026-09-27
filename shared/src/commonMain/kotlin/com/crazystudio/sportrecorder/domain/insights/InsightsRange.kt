@@ -52,7 +52,9 @@ object InsightsRange {
 
     /**
      * The anchor after paging [steps] periods (negative = earlier). Forward paging clamps at
-     * today: a week never ends after today, and a month never leaves the current one.
+     * today: a week never ends after today, and a month never leaves the current one. When the
+     * page does not move, the anchor comes back untouched (not re-snapped to midnight), so a
+     * no-op never looks like a change.
      */
     fun shift(
         anchor: Long,
@@ -74,6 +76,7 @@ object InsightsRange {
             shifted > today -> today
             else -> shifted
         }
+        if (result == date) return anchor
         return result.atStartOfDayIn(timeZone).toEpochMilliseconds()
     }
 

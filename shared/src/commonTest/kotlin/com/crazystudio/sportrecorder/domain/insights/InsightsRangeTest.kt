@@ -52,7 +52,8 @@ class InsightsRangeTest {
     @Test fun shift_weekForwardNeverPassesToday() {
         val now = at(2026, 3, 15, 12)
         assertEquals(at(2026, 3, 15), InsightsRange.shift(at(2026, 3, 12), Period.WEEK, 1, now, zone))
-        assertEquals(at(2026, 3, 15), InsightsRange.shift(now, Period.WEEK, 1, now, zone))
+        // Already on today: nothing moves, and the anchor is handed back as it was (not re-snapped).
+        assertEquals(now, InsightsRange.shift(now, Period.WEEK, 1, now, zone))
     }
 
     @Test fun shift_monthBackKeepsTheDayOfMonthWhereItCan() {
@@ -64,8 +65,8 @@ class InsightsRangeTest {
 
     @Test fun shift_monthForwardStopsAtTheCurrentMonth() {
         val now = at(2026, 3, 15, 12)
-        // Already on the current month: stays put.
-        assertEquals(at(2026, 3, 15), InsightsRange.shift(now, Period.MONTH, 1, now, zone))
+        // Already on the current month: stays put, anchor untouched.
+        assertEquals(now, InsightsRange.shift(now, Period.MONTH, 1, now, zone))
         // From a past month, landing in the current month clamps the day to today.
         assertEquals(at(2026, 3, 15), InsightsRange.shift(at(2026, 2, 20), Period.MONTH, 1, now, zone))
         // From a past month, landing on an earlier day of the current month keeps that day.
