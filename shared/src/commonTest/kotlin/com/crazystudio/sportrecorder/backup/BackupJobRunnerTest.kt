@@ -97,6 +97,25 @@ class BackupJobRunnerTest {
         assertEquals(1, host.finished)
     }
 
+    @Test fun cancel_duringApply_stillCompletesTheRestore() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())
+        val eat = FakeEatRecordRepository(listOf(EatRecord(9, 9L, null, "old", emptyList())))
+        eat.replaceAllGate = CompletableDeferred()
+        val runner = runner(service(store, eat))
+
+        runner.startRestore("s")
+        testScheduler.advanceUntilIdle() // parked inside the NonCancellable apply
+        runner.cancel()
+        testScheduler.advanceUntilIdle()
+        assertIs<BackupJobState.Running>(runner.state.value) // apply is not cancellable
+
+        eat.replaceAllGate!!.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertEquals(BackupJobState.Finished(BackupJobKind.Restore, BackupOutcome.Completed), runner.state.value)
+        assertEquals(emptyList(), eat.state.value) // the (empty) snapshot was applied
+    }
+
     @Test fun failure_reportsFailed() = runTest(dispatcher) {
         val store = FakeBackupStore()
         store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())

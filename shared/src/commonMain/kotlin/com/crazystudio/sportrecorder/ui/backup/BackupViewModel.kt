@@ -44,7 +44,11 @@ class BackupViewModel(
                     if (state.account?.email == account?.email) {
                         state.copy(account = account)
                     } else {
-                        state.copy(account = account, snapshots = emptyList())
+                        // Bump the generation so a listing already in flight for the previous
+                        // account can never land its (now-stale) result, and reset the loading
+                        // flag ourselves since that discarded refresh will never do it.
+                        listGeneration++
+                        state.copy(account = account, snapshots = emptyList(), isLoadingSnapshots = false)
                     }
                 }
             }

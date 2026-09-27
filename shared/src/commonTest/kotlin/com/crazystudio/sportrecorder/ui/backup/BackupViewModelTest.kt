@@ -195,6 +195,25 @@ class BackupViewModelTest {
         assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots)
     }
 
+    @Test fun accountChange_discardsListingStartedForThePreviousAccount() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("old-acct", 1L, "0.7.1", 1L), emptyDocJson())
+        store.listGate = CompletableDeferred()
+        val auth = FakeBackupAuth(BackupAccount("me@x.com"))
+        val vm = vm(store, auth = auth)
+        testScheduler.advanceUntilIdle()
+
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle() // parked on listGate
+        auth.accountState.value = BackupAccount("other@x.com")
+        testScheduler.advanceUntilIdle()
+        store.listGate!!.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots) // stale list must not land
+        assertEquals(false, vm.uiState.value.isLoadingSnapshots)
+    }
+
     @Test fun restore_safetyBackupFails_setsSafetyBackupMessage() = runTest(dispatcher) {
         val store = FakeBackupStore()
         store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())
