@@ -6,6 +6,9 @@ import android.os.SystemClock
 import android.service.notification.StatusBarNotification
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.fail
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.loadKoinModules
+import org.koin.dsl.module
 
 /**
  * In-memory [BackupStore] for instrumented tests (the commonTest FakeBackupStore is not on this
@@ -94,3 +97,23 @@ fun awaitUntil(timeoutMs: Long = 10_000, stepMs: Long = 50, what: String, condit
 /** The posted notification with [id], or null. */
 fun Context.activeNotification(id: Int): StatusBarNotification? =
     getSystemService(NotificationManager::class.java).activeNotifications.firstOrNull { it.id == id }
+
+// --- Koin ---------------------------------------------------------------------------------------
+
+/**
+ * Point the app's running Koin graph at [store]: fake cloud, real everything else (real
+ * BackupJobRunner, real AndroidBackupJobHost, so a job really starts BackupForegroundService).
+ * Re-declaring BackupService and BackupJobRunner drops the cached singles, so every test gets a
+ * fresh runner. Never unloaded — unloading would delete the app's own definitions for these keys.
+ */
+fun loadBackupTestModule(store: BackupStore): BackupJobRunner {
+    loadKoinModules(
+        module {
+            single<BackupStore> { store }
+            single<AccessTokenProvider> { AccessTokenProvider { "test-token" } }
+            single { BackupService(get(), get(), get(), get(), get(), get(), appVersionName = "test") }
+            single { BackupJobRunner(get(), get()) }
+        },
+    )
+    return GlobalContext.get().get<BackupJobRunner>()
+}
