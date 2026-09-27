@@ -6,7 +6,9 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
 /**
@@ -59,9 +61,9 @@ class BackupService(
     suspend fun listSnapshots(): List<SnapshotInfo> = store.listSnapshots()
 
     /**
-     * Replace local data with snapshot [snapshotId]. Validates the schema, downloads everything,
-     * and only then swaps local data — so a failed download or an unreadable schema leaves the
-     * device's current data untouched.
+     * Replace local data with snapshot [snapshotId]. Validates the schema, **backs up the current
+     * device data first** (so the restore is reversible), downloads everything, and only then swaps
+     * local data — so a failed or cancelled download leaves the device's current data untouched.
      */
     suspend fun restore(snapshotId: String, progress: BackupProgress = BackupProgress.None) {
         progress.report(BackupStep.DownloadingManifest, 0, 0)
@@ -70,11 +72,28 @@ class BackupService(
         if (doc.schemaVersion > BackupDocument.SCHEMA_VERSION) {
             throw BackupSchemaTooNewException(doc.schemaVersion)
         }
-        // Download-all-then-swap: a throw here leaves local data intact.
+
+        // Safety net: keep what is on the device as its own snapshot before overwriting it.
+        // Never prune here — with KEEP_LAST snapshots present, pruning could delete the very
+        // snapshot we are about to restore. The next regular backup prunes as usual.
+        if (eatRepo.observeAll().first().isNotEmpty()) {
+            backupInternal(prune = false) { _, done, total ->
+                progress.report(BackupStep.SafetyBackup, done, total)
+            }
+        }
+
+        // Download-all-then-swap: a throw or cancel here leaves local data intact.
         val photoNames = doc.meals.flatMap { meal -> meal.photos.map { it.fileName } }.distinct()
         store.downloadPhotos(snapshotId, photoNames, progress)
 
-        progress.report(BackupStep.Applying, 0, 0)
+        // Once we start writing, finish: a half-applied restore is the one state we must never leave.
+        withContext(NonCancellable) {
+            progress.report(BackupStep.Applying, 0, 0)
+            apply(doc)
+        }
+    }
+
+    private suspend fun apply(doc: BackupDocument) {
         eatRepo.replaceAll(doc.meals.map { it.toDomain() })
         fastingRepo.replaceAllCustom(doc.fastingTypes.map { it.toDomain() })
         settingsRepo.setSelection(
@@ -86,7 +105,6 @@ class BackupService(
         prefsRepo.setLeadMinutes(prefs.leadMinutes)
         prefsRepo.setQuietHoursEnabled(prefs.quietHoursEnabled)
         prefsRepo.setQuietHours(prefs.quietStartMinutes, prefs.quietEndMinutes)
-
         rescheduler.reschedule()
     }
 

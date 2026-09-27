@@ -155,4 +155,65 @@ class BackupServiceTest {
         assertEquals(Triple(BackupStep.UploadingPhotos, 2, 2), progress.reports.last { it.first == BackupStep.UploadingPhotos })
         assertEquals(Triple(BackupStep.UploadingManifest, 1, 1), progress.reports.last { it.first == BackupStep.UploadingManifest })
     }
+
+    private fun emptyDocJson(): String = BackupJson.encodeToString(
+        BackupDocument.serializer(),
+        BackupDocument(
+            schemaVersion = BackupDocument.SCHEMA_VERSION,
+            createdAt = 1L,
+            appVersionName = "0.6.2",
+            meals = emptyList(),
+            fastingTypes = emptyList(),
+            dietSettings = BackupDietSettings(16, 8),
+            reminderPrefs = BackupReminderPrefs(false, false, 30, false, 1320, 480),
+        ),
+    )
+
+    @Test fun restore_backsUpCurrentDataFirst_withoutPruning() = runTest {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("target", 1L, "0.6.2", 1L), emptyDocJson())
+        val eat = FakeEatRecordRepository(
+            listOf(
+                EatRecord(1, 1_700L, null, "keep-me", listOf(EatPhoto(7, "a.webp", 1_701L))),
+                EatRecord(2, 1_800L, null, "me-too", emptyList()),
+            ),
+        )
+        val progress = RecordingProgress()
+
+        service(eat, store).restore("target", progress)
+
+        val safety = store.uploads.single()
+        val safetyDoc = BackupJson.decodeFromString(BackupDocument.serializer(), safety.manifestJson)
+        assertEquals(listOf("keep-me", "me-too"), safetyDoc.meals.mapNotNull { it.note }.sorted())
+        assertEquals(listOf("a.webp"), safety.uploadedPhotos)
+        assertEquals(null, store.pruneKeepLast) // the safety snapshot must never prune the target away
+        assertEquals(emptyList(), eat.state.value) // and the restore still applied
+        assertEquals(
+            listOf(BackupStep.DownloadingManifest, BackupStep.SafetyBackup, BackupStep.DownloadingPhotos, BackupStep.Applying),
+            progress.steps,
+        )
+    }
+
+    @Test fun restore_skipsSafetyBackup_whenDeviceHasNoRecords() = runTest {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("target", 1L, "0.6.2", 1L), emptyDocJson())
+        val progress = RecordingProgress()
+
+        service(FakeEatRecordRepository(), store).restore("target", progress)
+
+        assertTrue(store.uploads.isEmpty())
+        assertTrue(BackupStep.SafetyBackup !in progress.steps)
+    }
+
+    @Test fun restore_passesReferencedPhotoNamesToStore() = runTest {
+        val store = FakeBackupStore()
+        val info = service(
+            FakeEatRecordRepository(listOf(EatRecord(1, 1L, null, null, listOf(EatPhoto(1, "x.webp", 1L))))),
+            store,
+        ).backup()
+
+        service(FakeEatRecordRepository(), store).restore(info.id)
+
+        assertEquals(listOf("x.webp"), store.lastDownloadedPhotoNames)
+    }
 }
