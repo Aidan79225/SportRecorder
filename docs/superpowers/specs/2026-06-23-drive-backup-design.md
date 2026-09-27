@@ -74,7 +74,7 @@ up" · progress). Koin wires the Android impls behind the interfaces.
    - Upload **`manifest.json` last** — the *commit marker*. A snapshot whose manifest is
      missing/incomplete is invalid and cleaned up.
    - **Prune** to the last N snapshots; drop orphan photos no kept snapshot references.
-   - Record "last backed up at". Progress UI + cancel.
+   - Record "last backed up at". Progress UI + cancel — delivered by `2026-09-27-backup-optimization-design.md`.
 
 ## Restore flow
 

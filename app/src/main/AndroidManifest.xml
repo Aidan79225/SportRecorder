@@ -6,6 +6,9 @@
 
     <!-- Drive backup (optional, user-initiated): talk to the Google Drive REST API. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Keeps a user-started backup/restore alive with the screen off (progress notification). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
@@ -16,6 +19,7 @@
       docs/superpowers/specs/2026-06-19-fasting-reminders-design.md
       (privacy policy in the separate repo, Play Console sensitive-permissions declaration,
       and confirm USE_EXACT_ALARM is NOT present below).
+      Backup: Play Console foreground-service (dataSync) declaration for BackupForegroundService.
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -61,6 +65,12 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Hosts a running backup/restore job; started only by the user's own tap. -->
+        <service
+            android:name=".backup.BackupForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
 </manifest>

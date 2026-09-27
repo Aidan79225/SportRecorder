@@ -7,7 +7,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.crazystudio.sportrecorder.BuildConfig
+import com.crazystudio.sportrecorder.backup.AndroidBackupJobHost
 import com.crazystudio.sportrecorder.backup.BackupAuth
+import com.crazystudio.sportrecorder.backup.BackupJobHost
+import com.crazystudio.sportrecorder.backup.BackupJobRunner
 import com.crazystudio.sportrecorder.backup.BackupService
 import com.crazystudio.sportrecorder.backup.BackupStore
 import com.crazystudio.sportrecorder.backup.GoogleBackupAuth
@@ -52,6 +55,7 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.settings.SettingsViewModel
+import com.crazystudio.sportrecorder.util.PhotoStorage
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -89,10 +93,15 @@ val appModule = module {
     // Backup
     single { GoogleBackupAuth(androidContext()) }
     single<BackupAuth> { get<GoogleBackupAuth>() }
-    single<BackupStore> { GoogleDriveBackupStore(get(), androidContext()) }
+    single<BackupStore> {
+        val context = androidContext()
+        GoogleDriveBackupStore(get<GoogleBackupAuth>(), { name -> PhotoStorage.fileFor(context, name) })
+    }
     single {
         BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }
+    single<BackupJobHost> { AndroidBackupJobHost(androidContext()) }
+    single { BackupJobRunner(get(), get()) }
 
     // Reminders (Android side) + rescheduler
     single { ReminderNotifier(androidContext()) }
@@ -118,5 +127,5 @@ val appModule = module {
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
     viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { BackupViewModel(get(), get()) }
+    viewModel { BackupViewModel(get(), get(), get(), get()) }
 }

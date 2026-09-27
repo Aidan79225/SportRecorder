@@ -3,8 +3,12 @@ package com.crazystudio.sportrecorder.ui.backup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.backup.BackupAuth
-import com.crazystudio.sportrecorder.backup.BackupSchemaTooNewException
+import com.crazystudio.sportrecorder.backup.BackupJobKind
+import com.crazystudio.sportrecorder.backup.BackupJobRunner
+import com.crazystudio.sportrecorder.backup.BackupJobState
+import com.crazystudio.sportrecorder.backup.BackupOutcome
 import com.crazystudio.sportrecorder.backup.BackupService
+import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,17 +16,23 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Drives the backup/restore screen. Observes sign-in state via [BackupAuth] and runs the one-shot
- * backup/restore/list operations through [BackupService]. Android auth (consent, sign-out) is the
- * :app layer's concern, so this VM stays platform-free and testable.
+ * Drives the backup/restore screen. Observes sign-in state via [BackupAuth], mirrors the
+ * app-scoped [BackupJobRunner] (so a job keeps going when this VM is cleared), and loads the
+ * snapshot list through [BackupService]. Android auth (consent, sign-out) is the :app layer's
+ * concern, so this VM stays platform-free and testable.
  */
 class BackupViewModel(
+    private val runner: BackupJobRunner,
     private val backupService: BackupService,
     backupAuth: BackupAuth,
+    observeEatRecords: ObserveEatRecordsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = _uiState.asStateFlow()
+
+    /** Bumped by every [refreshSnapshots]; a listing applies its result only if it is still the newest. */
+    private var listGeneration = 0
 
     init {
         viewModelScope.launch {
@@ -39,49 +49,74 @@ class BackupViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            runner.state.collect { job ->
+                // Never suspend in here: the outcome must show at once, and the next runner state
+                // must not wait behind a Drive listing.
+                if (job is BackupJobState.Finished) {
+                    _uiState.update { it.copy(job = job, message = job.toMessage()) }
+                    // Refresh after every finish, not only a completed one: a cancelled or failed
+                    // restore may already have committed its safety snapshot.
+                    refreshSnapshots()
+                } else {
+                    _uiState.update { it.copy(job = job) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            observeEatRecords().collect { meals -> _uiState.update { it.copy(localMealCount = meals.size) } }
+        }
     }
 
     /** Load the snapshot list (restore picker + "last backed up"). Requires being signed in. */
     fun refreshSnapshots() {
+        // Only the newest request may write its result, so a slow, stale listing can never
+        // overwrite a fresher one (or clear the loading flag while that one is still running).
+        val generation = ++listGeneration
         viewModelScope.launch {
-            _uiState.update { it.copy(phase = BackupPhase.Loading) }
-            runCatching { backupService.listSnapshots() }
-                .onSuccess { snapshots -> _uiState.update { it.copy(snapshots = snapshots, phase = BackupPhase.Idle) } }
-                .onFailure { _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) } }
+            _uiState.update { it.copy(isLoadingSnapshots = true) }
+            val result = runCatching { backupService.listSnapshots() }
+            if (generation != listGeneration) return@launch
+            result
+                .onSuccess { snapshots ->
+                    _uiState.update { it.copy(snapshots = snapshots, isLoadingSnapshots = false) }
+                }
+                .onFailure {
+                    // A job's outcome message outranks a failed list refresh: never clobber it.
+                    _uiState.update {
+                        it.copy(isLoadingSnapshots = false, message = it.message ?: BackupMessage.Failed)
+                    }
+                }
         }
     }
 
     fun backup() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(phase = BackupPhase.BackingUp, message = null) }
-            runCatching { backupService.backup() }
-                .onSuccess {
-                    val snapshots = runCatching { backupService.listSnapshots() }
-                        .getOrDefault(_uiState.value.snapshots)
-                    _uiState.update {
-                        it.copy(snapshots = snapshots, phase = BackupPhase.Idle, message = BackupMessage.BackupComplete)
-                    }
-                }
-                .onFailure { _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) } }
-        }
+        _uiState.update { it.copy(message = null) }
+        runner.startBackup()
     }
 
     fun restore(snapshotId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(phase = BackupPhase.Restoring, message = null) }
-            val result = runCatching { backupService.restore(snapshotId) }
-            val message = when {
-                result.isSuccess -> BackupMessage.RestoreComplete
-                result.exceptionOrNull() is BackupSchemaTooNewException -> BackupMessage.RestoreSchemaTooNew
-                else -> BackupMessage.Failed
-            }
-            _uiState.update { it.copy(phase = BackupPhase.Idle, message = message) }
-        }
+        _uiState.update { it.copy(message = null) }
+        runner.startRestore(snapshotId)
     }
 
-    /** Clear the transient result message after the UI has shown it. */
-    fun consumeMessage() = _uiState.update { it.copy(message = null) }
+    fun cancel() = runner.cancel()
+
+    /** Clear the transient result message after the UI has shown it, and let the runner go idle. */
+    fun consumeMessage() {
+        _uiState.update { it.copy(message = null) }
+        runner.acknowledgeFinished()
+    }
 
     /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
-    fun reportFailure() = _uiState.update { it.copy(phase = BackupPhase.Idle, message = BackupMessage.Failed) }
+    fun reportFailure() = _uiState.update { it.copy(message = BackupMessage.Failed) }
+}
+
+private fun BackupJobState.Finished.toMessage(): BackupMessage = when (outcome) {
+    BackupOutcome.Completed ->
+        if (kind == BackupJobKind.Backup) BackupMessage.BackupComplete else BackupMessage.RestoreComplete
+    BackupOutcome.Cancelled -> BackupMessage.Cancelled
+    BackupOutcome.SchemaTooNew -> BackupMessage.RestoreSchemaTooNew
+    BackupOutcome.SafetyBackupFailed -> BackupMessage.SafetyBackupFailed
+    BackupOutcome.Failed -> BackupMessage.Failed
 }

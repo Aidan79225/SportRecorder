@@ -1,11 +1,17 @@
 package com.crazystudio.sportrecorder.backup.fakes
 
+import com.crazystudio.sportrecorder.backup.BackupDocument
+import com.crazystudio.sportrecorder.backup.BackupJson
+import com.crazystudio.sportrecorder.backup.BackupProgress
+import com.crazystudio.sportrecorder.backup.BackupStep
 import com.crazystudio.sportrecorder.backup.BackupStore
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * In-memory [BackupStore]. Records uploads, models incremental photo skip via [existingPhotos],
- * and can simulate a photo-download failure ([failDownloadPhotos]) for the restore-failure test.
+ * reports progress like the real store, and can simulate a photo-download failure
+ * ([failDownloadPhotos]) or hold a download open ([downloadGate]) for cancellation tests.
  *
  * Snapshots, manifests and already-uploaded photos are partitioned per [account] — the real store
  * is scoped to one Google account's Drive appDataFolder, so switching accounts must reveal a
@@ -36,12 +42,22 @@ class FakeBackupStore : BackupStore {
     /** Snapshot ids whose downloadPhotos was invoked. */
     val downloadedPhotosFor = mutableListOf<String>()
 
+    /** Photo names passed to the most recent downloadPhotos call. */
+    var lastDownloadedPhotoNames: List<String> = emptyList()
+        private set
+
     /** Last keepLast passed to prune, or null if never pruned. */
     var pruneKeepLast: Int? = null
         private set
 
     /** When true, [downloadPhotos] throws (simulates an interrupted restore). */
     var failDownloadPhotos = false
+
+    /** When true, [uploadSnapshot] throws before uploading anything (Drive full, a photo file missing…). */
+    var failUploadSnapshot = false
+
+    /** When set, [downloadPhotos] suspends on it first — complete it (or cancel the caller) to continue. */
+    var downloadGate: CompletableDeferred<Unit>? = null
 
     private var nextId = 1
 
@@ -51,30 +67,55 @@ class FakeBackupStore : BackupStore {
         current.manifestsById[info.id] = manifestJson
     }
 
-    override suspend fun listSnapshots(): List<SnapshotInfo> = current.snapshots.toList()
+    /** When set, [listSnapshots] suspends on it first — models a slow Drive listing. */
+    var listGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun uploadSnapshot(manifestJson: String, photoFileNames: List<String>): SnapshotInfo {
+    override suspend fun listSnapshots(): List<SnapshotInfo> {
+        listGate?.await()
+        return current.snapshots.toList()
+    }
+
+    override suspend fun uploadSnapshot(
+        manifestJson: String,
+        photoFileNames: List<String>,
+        progress: BackupProgress,
+    ): SnapshotInfo {
+        if (failUploadSnapshot) throw IllegalStateException("simulated snapshot upload failure")
         val state = current
         val newPhotos = photoFileNames.filterNot { it in state.photos }
-        state.photos.addAll(newPhotos)
+        progress.report(BackupStep.UploadingPhotos, 0, newPhotos.size)
+        newPhotos.forEachIndexed { index, name ->
+            state.photos.add(name)
+            progress.report(BackupStep.UploadingPhotos, index + 1, newPhotos.size)
+        }
+        progress.report(BackupStep.UploadingManifest, 0, 1)
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), manifestJson)
         val info = SnapshotInfo(
             id = "snapshot-${nextId++}",
             createdAt = 0L,
             appVersionName = "",
             sizeBytes = manifestJson.length.toLong(),
+            mealCount = doc.meals.size,
         )
         uploads.add(Upload(info, manifestJson, newPhotos))
         state.snapshots.add(0, info)
         state.manifestsById[info.id] = manifestJson
+        progress.report(BackupStep.UploadingManifest, 1, 1)
         return info
     }
 
     override suspend fun downloadManifest(id: String): String =
         current.manifestsById[id] ?: error("no manifest for $id")
 
-    override suspend fun downloadPhotos(id: String) {
+    override suspend fun downloadPhotos(id: String, photoFileNames: List<String>, progress: BackupProgress) {
+        downloadGate?.await()
         if (failDownloadPhotos) throw IllegalStateException("simulated photo download failure")
         downloadedPhotosFor.add(id)
+        lastDownloadedPhotoNames = photoFileNames
+        progress.report(BackupStep.DownloadingPhotos, 0, photoFileNames.size)
+        photoFileNames.forEachIndexed { index, _ ->
+            progress.report(BackupStep.DownloadingPhotos, index + 1, photoFileNames.size)
+        }
     }
 
     override suspend fun prune(keepLast: Int) {

@@ -45,4 +45,9 @@
     <string name="reminder_window_closing_text">視窗關閉前，記得吃完最後一餐。</string>
     <string name="reminder_fast_complete_title">斷食達標 🎉</string>
     <string name="reminder_fast_complete_text">你已達成斷食目標，太棒了！</string>
+
+    <!-- Drive 備份前景服務 -->
+    <string name="backup_channel_name">備份進度</string>
+    <string name="backup_notif_backing_up">正在備份</string>
+    <string name="backup_notif_restoring">正在還原</string>
 </resources>
