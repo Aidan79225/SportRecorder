@@ -28,7 +28,7 @@
   + `model/`、`repository/`(介面)、`usecase/`(9 個)
 - `data/` — `repository/`(Room + DataStore 實作)、`mapper/`;`dao/`、`entity/`、`database/`
 - `backup/` — `BackupService`、`BackupDocument`(含 `SCHEMA_VERSION`)、`BackupMappers`、
-  `BackupStore`/`BackupAuth` 介面
+  `BackupStore`/`BackupAuth` 介面、`BackupJobRunner`、`BackupProgress`
 - `ui/` — Compose Multiplatform 畫面:`diet/`(home、record、editor、select、create/fasting)、
   `insights/`、`settings/`、`theme/`、`component/`;**7 個 ViewModel 全部在 commonMain**
 - `platform/` — `expect`/介面形式的平台抽象(`LocationProvider`、`PhotoImporter`;照片檔案存取的介面在 `data/`)
@@ -37,7 +37,8 @@
 
 `MainActivity`、`SportApplication`、`di/AppModule`(Koin)、`ui/AppRoot`+`nav/Route`、
 `reminder/`(AlarmManager、通知、BootReceiver)、`platform/` 與 `data/` 的 Android actuals、
-`backup/GoogleBackupAuth`+`GoogleDriveBackupStore`、`util/PhotoStorage` 等。
+`backup/GoogleBackupAuth`+`GoogleDriveBackupStore`、`backup/DriveRestClient`+`BackupForegroundService`、
+`util/PhotoStorage` 等。
 
 **`:shared/iosMain`** — 目前只有 `ui/shared/MainViewController.kt`(尚無 Xcode 專案)。
 
@@ -66,11 +67,14 @@
    - 實機端到端測試(PR 內附 10 項 checklist:登入 → 備份 → 重裝 → 還原)
 2. **備份引擎已知取捨(Phase 3 PR 明列,尚未處理)**
    - 自訂斷食類型備份上限 ≤ 10 筆
-   - Drive 檔案列表未分頁(>1000 檔案有風險,已在程式碼註解)
    - `sizeBytes` 只存在 manifest,UI 不顯示
 3. **iOS**:host app(Xcode 專案 / iOS Koin graph / DataStore 建立 / 通知)尚未開始;
    目前僅由 CI 的 `ios-shared` job 以 `:shared:iosSimulatorArm64Test` 守住可編譯性。
 4. **文件狀態過期**:部分 spec 的 `Status` 沒跟上實作(見第 6 節標註),下次動到相關功能時順手更新。
+5. **備份優化(issue #64)— 分支 `claude/backup-optimization-64`**
+   `BackupJobRunner`(commonMain,app 等級 scope)+ Android `BackupForegroundService` 讓備份離開頁面、
+   關螢幕也會跑完;進度條與通知;照片並行傳輸、還原跳過本機已有照片;Drive 列表分頁;
+   還原前先自動備份一份安全快照。spec:`2026-09-27-backup-optimization-design.md`。
 
 ## 5. 建置、測試與發布
 
@@ -126,6 +130,7 @@
 | 09-21 | E2E / flow 測試套件 | ✓ | — | 已完成(PR #61) |
 | 09-27 | 回顧地點卡改為地圖(取代 B3) | ✓ | — | 實作中(`claude/insight-page-improvements-2fe29z`) |
 | 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 實作中(同一分支) |
+| 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。
