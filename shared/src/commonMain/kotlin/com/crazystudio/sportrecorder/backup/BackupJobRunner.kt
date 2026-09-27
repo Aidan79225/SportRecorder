@@ -4,15 +4,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 
 enum class BackupJobKind { Backup, Restore }
 
@@ -80,24 +76,9 @@ class BackupJobRunner(
         _state.value = BackupJobState.Running(kind, BackupStep.Preparing, 0, 0)
         host.onJobStarted()
         job = scope.launch {
-            // BackupProgress.report is a plain (non-suspend) callback that may fire many times
-            // back-to-back with no real suspension in between (e.g. the in-memory store in tests).
-            // Applying every report straight onto a MutableStateFlow would let most of them be
-            // conflated away before an observer ever gets scheduled. Routing them through a
-            // channel drained by a dedicated pump — with a `yield()` after each apply — guarantees
-            // every distinct step is actually published and observable in order.
-            val updates = Channel<BackupJobState.Running>(Channel.UNLIMITED)
-            val pump = launch {
-                for (running in updates) {
-                    _state.value = running
-                    yield()
-                }
-            }
             val result = runCatching {
-                work { step, done, total -> updates.trySend(BackupJobState.Running(kind, step, done, total)) }
+                work { step, done, total -> _state.value = BackupJobState.Running(kind, step, done, total) }
             }
-            updates.close()
-            withContext(NonCancellable) { pump.join() }
             _state.value = BackupJobState.Finished(kind, result.outcome())
             host.onJobFinished()
         }

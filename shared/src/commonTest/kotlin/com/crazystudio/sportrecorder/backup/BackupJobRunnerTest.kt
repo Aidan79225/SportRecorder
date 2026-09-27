@@ -12,8 +12,10 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -127,11 +129,12 @@ class BackupJobRunnerTest {
         assertEquals(BackupJobState.Finished(BackupJobKind.Restore, BackupOutcome.SchemaTooNew), runner.state.value)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test fun progress_isMirroredIntoRunningState() = runTest(dispatcher) {
         val eat = FakeEatRecordRepository(listOf(EatRecord(1, 1L, null, "n", listOf(EatPhoto(1, "a.webp", 1L)))))
         val runner = runner(service(FakeBackupStore(), eat))
         val seen = mutableListOf<BackupJobState>()
-        val collector = launch { runner.state.collect { seen.add(it) } }
+        val collector = launch(UnconfinedTestDispatcher(testScheduler)) { runner.state.collect { seen.add(it) } }
 
         runner.startBackup()
         testScheduler.advanceUntilIdle()
