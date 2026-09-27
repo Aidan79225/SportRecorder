@@ -90,8 +90,10 @@
 - **Instrumented tests(本機、不進 CI)**:`app/src/androidTest/.../backup/` 用真的 Room、真的
   `BackupForegroundService` 與通知、真的 `BackupScreen`,只假造雲端。跑法:先開一台模擬器,然後
   `$env:ANDROID_SERIAL="emulator-5556"; .\gradlew.bat :app:connectedDebugAndroidTest`
-  (單一類別加 `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>`)。報告在
-  `app/build/reports/androidTests/connected/debug/index.html`。
+  (單一類別:`.\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>"`,
+  在 PowerShell 裡 `-P` 參數一定要加引號)。報告在
+  `app/build/reports/androidTests/connected/debug/index.html`。請用專門的測試模擬器:connected test
+  跑完會解除安裝 app,也會對裝置上現有資料做一次真的備份流程。
 - **CI**(`.github/workflows/ci.yml`,PR 與 push to `master` 觸發)
   - `build`(ubuntu):assemble + unit test + detekt + lint + `:shared:jvmTest`
   - `ios-shared`(macOS):`:shared:iosSimulatorArm64Test`

@@ -91,7 +91,7 @@ class BackupRoundTripRoomTest {
         eatRepo.save(EatRecord(0, 2_000L, null, "dinner", emptyList()), emptyList(), emptyList())
     }
 
-    private fun List<EatRecord>.shape() = map { Triple(it.time, it.note, it.location) to it.photos.map { p -> p.fileName } }
+    private fun List<EatRecord>.shape() = map { Triple(it.time, it.note, it.location) to it.photos.map { p -> p.fileName to p.createdAt } }
 
     @Test fun backup_thenRestore_bringsEverythingBack() = runBlocking {
         seedTwoMeals()
@@ -117,6 +117,7 @@ class BackupRoundTripRoomTest {
         assertEquals(45L, prefsRepo.prefs.first().leadMinutes)
         assertEquals(1, rescheduleCount)
         assertEquals(2, info.mealCount)
+        assertTrue(deletedPhotos.isEmpty())
     }
 
     @Test fun restore_ontoDeviceWithData_uploadsSafetySnapshotFirst_withoutPrune() = runBlocking {
@@ -141,6 +142,7 @@ class BackupRoundTripRoomTest {
         assertEquals(listOf("a.webp"), safety.uploadedPhotos)
         assertEquals(0, store.pruneCalls)
         assertEquals(listOf("from-cloud"), eatRepo.observeAll().first().map { it.note })
+        assertTrue(deletedPhotos.isEmpty())
     }
 
     @Test fun restore_whenDownloadFails_leavesRoomUntouched() = runBlocking {
@@ -150,8 +152,9 @@ class BackupRoundTripRoomTest {
         val before = eatRepo.observeAll().first().shape()
         rescheduleCount = 0
 
-        assertThrows(IllegalStateException::class.java) { runBlocking { service().restore(info.id) } }
+        val error = assertThrows(IllegalStateException::class.java) { runBlocking { service().restore(info.id) } }
 
+        assertTrue(error.message!!.contains("simulated"))
         assertEquals(before, eatRepo.observeAll().first().shape())
         assertEquals(0, rescheduleCount)
     }

@@ -40,7 +40,9 @@ running against Room. Runnable on any attached emulator with one Gradle task; **
   the real store (`UploadingPhotos` per photo, `UploadingManifest` 0/1 → 1/1, `DownloadingPhotos`).
 - **`loadBackupTestModule(store): BackupJobRunner`** — calls
   `loadKoinModules(module { … }, allowOverride = true)` on the app's already-started global Koin,
-  overriding `single<BackupStore>`, `single<AccessTokenProvider>` (returns `"test-token"`), and
+  overriding `single<BackupStore>` and, defensively, `single<AccessTokenProvider>` (returns
+  `"test-token"`) — nothing in `AppModule` currently binds or resolves `AccessTokenProvider`, so
+  this override is currently unused — and
   **re-declaring** `single { BackupService(...) }` and `single { BackupJobRunner(get(), get()) }` so
   each test gets fresh instances (overriding a definition discards the previously cached single).
   `BackupJobHost` is left as the real `AndroidBackupJobHost` so a job really starts the service.
