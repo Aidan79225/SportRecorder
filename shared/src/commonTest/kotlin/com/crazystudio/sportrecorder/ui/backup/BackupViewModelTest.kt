@@ -212,6 +212,29 @@ class BackupViewModelTest {
 
         assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots) // stale list must not land
         assertEquals(false, vm.uiState.value.isLoadingSnapshots)
+
+        // A fresh listing for the new account still lands.
+        store.account = "other@x.com"
+        val otherSnapshot = SnapshotInfo("new-acct", 2L, "0.7.1", 1L)
+        store.seedSnapshot(otherSnapshot, emptyDocJson())
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf(otherSnapshot), vm.uiState.value.snapshots)
+        assertEquals(false, vm.uiState.value.isLoadingSnapshots)
+    }
+
+    @Test fun signOut_queuedBeforeRefresh_doesNotStrandLoading() = runTest(dispatcher) {
+        val auth = FakeBackupAuth(BackupAccount("me@x.com"))
+        val vm = vm(FakeBackupStore(), auth = auth)
+        testScheduler.advanceUntilIdle()
+
+        // Both land before anything runs: the account emission is queued ahead of the refresh's launch.
+        auth.accountState.value = null
+        vm.refreshSnapshots()
+        testScheduler.advanceUntilIdle()
+
+        assertNull(vm.uiState.value.account)
+        assertEquals(false, vm.uiState.value.isLoadingSnapshots, "loading must not be stranded after sign-out")
     }
 
     @Test fun restore_safetyBackupFails_setsSafetyBackupMessage() = runTest(dispatcher) {

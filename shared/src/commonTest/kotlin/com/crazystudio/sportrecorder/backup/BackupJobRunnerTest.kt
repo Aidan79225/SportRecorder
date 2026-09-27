@@ -108,7 +108,8 @@ class BackupJobRunnerTest {
         testScheduler.advanceUntilIdle() // parked inside the NonCancellable apply
         runner.cancel()
         testScheduler.advanceUntilIdle()
-        assertIs<BackupJobState.Running>(runner.state.value) // apply is not cancellable
+        // apply is not cancellable
+        assertEquals(BackupJobState.Running(BackupJobKind.Restore, BackupStep.Applying, 0, 0), runner.state.value)
 
         eat.replaceAllGate!!.complete(Unit)
         testScheduler.advanceUntilIdle()
