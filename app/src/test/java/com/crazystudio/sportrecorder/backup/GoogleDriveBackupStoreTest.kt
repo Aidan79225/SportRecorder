@@ -22,7 +22,9 @@ class GoogleDriveBackupStoreTest {
     private val server = MockWebServer()
     private lateinit var store: GoogleDriveBackupStore
     private val reports = mutableListOf<Triple<BackupStep, Int, Int>>()
-    private val progress = BackupProgress { step, done, total -> synchronized(reports) { reports.add(Triple(step, done, total)) } }
+    private val progress = BackupProgress { step, done, total ->
+        synchronized(reports) { reports.add(Triple(step, done, total)) }
+    }
 
     @Before fun setUp() {
         server.start()
@@ -35,7 +37,9 @@ class GoogleDriveBackupStoreTest {
     private fun manifestJson(photoNames: List<String>): String = BackupJson.encodeToString(
         BackupDocument.serializer(),
         BackupDocument(
-            schemaVersion = BackupDocument.SCHEMA_VERSION, createdAt = 42L, appVersionName = "0.7.1",
+            schemaVersion = BackupDocument.SCHEMA_VERSION,
+            createdAt = 42L,
+            appVersionName = "0.7.1",
             meals = photoNames.mapIndexed { i, name ->
                 BackupMeal(i + 1, 1_000L + i, null, null, listOf(BackupPhoto(i + 1, name, 1L)))
             },
@@ -51,10 +55,20 @@ class GoogleDriveBackupStoreTest {
 
     @Test fun uploadSnapshot_uploadsOnlyMissingPhotos_manifestLast_withMealCount() = runTest {
         listOf("a.webp", "b.webp", "c.webp").forEach { File(photosDir.root, it).writeBytes(byteArrayOf(1)) }
-        server.enqueue(MockResponse().setBody("""{"files":[{"id":"p-a","name":"a.webp","appProperties":{"kind":"photo"}}]}"""))
+        server.enqueue(
+            MockResponse().setBody(
+                """
+                {"files":[{"id":"p-a","name":"a.webp","appProperties":{"kind":"photo"}}]}
+                """.trimIndent(),
+            ),
+        )
         repeat(3) { server.enqueue(MockResponse().setBody("""{"id":"x"}""")) }
 
-        val info = store.uploadSnapshot(manifestJson(listOf("a.webp", "b.webp", "c.webp")), listOf("a.webp", "b.webp", "c.webp"), progress)
+        val info = store.uploadSnapshot(
+            manifestJson(listOf("a.webp", "b.webp", "c.webp")),
+            listOf("a.webp", "b.webp", "c.webp"),
+            progress,
+        )
 
         val requests = drain()
         assertEquals(4, requests.size) // list + b + c + manifest
@@ -62,7 +76,10 @@ class GoogleDriveBackupStoreTest {
         val bodies = requests.drop(1).map { it.body.readUtf8() }
         assertTrue(bodies.last().contains("\"kind\":\"manifest\""))
         assertTrue(bodies.last().contains("\"mealCount\":\"3\""))
-        assertEquals(setOf("b.webp", "c.webp"), bodies.dropLast(1).map { body -> Regex("\"name\":\"([^\"]+)\"").find(body)!!.groupValues[1] }.toSet())
+        val uploadedNames = bodies.dropLast(1).map { body ->
+            Regex("\"name\":\"([^\"]+)\"").find(body)!!.groupValues[1]
+        }.toSet()
+        assertEquals(setOf("b.webp", "c.webp"), uploadedNames)
         assertEquals(3, info.mealCount)
         assertEquals(42L, info.createdAt)
         assertTrue(reports.contains(Triple(BackupStep.UploadingPhotos, 2, 2)))
@@ -73,7 +90,10 @@ class GoogleDriveBackupStoreTest {
         File(photosDir.root, "a.webp").writeBytes(byteArrayOf(9))
         server.enqueue(
             MockResponse().setBody(
-                """{"files":[{"id":"p-a","name":"a.webp","appProperties":{"kind":"photo"}},{"id":"p-b","name":"b.webp","appProperties":{"kind":"photo"}}]}""",
+                """
+                {"files":[{"id":"p-a","name":"a.webp","appProperties":{"kind":"photo"}},
+                {"id":"p-b","name":"b.webp","appProperties":{"kind":"photo"}}]}
+                """.trimIndent(),
             ),
         )
         server.enqueue(MockResponse().setBody("BBB"))

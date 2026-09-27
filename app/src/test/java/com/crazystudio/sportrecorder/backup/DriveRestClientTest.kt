@@ -24,12 +24,18 @@ class DriveRestClientTest {
     @Test fun listAppDataFiles_followsNextPageToken() = runTest {
         server.enqueue(
             MockResponse().setBody(
-                """{"nextPageToken":"page-2","files":[{"id":"1","name":"a.webp","size":"10","appProperties":{"kind":"photo"}}]}""",
+                """
+                {"nextPageToken":"page-2","files":[
+                {"id":"1","name":"a.webp","size":"10","appProperties":{"kind":"photo"}}]}
+                """.trimIndent(),
             ),
         )
         server.enqueue(
             MockResponse().setBody(
-                """{"files":[{"id":"2","name":"manifest-x.json","size":"20","appProperties":{"kind":"manifest","snapshotId":"x"}}]}""",
+                """
+                {"files":[{"id":"2","name":"manifest-x.json","size":"20",
+                "appProperties":{"kind":"manifest","snapshotId":"x"}}]}
+                """.trimIndent(),
             ),
         )
 
