@@ -52,6 +52,7 @@ import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.settings.SettingsViewModel
+import com.crazystudio.sportrecorder.util.PhotoStorage
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -89,7 +90,10 @@ val appModule = module {
     // Backup
     single { GoogleBackupAuth(androidContext()) }
     single<BackupAuth> { get<GoogleBackupAuth>() }
-    single<BackupStore> { GoogleDriveBackupStore(get(), androidContext()) }
+    single<BackupStore> {
+        val context = androidContext()
+        GoogleDriveBackupStore(get<GoogleBackupAuth>(), { name -> PhotoStorage.fileFor(context, name) })
+    }
     single {
         BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }

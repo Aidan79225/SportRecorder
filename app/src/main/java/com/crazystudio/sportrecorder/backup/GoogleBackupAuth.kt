@@ -29,7 +29,7 @@ private const val TAG = "GoogleBackupAuth"
 class GoogleBackupAuth(
     private val context: Context,
     private val httpClient: OkHttpClient = OkHttpClient(),
-) : BackupAuth {
+) : BackupAuth, AccessTokenProvider {
 
     private val authorizationClient = Identity.getAuthorizationClient(context)
     private val request = AuthorizationRequest.builder()
@@ -40,7 +40,7 @@ class GoogleBackupAuth(
     override val account: Flow<BackupAccount?> = _account.asStateFlow()
 
     /** A valid Drive appdata token, or throws [BackupAuthorizationRequiredException] if consent is needed. */
-    suspend fun accessToken(): String {
+    override suspend fun accessToken(): String {
         val result = authorizationClient.authorize(request).await()
         return tokenFrom(result)
     }
