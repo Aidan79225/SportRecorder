@@ -1,2 +1,6 @@
-New in 0.7.1
-• Google Drive backup: if signing in doesn't go through, the app now tells you, instead of the sign-in window just closing with nothing happening.
+New in 0.8.0
+• Backups keep running in the background, even with the screen off, with progress and a cancel button in the notification shade.
+• Faster: photos upload in parallel; restore skips photos already on your phone.
+• Safer restore: your current records are backed up first, so you can bring them back from the backup list.
+• Insights: pick a period, group by eating day, tap a day for its records, a weekly rhythm chart, and places on a map.
+• A failed backup now tells you why.

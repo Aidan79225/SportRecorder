@@ -42,8 +42,8 @@ android {
         applicationId = "com.crazystudio.sportrecorder"
         minSdk = 24
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.7.1"
+        versionCode = 23
+        versionName = "0.8.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
