@@ -105,6 +105,8 @@ fun Context.activeNotification(id: Int): StatusBarNotification? =
  * BackupJobRunner, real AndroidBackupJobHost, so a job really starts BackupForegroundService).
  * Re-declaring BackupService and BackupJobRunner drops the cached singles, so every test gets a
  * fresh runner. Never unloaded — unloading would delete the app's own definitions for these keys.
+ * The override stays for the rest of the instrumentation process, so any future test that drives
+ * `BackupRoute`/`MainActivity` end-to-end must load its own module first.
  */
 fun loadBackupTestModule(store: BackupStore): BackupJobRunner {
     loadKoinModules(

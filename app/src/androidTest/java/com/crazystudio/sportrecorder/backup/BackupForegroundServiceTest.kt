@@ -50,11 +50,17 @@ class BackupForegroundServiceTest {
     }
 
     @After fun tearDown() {
-        runner.cancel()
-        store.uploadGate?.complete(Unit)
-        awaitUntil(what = "runner to settle") { runner.state.value !is BackupJobState.Running }
-        NotificationManagerCompat.from(context).cancelAll()
-        scenario.close()
+        try {
+            if (::store.isInitialized) store.uploadGate?.complete(Unit)
+            if (::runner.isInitialized) {
+                runner.cancel()
+                awaitUntil(what = "runner to settle") { runner.state.value !is BackupJobState.Running }
+                awaitUntil(what = "progress card removed") { progressCard() == null }
+            }
+        } finally {
+            NotificationManagerCompat.from(context).cancelAll()
+            if (::scenario.isInitialized) scenario.close()
+        }
     }
 
     private fun progressCard() = context.activeNotification(BackupNotifications.PROGRESS_ID)
@@ -79,10 +85,12 @@ class BackupForegroundServiceTest {
 
     @Test fun cancelAction_cancelsJob_andShowsCancelledResult() {
         store.uploadGate = CompletableDeferred()
-        runner.startBackup()
+        assertTrue(runner.startBackup())
         awaitUntil(what = "progress notification") { progressCard() != null }
 
-        context.startService(Intent(context, BackupForegroundService::class.java).setAction(BackupForegroundService.ACTION_CANCEL))
+        val cancelIntent = Intent(context, BackupForegroundService::class.java)
+            .setAction(BackupForegroundService.ACTION_CANCEL)
+        context.startService(cancelIntent)
 
         awaitUntil(what = "cancelled outcome") {
             runner.state.value == BackupJobState.Finished(BackupJobKind.Backup, BackupOutcome.Cancelled)
@@ -101,5 +109,6 @@ class BackupForegroundServiceTest {
         assertFalse(runner.startBackup())
         assertNotNull(progressCard())
         assertNull(resultCard())
+        assertTrue(runner.state.value is BackupJobState.Running)
     }
 }
