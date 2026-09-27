@@ -90,13 +90,24 @@
     <string name="backup_restore_empty">還沒有任何備份</string>
     <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>
     <string name="backup_restore_confirm_title">要還原這份備份嗎？</string>
-    <string name="backup_restore_confirm_message">還原會用 %1$s 的備份覆蓋這台裝置上的資料。</string>
+    <string name="backup_restore_confirm_message">會先把這台裝置目前的 %1$d 筆紀錄備份一份，再用 %2$s 的備份取代。之後隨時可以還回來。</string>
+    <string name="backup_restore_confirm_message_counted">會先把這台裝置目前的 %1$d 筆紀錄備份一份，再用 %2$s 的備份（%3$d 筆）取代。之後隨時可以還回來。</string>
+    <string name="backup_restore_confirm_message_fresh">這台裝置還沒有任何紀錄，會直接還原 %1$s 的備份。</string>
     <string name="backup_restore_confirm_button">還原</string>
     <string name="backup_cancel">取消</string>
     <string name="backup_msg_backup_complete">已備份。</string>
     <string name="backup_msg_restore_complete">已還原。</string>
     <string name="backup_msg_schema_too_new">這份備份來自較新版本的 App，請先更新才能還原。</string>
     <string name="backup_msg_failed">發生了一點問題，請再試一次。</string>
+    <string name="backup_msg_cancelled">已取消，什麼都沒有改變。</string>
+    <string name="backup_step_preparing">準備中…</string>
+    <string name="backup_step_safety_backup">先備份目前這台裝置的紀錄…</string>
+    <string name="backup_step_uploading_photos">上傳照片 %1$d / %2$d</string>
+    <string name="backup_step_uploading_manifest">寫入備份清單…</string>
+    <string name="backup_step_pruning">整理舊備份…</string>
+    <string name="backup_step_downloading_manifest">讀取備份…</string>
+    <string name="backup_step_downloading_photos">下載照片 %1$d / %2$d</string>
+    <string name="backup_step_applying">套用到這台裝置…</string>
 
     <string name="diet_fasting_type_title">斷食類型</string>
     <string name="diet_fasting_type_trainee">新手</string>

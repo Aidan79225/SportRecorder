@@ -62,7 +62,9 @@ class BackupViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingSnapshots = true) }
             runCatching { backupService.listSnapshots() }
-                .onSuccess { snapshots -> _uiState.update { it.copy(snapshots = snapshots, isLoadingSnapshots = false) } }
+                .onSuccess { snapshots ->
+                    _uiState.update { it.copy(snapshots = snapshots, isLoadingSnapshots = false) }
+                }
                 .onFailure { _uiState.update { it.copy(isLoadingSnapshots = false, message = BackupMessage.Failed) } }
         }
     }

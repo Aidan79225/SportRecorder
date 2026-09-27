@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -32,12 +33,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.crazystudio.sportrecorder.backup.BackupJobState
+import com.crazystudio.sportrecorder.backup.BackupStep
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.backup_intro
 import com.crazystudio.sportrecorder.shared.resources.backup_last_backed_up
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_backup_complete
+import com.crazystudio.sportrecorder.shared.resources.backup_msg_cancelled
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_failed
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_restore_complete
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_schema_too_new
@@ -45,6 +49,8 @@ import com.crazystudio.sportrecorder.shared.resources.backup_never
 import com.crazystudio.sportrecorder.shared.resources.backup_now
 import com.crazystudio.sportrecorder.shared.resources.backup_restore_confirm_button
 import com.crazystudio.sportrecorder.shared.resources.backup_restore_confirm_message
+import com.crazystudio.sportrecorder.shared.resources.backup_restore_confirm_message_counted
+import com.crazystudio.sportrecorder.shared.resources.backup_restore_confirm_message_fresh
 import com.crazystudio.sportrecorder.shared.resources.backup_restore_confirm_title
 import com.crazystudio.sportrecorder.shared.resources.backup_restore_empty
 import com.crazystudio.sportrecorder.shared.resources.backup_restore_heading
@@ -52,6 +58,14 @@ import com.crazystudio.sportrecorder.shared.resources.backup_sign_in
 import com.crazystudio.sportrecorder.shared.resources.backup_sign_out
 import com.crazystudio.sportrecorder.shared.resources.backup_signed_in_as
 import com.crazystudio.sportrecorder.shared.resources.backup_snapshot_subtitle
+import com.crazystudio.sportrecorder.shared.resources.backup_step_applying
+import com.crazystudio.sportrecorder.shared.resources.backup_step_downloading_manifest
+import com.crazystudio.sportrecorder.shared.resources.backup_step_downloading_photos
+import com.crazystudio.sportrecorder.shared.resources.backup_step_preparing
+import com.crazystudio.sportrecorder.shared.resources.backup_step_pruning
+import com.crazystudio.sportrecorder.shared.resources.backup_step_safety_backup
+import com.crazystudio.sportrecorder.shared.resources.backup_step_uploading_manifest
+import com.crazystudio.sportrecorder.shared.resources.backup_step_uploading_photos
 import com.crazystudio.sportrecorder.shared.resources.backup_title
 import com.crazystudio.sportrecorder.shared.resources.ic_arrow_left_24dp
 import com.crazystudio.sportrecorder.shared.resources.settings_back
@@ -74,6 +88,7 @@ fun BackupScreen(
     onSignOut: () -> Unit,
     onBackup: () -> Unit,
     onRestore: (SnapshotInfo) -> Unit,
+    onCancel: () -> Unit,
     onConsumeMessage: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -105,6 +120,7 @@ fun BackupScreen(
                     onSignOut = onSignOut,
                     onBackup = onBackup,
                     onRestore = onRestore,
+                    onCancel = onCancel,
                 )
             } else {
                 SignedOutContent(onSignIn = onSignIn, enabled = !state.isBusy)
@@ -118,8 +134,7 @@ private fun messageRes(message: BackupMessage) = when (message) {
     BackupMessage.BackupComplete -> Res.string.backup_msg_backup_complete
     BackupMessage.RestoreComplete -> Res.string.backup_msg_restore_complete
     BackupMessage.RestoreSchemaTooNew -> Res.string.backup_msg_schema_too_new
-    // TODO(Task 5): map to backup_msg_cancelled once that string exists.
-    BackupMessage.Cancelled -> Res.string.backup_msg_failed
+    BackupMessage.Cancelled -> Res.string.backup_msg_cancelled
     BackupMessage.Failed -> Res.string.backup_msg_failed
 }
 
@@ -172,6 +187,7 @@ private fun SignedInContent(
     onSignOut: () -> Unit,
     onBackup: () -> Unit,
     onRestore: (SnapshotInfo) -> Unit,
+    onCancel: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val enabled = !state.isBusy
@@ -207,7 +223,10 @@ private fun SignedInContent(
             color = colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 8.dp),
         )
-        if (state.isBusy) {
+        val job = state.job
+        if (job is BackupJobState.Running) {
+            JobProgress(job = job, onCancel = onCancel)
+        } else if (state.isLoadingSnapshots) {
             CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp).size(28.dp))
         }
     }
@@ -218,12 +237,61 @@ private fun SignedInContent(
         color = colorScheme.onSurface,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
     )
-    RestoreList(snapshots = state.snapshots, enabled = enabled, onRestore = onRestore)
+    RestoreList(
+        snapshots = state.snapshots,
+        localMealCount = state.localMealCount,
+        enabled = enabled,
+        onRestore = onRestore,
+    )
+}
+
+@Composable
+private fun JobProgress(job: BackupJobState.Running, onCancel: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
+        if (job.total > 0) {
+            LinearProgressIndicator(
+                progress = { job.done.toFloat() / job.total },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stepCaption(job),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            // Applying is the one step that must finish once started (see BackupService.restore).
+            TextButton(onClick = onCancel, enabled = job.step != BackupStep.Applying) {
+                Text(stringResource(Res.string.backup_cancel))
+            }
+        }
+    }
+}
+
+@Composable
+private fun stepCaption(job: BackupJobState.Running): String = when (job.step) {
+    BackupStep.Preparing -> stringResource(Res.string.backup_step_preparing)
+    BackupStep.SafetyBackup -> stringResource(Res.string.backup_step_safety_backup)
+    BackupStep.UploadingPhotos -> stringResource(Res.string.backup_step_uploading_photos, job.done, job.total)
+    BackupStep.UploadingManifest -> stringResource(Res.string.backup_step_uploading_manifest)
+    BackupStep.Pruning -> stringResource(Res.string.backup_step_pruning)
+    BackupStep.DownloadingManifest -> stringResource(Res.string.backup_step_downloading_manifest)
+    BackupStep.DownloadingPhotos -> stringResource(Res.string.backup_step_downloading_photos, job.done, job.total)
+    BackupStep.Applying -> stringResource(Res.string.backup_step_applying)
 }
 
 @Composable
 private fun RestoreList(
     snapshots: List<SnapshotInfo>,
+    localMealCount: Int,
     enabled: Boolean,
     onRestore: (SnapshotInfo) -> Unit,
 ) {
@@ -245,6 +313,7 @@ private fun RestoreList(
     pending?.let { snapshot ->
         RestoreConfirmDialog(
             snapshot = snapshot,
+            localMealCount = localMealCount,
             onConfirm = {
                 onRestore(snapshot)
                 pending = null
@@ -278,6 +347,7 @@ private fun SnapshotRow(snapshot: SnapshotInfo, enabled: Boolean, onClick: () ->
 @Composable
 private fun RestoreConfirmDialog(
     snapshot: SnapshotInfo,
+    localMealCount: Int,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -285,11 +355,15 @@ private fun RestoreConfirmDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.backup_restore_confirm_title)) },
         text = {
+            val date = formatTimestamp(snapshot.createdAt)
+            val count = snapshot.mealCount
             Text(
-                stringResource(
-                    Res.string.backup_restore_confirm_message,
-                    formatTimestamp(snapshot.createdAt),
-                ),
+                when {
+                    localMealCount == 0 -> stringResource(Res.string.backup_restore_confirm_message_fresh, date)
+                    count != null ->
+                        stringResource(Res.string.backup_restore_confirm_message_counted, localMealCount, date, count)
+                    else -> stringResource(Res.string.backup_restore_confirm_message, localMealCount, date)
+                },
             )
         },
         confirmButton = {
