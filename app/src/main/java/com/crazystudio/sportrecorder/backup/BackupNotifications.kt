@@ -17,6 +17,7 @@ import com.crazystudio.sportrecorder.shared.resources.backup_msg_backup_complete
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_cancelled
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_failed
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_restore_complete
+import com.crazystudio.sportrecorder.shared.resources.backup_msg_safety_backup_failed
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_schema_too_new
 import com.crazystudio.sportrecorder.shared.resources.backup_step_applying
 import com.crazystudio.sportrecorder.shared.resources.backup_step_downloading_manifest
@@ -38,6 +39,32 @@ private const val CHANNEL_ID = "backup_progress"
  */
 class BackupNotifications(private val context: Context) {
 
+    // Built once: progress re-posts on every step/photo, and these never change.
+    private val openAppIntent: PendingIntent by lazy {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            // SINGLE_TOP: bring the running MainActivity forward instead of recreating it.
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        PendingIntent.getActivity(
+            context,
+            REQUEST_OPEN,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
+    private val cancelIntent: PendingIntent by lazy {
+        val intent = Intent(context, BackupForegroundService::class.java)
+            .setAction(BackupForegroundService.ACTION_CANCEL)
+        PendingIntent.getService(
+            context,
+            REQUEST_CANCEL,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
     fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
@@ -50,25 +77,23 @@ class BackupNotifications(private val context: Context) {
         )
     }
 
-    /** Ongoing progress. [state] null → the job has not reported yet (indeterminate, generic title). */
-    suspend fun progress(state: BackupJobState.Running?): Notification {
-        val title = when (state?.kind) {
-            BackupJobKind.Restore -> R.string.backup_notif_restoring
-            else -> R.string.backup_notif_backing_up
-        }
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_baseline_download_24)
-            .setContentTitle(context.getString(title))
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(openAppIntent())
-            .addAction(0, getString(Res.string.backup_cancel), cancelIntent())
-        if (state == null) {
-            builder.setProgress(0, 0, true)
-        } else {
-            builder.setContentText(stepCaption(state))
-            builder.setProgress(state.total, state.done, state.total == 0)
+    /**
+     * The first foreground card, built synchronously (no shared-resource lookups) so the service can
+     * call startForeground promptly. Indeterminate, no caption, no action: the observer replaces it
+     * with the full card on its first emission. [kind] null → generic "backing up" title.
+     */
+    fun initial(kind: BackupJobKind?): Notification =
+        progressBuilder(kind)
+            .setProgress(0, 0, true)
+            .build()
+
+    /** Ongoing progress for a running job, with a cancel action except while applying (not cancellable). */
+    suspend fun progress(state: BackupJobState.Running): Notification {
+        val builder = progressBuilder(state.kind)
+            .setContentText(stepCaption(state))
+            .setProgress(state.total, state.done, state.total == 0)
+        if (state.step != BackupStep.Applying) {
+            builder.addAction(0, getString(Res.string.backup_cancel), cancelIntent)
         }
         return builder.build()
     }
@@ -84,6 +109,7 @@ class BackupNotifications(private val context: Context) {
                 }
             BackupOutcome.Cancelled -> Res.string.backup_msg_cancelled
             BackupOutcome.SchemaTooNew -> Res.string.backup_msg_schema_too_new
+            BackupOutcome.SafetyBackupFailed -> Res.string.backup_msg_safety_backup_failed
             BackupOutcome.Failed -> Res.string.backup_msg_failed
         }
         return NotificationCompat.Builder(context, CHANNEL_ID)
@@ -91,12 +117,26 @@ class BackupNotifications(private val context: Context) {
             .setContentTitle(getString(text))
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(openAppIntent())
+            .setContentIntent(openAppIntent)
             .build()
     }
 
     /** The screen already showed the outcome as a snackbar; drop the duplicate. */
     fun cancelResult() = NotificationManagerCompat.from(context).cancel(RESULT_ID)
+
+    private fun progressBuilder(kind: BackupJobKind?): NotificationCompat.Builder {
+        val title = when (kind) {
+            BackupJobKind.Restore -> R.string.backup_notif_restoring
+            else -> R.string.backup_notif_backing_up
+        }
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_baseline_download_24)
+            .setContentTitle(context.getString(title))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(openAppIntent)
+    }
 
     private suspend fun stepCaption(state: BackupJobState.Running): String = when (state.step) {
         BackupStep.Preparing -> getString(Res.string.backup_step_preparing)
@@ -107,29 +147,6 @@ class BackupNotifications(private val context: Context) {
         BackupStep.DownloadingManifest -> getString(Res.string.backup_step_downloading_manifest)
         BackupStep.DownloadingPhotos -> getString(Res.string.backup_step_downloading_photos, state.done, state.total)
         BackupStep.Applying -> getString(Res.string.backup_step_applying)
-    }
-
-    private fun openAppIntent(): PendingIntent {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        return PendingIntent.getActivity(
-            context,
-            REQUEST_OPEN,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-    }
-
-    private fun cancelIntent(): PendingIntent {
-        val intent = Intent(context, BackupForegroundService::class.java)
-            .setAction(BackupForegroundService.ACTION_CANCEL)
-        return PendingIntent.getService(
-            context,
-            REQUEST_CANCEL,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
     }
 
     companion object {

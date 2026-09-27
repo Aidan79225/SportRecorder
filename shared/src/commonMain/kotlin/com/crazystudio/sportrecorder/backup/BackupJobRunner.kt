@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 
 enum class BackupJobKind { Backup, Restore }
 
-enum class BackupOutcome { Completed, Cancelled, SchemaTooNew, Failed }
+enum class BackupOutcome { Completed, Cancelled, SchemaTooNew, SafetyBackupFailed, Failed }
 
 /** What the one-and-only backup/restore job is doing right now. */
 sealed interface BackupJobState {
@@ -90,5 +90,6 @@ private fun Result<Unit>.outcome(): BackupOutcome = when (exceptionOrNull()) {
     null -> BackupOutcome.Completed
     is CancellationException -> BackupOutcome.Cancelled
     is BackupSchemaTooNewException -> BackupOutcome.SchemaTooNew
+    is SafetyBackupFailedException -> BackupOutcome.SafetyBackupFailed
     else -> BackupOutcome.Failed
 }

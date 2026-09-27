@@ -31,6 +31,9 @@ class BackupViewModel(
     private val _uiState = MutableStateFlow(BackupUiState())
     val uiState: StateFlow<BackupUiState> = _uiState.asStateFlow()
 
+    /** Bumped by every [refreshSnapshots]; a listing applies its result only if it is still the newest. */
+    private var listGeneration = 0
+
     init {
         viewModelScope.launch {
             backupAuth.account.collect { account ->
@@ -48,8 +51,16 @@ class BackupViewModel(
         }
         viewModelScope.launch {
             runner.state.collect { job ->
-                _uiState.update { it.copy(job = job) }
-                if (job is BackupJobState.Finished) onFinished(job)
+                // Never suspend in here: the outcome must show at once, and the next runner state
+                // must not wait behind a Drive listing.
+                if (job is BackupJobState.Finished) {
+                    _uiState.update { it.copy(job = job, message = job.toMessage()) }
+                    // Refresh after every finish, not only a completed one: a cancelled or failed
+                    // restore may already have committed its safety snapshot.
+                    refreshSnapshots()
+                } else {
+                    _uiState.update { it.copy(job = job) }
+                }
             }
         }
         viewModelScope.launch {
@@ -59,13 +70,23 @@ class BackupViewModel(
 
     /** Load the snapshot list (restore picker + "last backed up"). Requires being signed in. */
     fun refreshSnapshots() {
+        // Only the newest request may write its result, so a slow, stale listing can never
+        // overwrite a fresher one (or clear the loading flag while that one is still running).
+        val generation = ++listGeneration
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingSnapshots = true) }
-            runCatching { backupService.listSnapshots() }
+            val result = runCatching { backupService.listSnapshots() }
+            if (generation != listGeneration) return@launch
+            result
                 .onSuccess { snapshots ->
                     _uiState.update { it.copy(snapshots = snapshots, isLoadingSnapshots = false) }
                 }
-                .onFailure { _uiState.update { it.copy(isLoadingSnapshots = false, message = BackupMessage.Failed) } }
+                .onFailure {
+                    // A job's outcome message outranks a failed list refresh: never clobber it.
+                    _uiState.update {
+                        it.copy(isLoadingSnapshots = false, message = it.message ?: BackupMessage.Failed)
+                    }
+                }
         }
     }
 
@@ -89,19 +110,13 @@ class BackupViewModel(
 
     /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
     fun reportFailure() = _uiState.update { it.copy(message = BackupMessage.Failed) }
+}
 
-    private suspend fun onFinished(job: BackupJobState.Finished) {
-        val message = when (job.outcome) {
-            BackupOutcome.Completed ->
-                if (job.kind == BackupJobKind.Backup) BackupMessage.BackupComplete else BackupMessage.RestoreComplete
-            BackupOutcome.Cancelled -> BackupMessage.Cancelled
-            BackupOutcome.SchemaTooNew -> BackupMessage.RestoreSchemaTooNew
-            BackupOutcome.Failed -> BackupMessage.Failed
-        }
-        if (job.outcome == BackupOutcome.Completed) {
-            val snapshots = runCatching { backupService.listSnapshots() }.getOrDefault(_uiState.value.snapshots)
-            _uiState.update { it.copy(snapshots = snapshots) }
-        }
-        _uiState.update { it.copy(message = message) }
-    }
+private fun BackupJobState.Finished.toMessage(): BackupMessage = when (outcome) {
+    BackupOutcome.Completed ->
+        if (kind == BackupJobKind.Backup) BackupMessage.BackupComplete else BackupMessage.RestoreComplete
+    BackupOutcome.Cancelled -> BackupMessage.Cancelled
+    BackupOutcome.SchemaTooNew -> BackupMessage.RestoreSchemaTooNew
+    BackupOutcome.SafetyBackupFailed -> BackupMessage.SafetyBackupFailed
+    BackupOutcome.Failed -> BackupMessage.Failed
 }

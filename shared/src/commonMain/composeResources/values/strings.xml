@@ -90,8 +90,8 @@
     <string name="backup_restore_empty">No backups yet</string>
     <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>
     <string name="backup_restore_confirm_title">Restore this backup?</string>
-    <string name="backup_restore_confirm_message">Your %1$d records on this device are backed up first, then replaced with the backup from %2$s. You can always come back to them.</string>
-    <string name="backup_restore_confirm_message_counted">Your %1$d records on this device are backed up first, then replaced with the backup from %2$s (%3$d records). You can always come back to them.</string>
+    <string name="backup_restore_confirm_message">Your %1$d records on this device are backed up first, then replaced with the backup from %2$s. You can restore them from the backup list later.</string>
+    <string name="backup_restore_confirm_message_counted">Your %1$d records on this device are backed up first, then replaced with the backup from %2$s (%3$d records). You can restore them from the backup list later.</string>
     <string name="backup_restore_confirm_message_fresh">This device has no records yet. The backup from %1$s will be restored here.</string>
     <string name="backup_restore_confirm_button">Restore</string>
     <string name="backup_cancel">Cancel</string>
@@ -100,6 +100,7 @@
     <string name="backup_msg_schema_too_new">This backup is from a newer version of the app. Please update to restore it.</string>
     <string name="backup_msg_failed">Something went wrong. Please try again.</string>
     <string name="backup_msg_cancelled">Cancelled. Nothing was changed.</string>
+    <string name="backup_msg_safety_backup_failed">Couldn\'t back up what\'s on this device first, so nothing was restored. Please try again.</string>
     <string name="backup_step_preparing">Getting ready…</string>
     <string name="backup_step_safety_backup">Backing up what\'s on this device first…</string>
     <string name="backup_step_uploading_photos">Uploading photos %1$d / %2$d</string>

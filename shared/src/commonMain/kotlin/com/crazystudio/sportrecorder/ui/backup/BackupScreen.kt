@@ -44,6 +44,7 @@ import com.crazystudio.sportrecorder.shared.resources.backup_msg_backup_complete
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_cancelled
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_failed
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_restore_complete
+import com.crazystudio.sportrecorder.shared.resources.backup_msg_safety_backup_failed
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_schema_too_new
 import com.crazystudio.sportrecorder.shared.resources.backup_never
 import com.crazystudio.sportrecorder.shared.resources.backup_now
@@ -135,6 +136,7 @@ private fun messageRes(message: BackupMessage) = when (message) {
     BackupMessage.RestoreComplete -> Res.string.backup_msg_restore_complete
     BackupMessage.RestoreSchemaTooNew -> Res.string.backup_msg_schema_too_new
     BackupMessage.Cancelled -> Res.string.backup_msg_cancelled
+    BackupMessage.SafetyBackupFailed -> Res.string.backup_msg_safety_backup_failed
     BackupMessage.Failed -> Res.string.backup_msg_failed
 }
 

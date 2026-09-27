@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class BackupServiceTest {
@@ -192,6 +193,24 @@ class BackupServiceTest {
             listOf(BackupStep.DownloadingManifest, BackupStep.SafetyBackup, BackupStep.DownloadingPhotos, BackupStep.Applying),
             progress.steps,
         )
+    }
+
+    @Test fun restore_safetyBackupFails_throwsDistinctError_andLeavesLocalUntouched() = runTest {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("target", 1L, "0.6.2", 1L), emptyDocJson())
+        store.failUploadSnapshot = true
+        val eat = FakeEatRecordRepository(listOf(EatRecord(5, 5_000L, null, "keep", emptyList())))
+        val resched = FakeRemindersRescheduler()
+        val svc = BackupService(
+            eat, FakeFastingTypeRepository(), FakeDietSettingsRepository(),
+            FakeReminderPreferencesRepository(), store, resched, appVersionName = "0.6.2",
+        ) { 1L }
+
+        val error = assertFailsWith<SafetyBackupFailedException> { svc.restore("target") }
+        assertIs<IllegalStateException>(error.cause)
+        assertEquals(listOf(5), eat.state.value.map { it.id }) // untouched
+        assertTrue(store.downloadedPhotosFor.isEmpty()) // never started downloading
+        assertEquals(0, resched.rescheduleCount)
     }
 
     @Test fun restore_skipsSafetyBackup_whenDeviceHasNoRecords() = runTest {

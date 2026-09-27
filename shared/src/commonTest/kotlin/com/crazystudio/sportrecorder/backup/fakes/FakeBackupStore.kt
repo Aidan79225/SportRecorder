@@ -53,6 +53,9 @@ class FakeBackupStore : BackupStore {
     /** When true, [downloadPhotos] throws (simulates an interrupted restore). */
     var failDownloadPhotos = false
 
+    /** When true, [uploadSnapshot] throws before uploading anything (Drive full, a photo file missing…). */
+    var failUploadSnapshot = false
+
     /** When set, [downloadPhotos] suspends on it first — complete it (or cancel the caller) to continue. */
     var downloadGate: CompletableDeferred<Unit>? = null
 
@@ -64,13 +67,20 @@ class FakeBackupStore : BackupStore {
         current.manifestsById[info.id] = manifestJson
     }
 
-    override suspend fun listSnapshots(): List<SnapshotInfo> = current.snapshots.toList()
+    /** When set, [listSnapshots] suspends on it first — models a slow Drive listing. */
+    var listGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun listSnapshots(): List<SnapshotInfo> {
+        listGate?.await()
+        return current.snapshots.toList()
+    }
 
     override suspend fun uploadSnapshot(
         manifestJson: String,
         photoFileNames: List<String>,
         progress: BackupProgress,
     ): SnapshotInfo {
+        if (failUploadSnapshot) throw IllegalStateException("simulated snapshot upload failure")
         val state = current
         val newPhotos = photoFileNames.filterNot { it in state.photos }
         progress.report(BackupStep.UploadingPhotos, 0, newPhotos.size)

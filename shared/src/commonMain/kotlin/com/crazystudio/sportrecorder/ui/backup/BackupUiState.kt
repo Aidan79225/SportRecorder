@@ -24,4 +24,11 @@ data class BackupUiState(
 }
 
 /** Semantic result — the UI maps each to a localized string (the VM holds no user-facing copy). */
-enum class BackupMessage { BackupComplete, RestoreComplete, RestoreSchemaTooNew, Cancelled, Failed }
+enum class BackupMessage {
+    BackupComplete,
+    RestoreComplete,
+    RestoreSchemaTooNew,
+    SafetyBackupFailed,
+    Cancelled,
+    Failed,
+}

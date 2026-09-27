@@ -157,6 +157,9 @@ This also removes the prune-orphan hazard the existing comment warns about.
    (`KEEP_LAST` pruning here could delete the very snapshot being restored if it were the oldest
    of three). The next regular backup prunes as usual, so at most four snapshots exist briefly.
    With zero local meals (fresh install) this step is skipped and reported as `0/0`.
+   If the safety backup itself fails (Drive full, a local photo missing), restore stops with
+   `SafetyBackupFailedException` → outcome `SafetyBackupFailed` → 「沒辦法先備份這台裝置目前的紀錄，
+   所以還沒有還原。請再試一次。」; nothing is downloaded or applied.
 3. `DownloadingPhotos` — parallel, skip-local, cancellable.
 4. `Applying` — `NonCancellable`: `replaceAll`, settings, prefs, reschedule (unchanged).
 
@@ -174,7 +177,8 @@ Backup is refactored into `backupInternal(prune: Boolean, progress)` so both pat
 - Outcome → the existing snackbar messages, plus a new `Cancelled` message:
   「已取消，什麼都沒有改變。」
 - Restore confirm dialog copy becomes:
-  「會先把這台裝置目前的 %1$d 筆紀錄備份一份，再用 %2$s 的備份取代。之後隨時可以還回來。」
+  「會先把這台裝置目前的 %1$d 筆紀錄備份一份，再用 %2$s 的備份取代。之後可以從備份清單還回來。」
+  (Not 「隨時」: the safety snapshot is pruned like any other after later backups.)
   When the snapshot has a `mealCount`, the second sentence reads 「…的備份（%3$d 筆）取代。」
   The dialog needs the local meal count: `BackupViewModel` exposes `localMealCount` from
   `EatRecordRepository.observeAll()`.
@@ -182,7 +186,9 @@ Backup is refactored into `backupInternal(prune: Boolean, progress)` so both pat
 **ViewModel**
 
 `BackupViewModel` no longer launches work. It collects `BackupJobRunner.state` into `uiState`,
-maps `Finished` to a `BackupMessage`, refreshes the snapshot list after a completed job, and
+maps `Finished` to a `BackupMessage` at once, refreshes the snapshot list in the background after
+every finished job (a cancelled or failed restore may already have committed its safety
+snapshot; a generation counter keeps a stale listing from overwriting a newer one), and
 calls `acknowledgeFinished()` when the message is consumed. `backup()` / `restore()` / `cancel()`
 delegate to the runner.
 
@@ -243,7 +249,7 @@ Every change removes friction or fear; none adds a verdict.
 - 外在壓力? The progress notification only exists while a job the user started is running and
   disappears when it ends. **Drift to avoid:** the result notification must never grow into
   「你已經 N 天沒備份」. It states an outcome once and is auto-cancel.
-- 語氣: 「已取消，什麼都沒有改變。」 and 「之後隨時可以還回來。」 are reassurance, not
+- 語氣: 「已取消，什麼都沒有改變。」 and 「之後可以從備份清單還回來。」 are reassurance, not
   instruction. Keep copy in that register.
 - The safety snapshot serves 「留住每一個美好的當下」 directly: restore can no longer lose a
   moment.

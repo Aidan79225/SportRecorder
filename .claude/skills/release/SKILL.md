@@ -17,7 +17,7 @@ So the per-release manual work is just: **bump the version → edit `distributio
 
 - **Default track:** `internal`, `status=completed`. For production, run the workflow manually with `track=production` and **`status=draft`** so nothing auto-goes-live without a click in the Console.
 - **One-time setup (required before it works):** add repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** — the full JSON key of a Google Cloud service account granted access in Play Console → Users & permissions. Signing needs no secret (the keystore + passwords are in the repo).
-- **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration and the data-safety form.
+- **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration, the data-safety form, and the **foreground-service (`dataSync`) declaration** for the backup service (App content → Foreground service permissions: justify `FOREGROUND_SERVICE_DATA_SYNC` as a user-started Google Drive backup/restore that must keep running with the screen off).
 - Keep `whatsnew-*` files ≤ 500 chars, user-facing, both locales.
 
 The steps below remain the **local fallback** (and the source of truth for version-bump rules) when you want to build/inspect the AAB by hand or the Action isn't available.

@@ -114,6 +114,40 @@ class BackupViewModelTest {
         assertEquals(BackupMessage.Cancelled, vm.uiState.value.message)
     }
 
+    @Test fun cancelledRestore_stillRefreshesSnapshots() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())
+        store.downloadGate = CompletableDeferred()
+        val eat = FakeEatRecordRepository(listOf(EatRecord(9, 9L, null, "keep", emptyList())))
+        val vm = vm(store, eat)
+
+        vm.restore("s")
+        testScheduler.advanceUntilIdle() // safety snapshot committed, parked on the download gate
+        vm.cancel()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BackupMessage.Cancelled, vm.uiState.value.message)
+        assertEquals(store.listSnapshots(), vm.uiState.value.snapshots) // includes the safety snapshot
+        assertEquals(2, vm.uiState.value.snapshots.size)
+    }
+
+    @Test fun finishedMessage_isNotHeldBackBySlowListing() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.listGate = CompletableDeferred()
+        val vm = vm(store)
+
+        vm.backup()
+        testScheduler.advanceUntilIdle() // the listing is still parked on its gate
+
+        assertEquals(BackupMessage.BackupComplete, vm.uiState.value.message)
+        assertEquals(true, vm.uiState.value.isLoadingSnapshots)
+
+        store.listGate!!.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.snapshots.size)
+        assertEquals(false, vm.uiState.value.isLoadingSnapshots)
+    }
+
     @Test fun consumeMessage_clearsMessage_andReturnsRunnerToIdle() = runTest(dispatcher) {
         val vm = vm(FakeBackupStore())
         vm.backup()
@@ -159,6 +193,20 @@ class BackupViewModelTest {
         auth.accountState.value = BackupAccount("someone-else@x.com") // a different account
         testScheduler.advanceUntilIdle()
         assertEquals(emptyList<SnapshotInfo>(), vm.uiState.value.snapshots)
+    }
+
+    @Test fun restore_safetyBackupFails_setsSafetyBackupMessage() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())
+        store.failUploadSnapshot = true
+        val eat = FakeEatRecordRepository(listOf(EatRecord(9, 9L, null, "keep", emptyList())))
+        val vm = vm(store, eat)
+
+        vm.restore("s")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BackupMessage.SafetyBackupFailed, vm.uiState.value.message)
+        assertEquals(1, vm.uiState.value.localMealCount)
     }
 
     @Test fun restore_tooNewSchema_setsSchemaMessage() = runTest(dispatcher) {

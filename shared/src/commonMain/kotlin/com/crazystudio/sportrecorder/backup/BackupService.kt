@@ -6,6 +6,7 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -64,6 +65,9 @@ class BackupService(
      * Replace local data with snapshot [snapshotId]. Validates the schema, **backs up the current
      * device data first** (so the restore is reversible), downloads everything, and only then swaps
      * local data — so a failed or cancelled download leaves the device's current data untouched.
+     *
+     * @throws BackupSchemaTooNewException if the snapshot is from a newer app version.
+     * @throws SafetyBackupFailedException if the current data could not be backed up first.
      */
     suspend fun restore(snapshotId: String, progress: BackupProgress = BackupProgress.None) {
         progress.report(BackupStep.DownloadingManifest, 0, 0)
@@ -76,9 +80,16 @@ class BackupService(
         // Safety net: keep what is on the device as its own snapshot before overwriting it.
         // Never prune here — with KEEP_LAST snapshots present, pruning could delete the very
         // snapshot we are about to restore. The next regular backup prunes as usual.
+        // If the safety net cannot be made, stop here with a distinct error: nothing has been
+        // downloaded or applied yet, so the device's data is exactly as it was.
         if (eatRepo.observeAll().first().isNotEmpty()) {
-            backupInternal(prune = false) { _, done, total ->
-                progress.report(BackupStep.SafetyBackup, done, total)
+            runCatching {
+                backupInternal(prune = false) { _, done, total ->
+                    progress.report(BackupStep.SafetyBackup, done, total)
+                }
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                throw SafetyBackupFailedException(error)
             }
         }
 

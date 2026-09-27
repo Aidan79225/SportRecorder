@@ -14,7 +14,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 
 /**
@@ -29,17 +28,25 @@ class BackupForegroundService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observing: Job? = null
 
+    /** Latest start request; [finish] stops only if no newer start arrived meanwhile. */
+    private var lastStartId = 0
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         if (intent?.action == ACTION_CANCEL) {
             runner.cancel()
+            // A late cancel tap can start a fresh instance after the job already ended; it has
+            // nothing to observe, so don't leave it lingering as a started service.
+            if (observing == null) stopSelf(startId)
             return START_NOT_STICKY
         }
         notifications.ensureChannel()
-        // startForeground must happen promptly after startForegroundService; the first card is the
-        // cheap generic one, the collector below replaces it with real progress.
-        val initial = runBlocking { notifications.progress(runner.state.value as? BackupJobState.Running) }
+        // startForeground must happen promptly after startForegroundService, so the first card is
+        // built synchronously (plain title, indeterminate); the collector below posts the full card
+        // with the step caption and cancel action on its first emission.
+        val initial = notifications.initial(runner.state.value.kindOrNull())
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         } else {
@@ -75,7 +82,7 @@ class BackupForegroundService : Service() {
 
     private fun finish() {
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        stopSelf(lastStartId)
     }
 
     override fun onDestroy() {
@@ -86,4 +93,10 @@ class BackupForegroundService : Service() {
     companion object {
         const val ACTION_CANCEL = "com.crazystudio.sportrecorder.backup.CANCEL"
     }
+}
+
+private fun BackupJobState.kindOrNull(): BackupJobKind? = when (this) {
+    is BackupJobState.Running -> kind
+    is BackupJobState.Finished -> kind
+    BackupJobState.Idle -> null
 }

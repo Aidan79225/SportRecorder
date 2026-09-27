@@ -109,6 +109,23 @@ class BackupJobRunnerTest {
         assertEquals(BackupJobState.Finished(BackupJobKind.Restore, BackupOutcome.Failed), runner.state.value)
     }
 
+    @Test fun safetyBackupFailure_reportsSafetyBackupFailed() = runTest(dispatcher) {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.7.1", 1L), emptyDocJson())
+        store.failUploadSnapshot = true
+        val eat = FakeEatRecordRepository(listOf(EatRecord(9, 9L, null, "keep", emptyList())))
+        val runner = runner(service(store, eat))
+
+        runner.startRestore("s")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            BackupJobState.Finished(BackupJobKind.Restore, BackupOutcome.SafetyBackupFailed),
+            runner.state.value,
+        )
+        assertEquals(listOf(9), eat.state.value.map { it.id })
+    }
+
     @Test fun newerSchema_reportsSchemaTooNew() = runTest(dispatcher) {
         val store = FakeBackupStore()
         val tooNew = BackupJson.encodeToString(
