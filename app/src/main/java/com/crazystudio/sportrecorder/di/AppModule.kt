@@ -8,6 +8,8 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.crazystudio.sportrecorder.BuildConfig
 import com.crazystudio.sportrecorder.backup.BackupAuth
+import com.crazystudio.sportrecorder.backup.BackupJobHost
+import com.crazystudio.sportrecorder.backup.BackupJobRunner
 import com.crazystudio.sportrecorder.backup.BackupService
 import com.crazystudio.sportrecorder.backup.BackupStore
 import com.crazystudio.sportrecorder.backup.GoogleBackupAuth
@@ -97,6 +99,8 @@ val appModule = module {
     single {
         BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }
+    single<BackupJobHost> { BackupJobHost.None }
+    single { BackupJobRunner(get(), get()) }
 
     // Reminders (Android side) + rescheduler
     single { ReminderNotifier(androidContext()) }
@@ -122,5 +126,5 @@ val appModule = module {
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
     viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { BackupViewModel(get(), get()) }
+    viewModel { BackupViewModel(get(), get(), get(), get()) }
 }

@@ -72,6 +72,7 @@ fun BackupRoute(onBack: () -> Unit) {
         onSignOut = { auth.signOut() },
         onBackup = { authorizedThen { vm.backup() } },
         onRestore = { snapshot -> authorizedThen { vm.restore(snapshot.id) } },
+        onCancel = vm::cancel,
         onConsumeMessage = vm::consumeMessage,
         onBack = onBack,
     )
