@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.crazystudio.sportrecorder.BuildConfig
+import com.crazystudio.sportrecorder.backup.AndroidBackupJobHost
 import com.crazystudio.sportrecorder.backup.BackupAuth
 import com.crazystudio.sportrecorder.backup.BackupJobHost
 import com.crazystudio.sportrecorder.backup.BackupJobRunner
@@ -99,7 +100,7 @@ val appModule = module {
     single {
         BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }
-    single<BackupJobHost> { BackupJobHost.None }
+    single<BackupJobHost> { AndroidBackupJobHost(androidContext()) }
     single { BackupJobRunner(get(), get()) }
 
     // Reminders (Android side) + rescheduler

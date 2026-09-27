@@ -47,4 +47,9 @@
     <string name="reminder_window_closing_text">Time for your last meal before the window closes.</string>
     <string name="reminder_fast_complete_title">Fast complete 🎉</string>
     <string name="reminder_fast_complete_text">You reached your fasting goal. Great job!</string>
+
+    <!-- Drive backup foreground service (progress channel is silent; result is one-shot). -->
+    <string name="backup_channel_name">Backup progress</string>
+    <string name="backup_notif_backing_up">Backing up</string>
+    <string name="backup_notif_restoring">Restoring</string>
 </resources>
