@@ -19,9 +19,12 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Opens databases built by hand at old schema versions (the DDL Room generated back then, recovered
- * from git history) with the real migrations. Room validates the migrated schema against the
- * entities on open and throws on any mismatch, so "opens, reads, and old rows survive" is the test.
+ * Opens databases built by hand at old schema versions with the real migrations. The v1 DDL is
+ * the one Room generated back then (recovered from git history); for v3/v4 it is what the
+ * migrations themselves create (columns with `DEFAULT 0`), i.e. the shape an upgraded user's
+ * database actually has — Room's validation accepts it because the entities declare no defaults.
+ * Room validates the migrated schema against the entities on open and throws on any mismatch, so
+ * "opens, reads, and old rows survive" is the test.
  */
 @RunWith(AndroidJUnit4::class)
 class RoomMigrationTest {

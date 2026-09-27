@@ -15,7 +15,6 @@ import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -51,6 +50,7 @@ class ReminderReceiverTest {
         // Other instrumented classes share this process (no orchestrator) and some resolve
         // RemindersRescheduler eagerly (e.g. BackupTestFixtures.loadBackupTestModule's
         // BackupService) — leaving the RecordingRescheduler in place would hand them a dead one.
+        // keep in sync with AppModule's RemindersRescheduler binding
         loadKoinModules(
             module { single<RemindersRescheduler> { RescheduleRemindersUseCase(get(), get(), get(), get()) } },
         )
@@ -69,10 +69,15 @@ class ReminderReceiverTest {
         assertEquals(1, rescheduler.count)
     }
 
-    @Test fun unknownType_doesNothing() {
+    @Test fun unknownType_isIgnored_beforeTheNextValidFire() {
+        // Manifest receivers get broadcasts serially (the next waits for the previous one — and any
+        // goAsync() it took — to finish), so once the valid fire below has been handled, the bad one
+        // has been too. That makes "it produced nothing" observable without sleeping.
         fire("NOT_A_TYPE")
-        Thread.sleep(1_500) // give a wrongly-behaving receiver time to act
-        assertNull(context.activeNotification(2001)); assertNull(context.activeNotification(2002))
-        assertFalse(rescheduler.called.isCompleted)
+        fire("FAST_COMPLETE")
+        awaitUntil(what = "fast-complete notification") { context.activeNotification(2002) != null }
+        awaitUntil(what = "reschedule called") { rescheduler.called.isCompleted }
+        assertEquals(1, rescheduler.count) // only FAST_COMPLETE rescheduled
+        assertNull(context.activeNotification(2001))
     }
 }

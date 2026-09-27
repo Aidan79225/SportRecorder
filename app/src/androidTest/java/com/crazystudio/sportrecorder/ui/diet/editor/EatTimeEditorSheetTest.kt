@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -19,6 +20,7 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_none
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
@@ -30,6 +32,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Renders [EatTimeEditorSheet] directly (no host screen) with `createComposeRule`, per the
@@ -90,10 +95,26 @@ class EatTimeEditorSheetTest {
     // choose-from-gallery.
     private fun headerRowActionIcons() =
         compose.onAllNodes(hasContentDescription("") and hasClickAction(), useUnmergedTree = true)
+            .assertCountEquals(HEADER_ROW_COUNT)
+
+    // Mirrors the sheet's private formatDate / formatTime: "yyyy/MM/dd" and "HH:mm" (zero-padded)
+    // in the device's default time zone.
+    private fun formatLocal(millis: Long, pattern: String): String =
+        Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(pattern))
+
+    private fun expectedDate(millis: Long) = formatLocal(millis, "uuuu/MM/dd")
+
+    private fun expectedTime(millis: Long) = formatLocal(millis, "HH:mm")
 
     @Test
-    fun dateAndTimeRows_triggerPickers() {
-        show(EatTimeEditorUiState(dateMillis = 1_700_000_000_000L))
+    fun dateAndTimeRows_showFormattedDateMillis_andTriggerPickers() {
+        val millis = 1_700_000_000_000L
+        show(EatTimeEditorUiState(dateMillis = millis))
+        compose.onNodeWithText(str(Res.string.diet_create_eating_date_title)).assertIsDisplayed()
+        compose.onNodeWithText(expectedDate(millis)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.diet_create_eating_time_title)).assertIsDisplayed()
+        compose.onNodeWithText(expectedTime(millis)).assertIsDisplayed()
+
         headerRowActionIcons()[0].performClick() // date row
         assertEquals(1, pickDate)
         headerRowActionIcons()[1].performClick() // time row
@@ -110,6 +131,8 @@ class EatTimeEditorSheetTest {
     @Test
     fun photoRows_triggerCaptureAndPick() {
         show(EatTimeEditorUiState())
+        compose.onNodeWithText(str(Res.string.photo_add)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.photo_select)).assertIsDisplayed()
         headerRowActionIcons()[2].performClick() // take-photo row
         assertEquals(1, addPhoto)
         headerRowActionIcons()[3].performClick() // choose-from-gallery row
@@ -153,6 +176,19 @@ class EatTimeEditorSheetTest {
     }
 
     @Test
+    fun recaptureLocation_callsBack() {
+        show(
+            EatTimeEditorUiState(
+                location = EatTimeEditorUiState.LatLng(25.03396, 121.56454),
+                locationStatus = EatTimeEditorUiState.LocationStatus.AVAILABLE,
+            ),
+        )
+        compose.onNodeWithContentDescription(str(Res.string.diet_eat_recapture_location)).performClick()
+        assertEquals(1, recapture)
+        assertEquals(0, clearLocation)
+    }
+
+    @Test
     fun noLocation_showsNoneCopy() {
         show(EatTimeEditorUiState(location = null, locationStatus = EatTimeEditorUiState.LocationStatus.IDLE))
         compose.onNodeWithText(str(Res.string.diet_eat_location_none)).assertIsDisplayed()
@@ -166,5 +202,10 @@ class EatTimeEditorSheetTest {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.diet_eat_create)).performClick()
         assertEquals(1, confirm)
+    }
+
+    private companion object {
+        /** Date, time, take-photo, choose-from-gallery. */
+        const val HEADER_ROW_COUNT = 4
     }
 }
