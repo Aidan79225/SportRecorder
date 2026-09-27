@@ -30,7 +30,8 @@
     <string name="insights_empty_photos">這段期間沒有餐點照片</string>
     <string name="insights_empty_locations">這段期間沒有地點紀錄</string>
     <string name="insights_value_none">—</string>
-    <string name="insights_location_count">📍 %1$s, %2$s · %3$d 次</string>
+    <string name="insights_map_summary">%1$d 個地點 · %2$d 餐記了位置</string>
+    <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string-array name="insights_weekday_initials">
         <item>日</item>
         <item>一</item>

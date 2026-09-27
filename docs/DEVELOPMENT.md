@@ -122,6 +122,9 @@
 | 06-20 | KMP Phase 2(Koin) | ✓ | — | 已完成 |
 | 06-20 | KMP Phase 3a(DataStore) | ✓ | — | 已完成 |
 | 06-23 | Google Drive 備份 | ✓ | ✓ | Phase 1–2 已合併;Phase 3 在 PR #58 |
+| 09-21 | 回顧 / Insights 改善(bucket A + B1) | ✓ | ✓(B4/B6/B7) | A + B1 已合併(PR #60);B4/B6/B7 已規劃未實作 |
+| 09-21 | E2E / flow 測試套件 | ✓ | — | 已完成(PR #61) |
+| 09-27 | 回顧地點卡改為地圖(取代 B3) | ✓ | — | 實作中(`claude/insight-page-improvements-2fe29z`) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

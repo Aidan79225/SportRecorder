@@ -55,7 +55,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_empty_title
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_longer
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_none
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_within
-import com.crazystudio.sportrecorder.shared.resources.insights_location_count
+import com.crazystudio.sportrecorder.shared.resources.insights_map_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_month_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_next_month
 import com.crazystudio.sportrecorder.shared.resources.insights_period_caption
@@ -72,6 +72,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
+import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -80,8 +81,6 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
-import kotlin.math.roundToLong
 import kotlin.time.Instant
 
 private const val WEEK_COLUMNS = 7
@@ -419,12 +418,18 @@ private fun LocationsCard(locations: List<LocationCount>) {
             Text(stringResource(Res.string.insights_empty_locations), style = MaterialTheme.typography.bodyMedium)
             return@SectionCard
         }
-        locations.forEach { loc ->
-            Text(
-                text = stringResource(Res.string.insights_location_count, coord(loc.lat), coord(loc.lng), loc.count),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+        // The map is one picture; the line under it is its text equivalent for screen readers.
+        val summary = stringResource(
+            Res.string.insights_map_summary,
+            locations.size,
+            locations.sumOf { it.count },
+        )
+        PlacesMap(locations = locations, contentDescription = summary)
+        Text(
+            text = summary,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -445,14 +450,3 @@ private fun shortDate(millis: Long): String {
 }
 
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
-
-/**
- * Formats a coordinate to 3 decimals — the precision places are actually grouped at — without
- * java's String.format (unavailable on Native).
- */
-private fun coord(value: Double): String {
-    val scaled = (value * 1_000).roundToLong()
-    val sign = if (scaled < 0) "-" else ""
-    val a = abs(scaled)
-    return "$sign${a / 1_000}.${(a % 1_000).toString().padStart(3, '0')}"
-}

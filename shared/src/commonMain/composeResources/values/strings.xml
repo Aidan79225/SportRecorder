@@ -30,7 +30,8 @@
     <string name="insights_empty_photos">No meal photos in this period</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none">—</string>
-    <string name="insights_location_count">📍 %1$s, %2$s · %3$d</string>
+    <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>
+    <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string-array name="insights_weekday_initials">
         <item>Su</item>
         <item>Mo</item>

@@ -126,6 +126,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.coil.compose)
+    // Coil 3: SingletonImageLoader.Factory lives in `coil`; the OkHttp fetcher serves the shared
+    // Insights map tiles (meal photos stay file-backed).
+    implementation(libs.coil3)
+    implementation(libs.coil3.network.okhttp)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.play.services.location)
     implementation(libs.play.services.auth)
