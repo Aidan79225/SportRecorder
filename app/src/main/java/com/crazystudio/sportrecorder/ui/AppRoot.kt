@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -49,6 +50,8 @@ import com.crazystudio.sportrecorder.ui.diet.record.FullScreenPhotoViewer
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.select.SelectFastingTypeViewModel
+import com.crazystudio.sportrecorder.ui.insights.DayRecordsSheet
+import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
@@ -66,9 +69,9 @@ fun AppRoot() {
     val navController = rememberNavController(bottomSheetNavigator)
 
     val tabs = listOf(
-        Tab(Route.Diet, "Home", R.drawable.ic_home_black_24dp),
-        Tab(Route.Record, "Record", R.drawable.ic_dashboard_black_24dp),
-        Tab(Route.Insights, "Insights", R.drawable.ic_baseline_insights_24),
+        Tab(Route.Diet, stringResource(R.string.title_home), R.drawable.ic_home_black_24dp),
+        Tab(Route.Record, stringResource(R.string.title_record), R.drawable.ic_dashboard_black_24dp),
+        Tab(Route.Insights, stringResource(R.string.title_insights), R.drawable.ic_baseline_insights_24),
     )
 
     ModalBottomSheetLayout(bottomSheetNavigator) {
@@ -156,7 +159,22 @@ fun AppRoot() {
                         InsightsScreen(
                             state = state,
                             onSelectPeriod = vm::setPeriod,
-                            onShiftMonth = vm::shiftMonth,
+                            onShiftPeriod = vm::shiftPeriod,
+                            onDayClick = { dayStart -> navController.navigate(Route.DayRecords(dayStart)) },
+                            photoModel = vm::photoModel,
+                            onPhotoClick = onPhotoClick,
+                        )
+                    }
+                }
+                bottomSheet<Route.DayRecords> {
+                    // dayStart reaches the VM through its SavedStateHandle, like EatTimeEditor's id.
+                    val vm: DayRecordsViewModel = koinViewModel()
+                    val records by vm.records.collectAsStateWithLifecycle()
+                    // The viewer is a Dialog, so a tapped photo opens above the sheet, not inside it.
+                    PhotoViewerHost { onPhotoClick ->
+                        DayRecordsSheet(
+                            dayStart = vm.dayStart,
+                            records = records,
                             photoModel = vm::photoModel,
                             onPhotoClick = onPhotoClick,
                         )

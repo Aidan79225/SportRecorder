@@ -1,5 +1,12 @@
 # 回顧 / Insights improvements (B4 · B6 · B7) — Implementation Plan
 
+> **Outcome (2026-09-27):** executed on `claude/insight-page-improvements-2fe29z`, with three
+> deliberate deviations recorded in `docs/superpowers/specs/2026-09-27-insights-one-period-eating-days-design.md`:
+> meals are bucketed by **eating day** (Home's window grouping) rather than calendar date; the
+> chart is shown in **Week only**; and B8 (one period control) was done alongside rather than
+> deferred. The "another agent owns the e2e suite" constraint below is stale (PR #61 merged), and
+> a flow test for this work lives in `app/src/test/flow/InsightsReflectFlowTest.kt`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Finish the Insights page's turn from report card to mirror. Drop the last metric that carries someone else's norm (**B6**), let a day on the calendar lead back to the meals that made it (**B4**), and draw the period's eating windows as bands so the pattern is *seen* rather than read off four numbers (**B7**).

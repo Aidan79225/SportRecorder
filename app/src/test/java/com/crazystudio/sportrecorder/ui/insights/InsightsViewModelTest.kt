@@ -11,6 +11,7 @@ import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -24,6 +25,7 @@ class InsightsViewModelTest {
 
     private val fixedNow = 1_700_000_000_000L
     private fun h(n: Long) = TimeUnit.HOURS.toMillis(n)
+    private fun d(n: Long) = TimeUnit.DAYS.toMillis(n)
     private fun record(id: Int, time: Long) =
         EatRecord(id = id, time = time, location = null, note = null, photos = emptyList())
 
@@ -42,6 +44,7 @@ class InsightsViewModelTest {
         vm.uiState.test {
             awaitItem()
             val loaded = awaitItem()
+            assertTrue(loaded.isLoaded)
             assertEquals(Period.MONTH, loaded.period)
             assertEquals(2, loaded.result.stats.mealCount)
             assertTrue(loaded.result.calendarDays.isNotEmpty())
@@ -50,76 +53,88 @@ class InsightsViewModelTest {
     }
 
     @Test
-    fun setPeriod_updatesState() = runTest(mainRule.testDispatcher.scheduler) {
-        val repo = FakeEatRecordRepository()
-        val vm = viewModel(repo)
-
-        vm.uiState.test {
-            awaitItem()
-            vm.setPeriod(Period.WEEK)
-            val updated = awaitItem()
-            assertEquals(Period.WEEK, updated.period)
-            cancelAndIgnoreRemainingEvents()
-        }
+    fun initialState_isNotLoadedSoTheScreenDrawsNothingYet() {
+        // The seed must not look like "no records": that flashed the empty card at every open.
+        val seed = viewModel(FakeEatRecordRepository()).uiState.value
+        assertFalse(seed.isLoaded)
+        assertEquals(fixedNow, seed.anchor)
     }
 
     @Test
-    fun initialState_seedsMonthAnchorWithNow() {
-        // A 0L seed would flash a January 1970 calendar before the first combined emission.
-        assertEquals(fixedNow, viewModel(FakeEatRecordRepository()).uiState.value.monthAnchor)
-    }
-
-    @Test
-    fun shiftMonth_movesAnchorBackward() = runTest(mainRule.testDispatcher.scheduler) {
-        val repo = FakeEatRecordRepository()
-        val vm = viewModel(repo)
-
-        vm.uiState.test {
-            // First item is the stateIn seed; skip it.
-            awaitItem()
-            // Second item is the real combined state produced by now() = fixedNow.
-            val initial = awaitItem()
-            vm.shiftMonth(-1)
-            val shifted = awaitItem()
-            assertTrue(shifted.monthAnchor < initial.monthAnchor)
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun shiftMonth_doesNotPageIntoTheFuture() = runTest(mainRule.testDispatcher.scheduler) {
+    fun setPeriod_updatesStateAndKeepsTheAnchor() = runTest(mainRule.testDispatcher.scheduler) {
         val vm = viewModel(FakeEatRecordRepository())
 
         vm.uiState.test {
             awaitItem()
             val initial = awaitItem()
-            assertTrue(initial.result.isAnchorCurrentMonth)
+            vm.setPeriod(Period.WEEK)
+            val updated = awaitItem()
+            assertEquals(Period.WEEK, updated.period)
+            assertEquals(initial.anchor, updated.anchor)
+            assertEquals(7, updated.result.calendarDays.size)
+            assertEquals(7, updated.result.bands.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-            vm.shiftMonth(1)
+    @Test
+    fun shiftPeriod_monthMovesBackwardAndReturns() = runTest(mainRule.testDispatcher.scheduler) {
+        val vm = viewModel(FakeEatRecordRepository())
+
+        vm.uiState.test {
+            awaitItem()
+            val initial = awaitItem()
+            assertTrue(initial.result.isCurrentPeriod)
+            vm.shiftPeriod(-1)
+            val back = awaitItem()
+            assertTrue(back.anchor < initial.anchor)
+            assertFalse(back.result.isCurrentPeriod)
+            vm.shiftPeriod(1)
+            val forward = awaitItem()
+            assertTrue(forward.anchor > back.anchor)
+            assertTrue(forward.result.isCurrentPeriod)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun shiftPeriod_doesNotPageIntoTheFuture() = runTest(mainRule.testDispatcher.scheduler) {
+        val vm = viewModel(FakeEatRecordRepository())
+
+        vm.uiState.test {
+            awaitItem()
+            val initial = awaitItem()
+
+            vm.shiftPeriod(1)
             // Force an emission so a moved anchor could not hide behind StateFlow conflation.
             vm.setPeriod(Period.WEEK)
             val after = awaitItem()
 
             assertEquals(Period.WEEK, after.period)
-            assertEquals(initial.monthAnchor, after.monthAnchor)
+            assertEquals(initial.anchor, after.anchor)
+            assertTrue(after.result.isCurrentPeriod)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun shiftMonth_canReturnAfterPagingBack() = runTest(mainRule.testDispatcher.scheduler) {
+    fun shiftPeriod_weekPagesBySevenDays() = runTest(mainRule.testDispatcher.scheduler) {
         val vm = viewModel(FakeEatRecordRepository())
 
         vm.uiState.test {
             awaitItem()
-            val initial = awaitItem()
-            vm.shiftMonth(-1)
-            val back = awaitItem()
-            vm.shiftMonth(1)
-            val forward = awaitItem()
-            assertTrue(back.monthAnchor < initial.monthAnchor)
-            assertTrue(forward.monthAnchor > back.monthAnchor)
-            assertTrue(forward.result.isAnchorCurrentMonth)
+            awaitItem()
+            vm.setPeriod(Period.WEEK)
+            val thisWeek = awaitItem()
+            vm.shiftPeriod(-1)
+            val lastWeek = awaitItem()
+            // The anchor lands on a local midnight seven days back (fixedNow itself is mid-day).
+            assertTrue(lastWeek.anchor < fixedNow - d(6))
+            assertTrue(lastWeek.anchor > fixedNow - d(8))
+            // Day-based, not millis-based: a DST switch inside either week would shift the millis by an hour.
+            assertEquals(7, lastWeek.result.range.dayStarts.size)
+            assertTrue(lastWeek.result.range.endInclusive < thisWeek.result.range.start)
+            assertFalse(lastWeek.result.isCurrentPeriod)
             cancelAndIgnoreRemainingEvents()
         }
     }

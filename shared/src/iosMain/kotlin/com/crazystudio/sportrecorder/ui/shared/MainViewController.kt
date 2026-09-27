@@ -15,9 +15,10 @@ import platform.UIKit.UIViewController
 fun MainViewController(): UIViewController = ComposeUIViewController {
     SportRecorderTheme {
         InsightsScreen(
-            state = InsightsUiState(),
+            state = InsightsUiState(isLoaded = true),
             onSelectPeriod = {},
-            onShiftMonth = {},
+            onShiftPeriod = {},
+            onDayClick = {},
             photoModel = { null },
             onPhotoClick = { _, _ -> },
         )

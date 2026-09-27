@@ -107,4 +107,35 @@ class DietWindowTest {
         assertEquals(f + h(3), s.lastEat)
         assertEquals(h(6), s.elapsedMillis)
     }
+
+    // --- groupIntoWindows: the shared "same eating day" rule ---------------
+
+    @Test fun groupIntoWindows_empty_isEmpty() {
+        assertEquals(emptyList(), DietWindow.groupIntoWindows(emptyList<Long>(), eh, fh) { it })
+    }
+
+    @Test fun groupIntoWindows_mealsWithinToleranceShareAWindow() {
+        // 16:8 → tolerance 8 + 16/2 = 16h from the window's first meal; 15h still merges.
+        val windows = DietWindow.groupIntoWindows(listOf(f, f + h(4), f + h(15)), eh, fh) { it }
+        assertEquals(listOf(listOf(f, f + h(4), f + h(15))), windows)
+    }
+
+    @Test fun groupIntoWindows_mealBeyondToleranceOpensANewWindow() {
+        val windows = DietWindow.groupIntoWindows(listOf(f, f + h(4), f + h(17), f + h(20)), eh, fh) { it }
+        assertEquals(listOf(listOf(f, f + h(4)), listOf(f + h(17), f + h(20))), windows)
+    }
+
+    @Test fun groupIntoWindows_measuresFromTheWindowsFirstMealNotTheLast() {
+        // 4h, then 8h after that: 12h from the first meal → same window; 17h from the first → new.
+        val windows = DietWindow.groupIntoWindows(listOf(f, f + h(4), f + h(12), f + h(17)), eh, fh) { it }
+        assertEquals(2, windows.size)
+        assertEquals(listOf(f + h(17)), windows[1])
+    }
+
+    @Test fun compute_usesTheLatestWindowOnly() {
+        val s = DietWindow.compute(listOf(f, f + h(2), f + h(20), f + h(21)), eh, fh, f + h(22))
+        assertEquals(f + h(20), s.windowStart)
+        assertEquals(f + h(21), s.lastEat)
+        assertEquals(f + h(21), s.fastStartAt) // two meals → no single-meal grace
+    }
 }

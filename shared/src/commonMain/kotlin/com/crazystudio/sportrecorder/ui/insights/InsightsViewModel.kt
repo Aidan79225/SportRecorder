@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
+import com.crazystudio.sportrecorder.domain.insights.InsightsRange
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
@@ -12,14 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.number
-import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 class InsightsViewModel(
     observeEatRecords: ObserveEatRecordsUseCase,
@@ -40,42 +34,37 @@ class InsightsViewModel(
     )
 
     private val period = MutableStateFlow(Period.MONTH)
-    private val monthAnchor = MutableStateFlow(now())
+    private val anchor = MutableStateFlow(now())
 
     val uiState: StateFlow<InsightsUiState> =
         combine(
             observeEatRecords(),
             dietSettingsRepository.settings,
             period,
-            monthAnchor,
-        ) { records, settings, selectedPeriod, anchor ->
+            anchor,
+        ) { records, settings, selectedPeriod, selectedAnchor ->
             InsightsUiState(
+                isLoaded = true,
                 period = selectedPeriod,
-                monthAnchor = anchor,
-                result = InsightsAggregator.compute(records, settings, now(), selectedPeriod, anchor),
+                anchor = selectedAnchor,
+                result = InsightsAggregator.compute(records, settings, now(), selectedPeriod, selectedAnchor),
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            // Seed with the real anchor: a 0L default would flash a January 1970 calendar.
-            InsightsUiState(period = period.value, monthAnchor = monthAnchor.value),
+            // Seed with the real anchor (a 0L default would mean a January 1970 range) and
+            // isLoaded = false so the screen stays blank instead of flashing the empty card.
+            InsightsUiState(period = period.value, anchor = anchor.value),
         )
 
+    /** Week ↔ Month keeps the anchor, so the user stays around the same days. */
     fun setPeriod(value: Period) {
         period.value = value
     }
 
-    /** Pages the calendar. Forward paging stops at the current month — there is nothing yet. */
-    fun shiftMonth(months: Int) {
-        val zone = TimeZone.currentSystemDefault()
-        val date = Instant.fromEpochMilliseconds(monthAnchor.value).toLocalDateTime(zone).date
-        // Aggregator reads only the month from monthAnchor, so start-of-day is fine.
-        val shifted = date.plus(months, DateTimeUnit.MONTH)
-        val today = Instant.fromEpochMilliseconds(now()).toLocalDateTime(zone).date
-        val isFuture = shifted.year > today.year ||
-            (shifted.year == today.year && shifted.month.number > today.month.number)
-        if (isFuture) return
-        monthAnchor.value = shifted.atStartOfDayIn(zone).toEpochMilliseconds()
+    /** Pages the whole screen one period back or forward. Forward paging stops at today. */
+    fun shiftPeriod(steps: Int) {
+        anchor.value = InsightsRange.shift(anchor.value, period.value, steps, now())
     }
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the UI. */

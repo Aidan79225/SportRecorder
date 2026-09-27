@@ -1,13 +1,10 @@
 package com.crazystudio.sportrecorder.domain.insights
 
+import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -18,20 +15,21 @@ import kotlin.time.Duration.Companion.hours
  * Pure (multiplatform) calculator for the Insights screen. Day/month math uses kotlinx-datetime
  * with an injected [TimeZone] (default: the system zone), so it is testable on every platform.
  *
+ * Meals are bucketed by **eating day**, not calendar date: the same window grouping Home uses
+ * ([DietWindow.groupIntoWindows]), keyed by the local date of each window's first meal. A 00:30
+ * snack after a 20:00 dinner therefore belongs to the dinner's day, on the calendar, in the
+ * stats and on the chart alike — the two screens never disagree about which day a meal was.
+ *
  * Everything here describes a rhythm; nothing here scores it. See
  * `docs/superpowers/specs/2026-09-21-insights-improvements-design.md`.
  */
 object InsightsAggregator {
 
-    /** Meals at or after this local hour make a day count towards [InsightsStats.lateHourDays]. */
-    const val LATE_HOUR = 22
-
     private const val MINUTES_PER_HOUR = 60
     private const val MILLIS_PER_MINUTE = 60_000L
-    private const val WEEK_LOOKBACK_DAYS = 6
     private const val LOCATION_ROUNDING = 1000.0 // ~100m grid for grouping eat locations
 
-    /** Classify one calendar day's meal times against the eating-hours window. */
+    /** Classify one eating day's meal times against the eating-hours window. */
     fun windowStateFor(dayMealTimes: List<Long>, eatingHours: Long): DayWindowState {
         if (dayMealTimes.isEmpty()) return DayWindowState.NO_RECORD
         val window = (dayMealTimes.max() - dayMealTimes.min())
@@ -47,87 +45,102 @@ object InsightsAggregator {
         Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone).date
             .atStartOfDayIn(timeZone).toEpochMilliseconds()
 
-    private fun mealTimesByDay(records: List<EatRecord>, timeZone: TimeZone): Map<Long, List<Long>> =
-        records.groupBy { dayStart(it.time, timeZone) }
-            .mapValues { entry -> entry.value.map { it.time }.sorted() }
-
-    /** One [DayCell] per day of the month containing [monthAnchor]; [now] marks today's cell. */
-    fun monthCells(
+    /**
+     * Every record, grouped by eating day (see the class doc). Keys are local midnights; each
+     * value is that day's meals, ascending by time. Iteration order follows the days.
+     */
+    fun mealsByEatingDay(
         records: List<EatRecord>,
+        settings: DietSettings,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    ): Map<Long, List<EatRecord>> {
+        val sorted = records.sortedBy { it.time }
+        val byDay = LinkedHashMap<Long, MutableList<EatRecord>>()
+        DietWindow.groupIntoWindows(sorted, settings.eatingHours, settings.fastingHours) { it.time }
+            .forEach { window ->
+                byDay.getOrPut(dayStart(window.first().time, timeZone)) { mutableListOf() }.addAll(window)
+            }
+        return byDay
+    }
+
+    /** One [DayCell] per day of [range]; [now] marks today and dims what is still ahead. */
+    fun dayCells(
+        range: DayRange,
+        byDay: Map<Long, List<EatRecord>>,
         eatingHours: Long,
-        monthAnchor: Long,
         now: Long,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): List<DayCell> {
-        val byDay = mealTimesByDay(records, timeZone)
         val today = dayStart(now, timeZone)
-        val anchor = Instant.fromEpochMilliseconds(monthAnchor).toLocalDateTime(timeZone).date
-        val first = LocalDate(anchor.year, anchor.month, 1)
-        val daysInMonth = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY).day
-        return (1..daysInMonth).map { day ->
-            val start = LocalDate(first.year, first.month, day)
-                .atStartOfDayIn(timeZone).toEpochMilliseconds()
+        return range.dayStarts.map { start ->
             DayCell(
                 dayStart = start,
-                dayOfMonth = day,
-                state = windowStateFor(byDay[start].orEmpty(), eatingHours),
+                dayOfMonth = dayOfMonth(start, timeZone),
+                state = windowStateFor(byDay[start].orEmpty().map { it.time }, eatingHours),
                 isToday = start == today,
+                isFuture = start > today,
             )
         }
     }
 
-    /** Inclusive lower bound (local midnight) for the selected period relative to [now]. */
-    fun periodStart(now: Long, period: Period, timeZone: TimeZone = TimeZone.currentSystemDefault()): Long {
-        val date = Instant.fromEpochMilliseconds(now).toLocalDateTime(timeZone).date
-        val start = when (period) {
-            Period.WEEK -> date.minus(WEEK_LOOKBACK_DAYS, DateTimeUnit.DAY)
-            Period.MONTH -> LocalDate(date.year, date.month, 1)
-        }
-        return start.atStartOfDayIn(timeZone).toEpochMilliseconds()
+    /** Stats over eating days ([days]: one ascending meal list per day, already scoped to the period). */
+    fun statsFor(
+        days: Collection<List<EatRecord>>,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    ): InsightsStats {
+        val spans = days.filter { it.isNotEmpty() }.map { meals -> spanOf(meals, timeZone) }
+        // A single-meal day has no measurable window, so it is left out rather than counted as 0.
+        val windows = spans.filter { it.mealCount > 1 }.map { it.lastMinutes - it.firstMinutes }
+        return InsightsStats(
+            mealCount = spans.sumOf { it.mealCount },
+            daysWithRecords = spans.size,
+            avgFirstMealMinutes = spans.map { it.firstMinutes }.roundedAverageOrNull(),
+            avgLastMealMinutes = spans.map { it.lastMinutes }.roundedAverageOrNull(),
+            avgWindowMinutes = windows.roundedAverageOrNull(),
+        )
     }
 
-    /** Stats over [records] (assumed already filtered to the period). */
-    fun statsFor(records: List<EatRecord>, timeZone: TimeZone = TimeZone.currentSystemDefault()): InsightsStats {
-        val byDay = records.groupBy { dayStart(it.time, timeZone) }
-        val firsts = byDay.values.map { day -> minutesSinceMidnight(day.minOf { it.time }, timeZone) }
-        val lasts = byDay.values.map { day -> minutesSinceMidnight(day.maxOf { it.time }, timeZone) }
-        // A single-meal day has no measurable window, so it is left out rather than counted as 0.
-        val windows = byDay.values.filter { it.size > 1 }
-            .map { day -> ((day.maxOf { it.time } - day.minOf { it.time }) / MILLIS_PER_MINUTE).toInt() }
-        val lateDays = byDay.values.count { day ->
-            day.any { minutesSinceMidnight(it.time, timeZone) >= LATE_HOUR * MINUTES_PER_HOUR }
-        }
-        return InsightsStats(
-            mealCount = records.size,
-            daysWithRecords = byDay.size,
-            avgFirstMealMinutes = firsts.roundedAverageOrNull(),
-            avgLastMealMinutes = lasts.roundedAverageOrNull(),
-            avgWindowMinutes = windows.roundedAverageOrNull(),
-            lateHourDays = lateDays,
+    /** One [DayBand] per day of [range] — empty days included, so rows never shift. */
+    fun bandsFor(
+        range: DayRange,
+        byDay: Map<Long, List<EatRecord>>,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    ): List<DayBand> = range.dayStarts.map { start ->
+        val meals = byDay[start].orEmpty()
+        val span = if (meals.isEmpty()) null else spanOf(meals, timeZone)
+        DayBand(
+            dayStart = start,
+            dayOfMonth = dayOfMonth(start, timeZone),
+            firstMinutes = span?.firstMinutes ?: 0,
+            lastMinutes = span?.lastMinutes ?: 0,
+            mealCount = meals.size,
         )
     }
 
     /**
-     * Build the full Insights result. The calendar reflects [monthAnchor]'s month, while the
-     * stats, photo wall and locations reflect [now] and [period] — the two are intentionally
-     * independent (paging the calendar does not move the stats window).
+     * Build the full Insights result for the period anchored at [anchor]. Every card reads the
+     * same [DayRange]; days after today are excluded from the stats, chart, photos and places
+     * (a record dated in the future is left for the calendar to show, quietly).
      */
     fun compute(
         records: List<EatRecord>,
         settings: DietSettings,
         now: Long,
         period: Period,
-        monthAnchor: Long,
+        anchor: Long,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): InsightsResult {
-        val from = periodStart(now, period, timeZone)
-        val inPeriod = records.filter { it.time in from..now }
+        val range = InsightsRange.of(anchor, period, timeZone)
+        val today = dayStart(now, timeZone)
+        val byDay = mealsByEatingDay(records, settings, timeZone)
+        val inRange = byDay.filterKeys { it in range && it <= today }
+        val meals = inRange.values.flatten()
 
-        val photoFileNames = inPeriod
+        val photoFileNames = meals
             .sortedByDescending { it.time }
             .flatMap { record -> record.photos.map { it.fileName } }
 
-        val locations = inPeriod
+        val locations = meals
             .mapNotNull { it.location }
             .groupBy { (it.lat * LOCATION_ROUNDING).roundToLong() to (it.lng * LOCATION_ROUNDING).roundToLong() }
             .map { (key, points) ->
@@ -139,26 +152,42 @@ object InsightsAggregator {
             }
             .sortedByDescending { it.count }
 
-        val calendarDays = monthCells(records, settings.eatingHours, monthAnchor, now, timeZone)
-        val anchorDate = Instant.fromEpochMilliseconds(monthAnchor).toLocalDateTime(timeZone).date
-        val todayDate = Instant.fromEpochMilliseconds(now).toLocalDateTime(timeZone).date
+        val calendarDays = dayCells(range, byDay, settings.eatingHours, now, timeZone)
 
         return InsightsResult(
             hasAnyRecords = records.isNotEmpty(),
+            range = range,
             calendarDays = calendarDays,
-            monthSummary = MonthSummary.of(calendarDays),
-            isAnchorCurrentMonth = anchorDate.year == todayDate.year && anchorDate.month == todayDate.month,
-            periodStart = from,
-            periodEnd = now,
-            stats = statsFor(inPeriod, timeZone),
+            summary = PeriodSummary.of(calendarDays),
+            isCurrentPeriod = InsightsRange.isCurrent(anchor, period, now, timeZone),
+            stats = statsFor(inRange.values, timeZone),
+            bands = bandsFor(range, inRange, timeZone),
             photoFileNames = photoFileNames,
             locations = locations,
         )
     }
 
-    private fun minutesSinceMidnight(millis: Long, timeZone: TimeZone): Int =
-        Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone)
+    private class DaySpan(val firstMinutes: Int, val lastMinutes: Int, val mealCount: Int)
+
+    /**
+     * First/last meal of one eating day as minutes from that day's midnight. The first meal reads
+     * the local clock; the last adds the real elapsed span, so a window that crosses midnight
+     * runs past 24 h instead of wrapping to the next morning.
+     */
+    private fun spanOf(mealsAsc: List<EatRecord>, timeZone: TimeZone): DaySpan {
+        val first = mealsAsc.first().time
+        val last = mealsAsc.last().time
+        val firstMinutes = Instant.fromEpochMilliseconds(first).toLocalDateTime(timeZone)
             .let { it.hour * MINUTES_PER_HOUR + it.minute }
+        return DaySpan(
+            firstMinutes = firstMinutes,
+            lastMinutes = firstMinutes + ((last - first) / MILLIS_PER_MINUTE).toInt(),
+            mealCount = mealsAsc.size,
+        )
+    }
+
+    private fun dayOfMonth(dayStart: Long, timeZone: TimeZone): Int =
+        Instant.fromEpochMilliseconds(dayStart).toLocalDateTime(timeZone).day
 
     private fun List<Int>.roundedAverageOrNull(): Int? =
         if (isEmpty()) null else (sum().toDouble() / size).roundToInt()
