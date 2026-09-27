@@ -87,6 +87,11 @@
 - 動到 `commonMain` 時,另外需要 iOS 驗證:`./gradlew :shared:iosSimulatorArm64Test`(需 macOS;CI 有 `macos-latest` job)。
 - 測試現況:22 個測試檔;純邏輯計算機(`DietWindow`、`InsightsAggregator`、`ReminderPlanner`)與
   備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`。
+- **Instrumented tests(本機、不進 CI)**:`app/src/androidTest/.../backup/` 用真的 Room、真的
+  `BackupForegroundService` 與通知、真的 `BackupScreen`,只假造雲端。跑法:先開一台模擬器,然後
+  `$env:ANDROID_SERIAL="emulator-5556"; .\gradlew.bat :app:connectedDebugAndroidTest`
+  (單一類別加 `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>`)。報告在
+  `app/build/reports/androidTests/connected/debug/index.html`。
 - **CI**(`.github/workflows/ci.yml`,PR 與 push to `master` 觸發)
   - `build`(ubuntu):assemble + unit test + detekt + lint + `:shared:jvmTest`
   - `ios-shared`(macOS):`:shared:iosSimulatorArm64Test`
@@ -131,6 +136,7 @@
 | 09-27 | 回顧地點卡改為地圖(取代 B3) | ✓ | — | 實作中(`claude/insight-page-improvements-2fe29z`) |
 | 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 實作中(同一分支) |
 | 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
+| 09-27 | 備份 instrumented tests(本機) | ✓ | ✓ | 已完成(同 PR #67) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。
