@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.navigation.ModalBottomSheetLayout
 import androidx.compose.material.navigation.bottomSheet
-import androidx.compose.material.navigation.rememberBottomSheetNavigator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -55,6 +54,7 @@ import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.nav.rememberAppBottomSheetNavigator
 import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
@@ -65,7 +65,7 @@ private data class Tab(val route: Route, val label: String, @DrawableRes val ico
 @Composable
 @Suppress("LongMethod") // cohesive single navigation-graph builder; splitting hurts readability
 fun AppRoot() {
-    val bottomSheetNavigator = rememberBottomSheetNavigator()
+    val bottomSheetNavigator = rememberAppBottomSheetNavigator()
     val navController = rememberNavController(bottomSheetNavigator)
 
     val tabs = listOf(
