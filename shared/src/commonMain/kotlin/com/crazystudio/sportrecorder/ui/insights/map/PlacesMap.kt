@@ -78,7 +78,7 @@ fun PlacesMap(
             val clusters = remember(locations, viewport, mergeDistancePx) {
                 clusterPlaces(locations, viewport, mergeDistancePx)
             }
-            TileLayer(viewport)
+            TileLayer(remember(viewport) { viewport.tiles() })
             clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
         }
         MapAttribution(Modifier.align(Alignment.BottomEnd))

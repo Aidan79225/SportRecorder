@@ -52,6 +52,11 @@ object WebMercator {
 /** One raster tile and where its top-left corner lands inside the viewport (px), at [sizePx]. */
 data class TilePlacement(val zoom: Int, val x: Int, val y: Int, val leftPx: Int, val topPx: Int, val sizePx: Int)
 
+/** A tile's identity — which image it is, independent of where it is drawn. */
+data class TileKey(val zoom: Int, val x: Int, val y: Int)
+
+val TilePlacement.key: TileKey get() = TileKey(zoom, x, y)
+
 /**
  * A fixed, non-interactive map window: a zoom level plus the world pixel that sits at the
  * viewport's top-left. World pixels are tile units × [drawnTilePx]. [renderScale] lets tiles be
@@ -167,18 +172,29 @@ data class MapViewport(
     }
 }
 
+/** The deepest tile level [MapViewport.Companion.at] will draw. */
+private val MAX_LEVEL = MapCamera.MAX_ZOOM.toInt()
+
 /**
- * Builds the [MapViewport] for [camera]: the nearest integer zoom level (clamped to the world's
- * range), with [MapViewport.renderScale] covering the fractional remainder so a pinch between
- * levels scales the current tiles smoothly instead of jumping when the level changes.
+ * Builds the [MapViewport] for [camera]: by default the nearest integer zoom level (clamped to the
+ * world's range), with [MapViewport.renderScale] covering the fractional remainder so a pinch between
+ * levels scales the current tiles smoothly instead of jumping when the level changes. Passing another
+ * [level] draws that level's tiles at whatever scale shows the same view — how the last loaded level
+ * stays underneath while the new one arrives (see [layeredTiles]).
  */
-fun MapViewport.Companion.at(camera: MapCamera, widthPx: Int, heightPx: Int, tileSizePx: Int): MapViewport {
-    val level = camera.zoom.roundToInt().coerceIn(0, MapCamera.MAX_ZOOM.toInt())
-    val scale = 2.0.pow(camera.zoom - level)
+fun MapViewport.Companion.at(
+    camera: MapCamera,
+    widthPx: Int,
+    heightPx: Int,
+    tileSizePx: Int,
+    level: Int = camera.zoom.roundToInt(),
+): MapViewport {
+    val tileLevel = level.coerceIn(0, MAX_LEVEL)
+    val scale = 2.0.pow(camera.zoom - tileLevel)
     val drawn = tileSizePx * scale
-    val center = WebMercator.project(camera.centerLat, camera.centerLng, level)
+    val center = WebMercator.project(camera.centerLat, camera.centerLng, tileLevel)
     return MapViewport(
-        zoom = level,
+        zoom = tileLevel,
         originX = center.x * drawn - widthPx / 2.0,
         originY = center.y * drawn - heightPx / 2.0,
         widthPx = widthPx,

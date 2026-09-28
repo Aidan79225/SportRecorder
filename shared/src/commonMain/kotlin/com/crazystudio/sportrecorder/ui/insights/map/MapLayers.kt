@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.size.Size
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.insights_map_attribution
 import org.jetbrains.compose.resources.stringResource
@@ -66,16 +69,28 @@ internal fun Density.mapTileSizePx(): Int =
 internal fun Density.clusterMergeDistancePx(): Float =
     (MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * MARKER_GROWTH_CAP).toPx() * RADII_PER_DIAMETER
 
+/**
+ * Draws [tiles] back to front (see [layeredTiles]) and reports each one whose image arrives via
+ * [onLoaded]. A tile still loading draws nothing, so whatever lies underneath shows through.
+ */
 @Composable
-internal fun TileLayer(viewport: MapViewport) {
-    val tiles = remember(viewport) { viewport.tiles() }
+internal fun TileLayer(tiles: List<TilePlacement>, onLoaded: (TileKey) -> Unit = {}) {
     val density = LocalDensity.current
+    val context = LocalPlatformContext.current
+    // One loop for every layer: keyed by tile identity, a tile keeps its loaded image when a pan moves
+    // it or when it drops from the top layer into the underlay after a level change.
     tiles.forEach { tile ->
-        // Keyed by tile identity so a pan moves an already-loaded image instead of reloading a slot.
         key(tile.zoom, tile.x, tile.y) {
+            val url = tileUrl(tile)
+            // An explicit original size keeps the request (and its cache key) the same while the tile's
+            // on-screen size changes every frame of a pinch.
+            val request = remember(context, url) {
+                ImageRequest.Builder(context).data(url).size(Size.ORIGINAL).build()
+            }
             AsyncImage(
-                model = tileUrl(tile),
+                model = request,
                 contentDescription = null,
+                onSuccess = { onLoaded(tile.key) },
                 modifier = Modifier
                     .offset { IntOffset(tile.leftPx, tile.topPx) }
                     .size(with(density) { (tile.sizePx + TILE_SEAM_OVERLAP_PX).toDp() }),

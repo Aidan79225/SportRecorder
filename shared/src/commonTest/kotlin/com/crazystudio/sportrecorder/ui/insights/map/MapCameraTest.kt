@@ -27,6 +27,26 @@ class MapCameraTest {
         assertEquals(800, v.widthPx)
     }
 
+    @Test fun at_anotherLevel_drawsTheSameView() {
+        // Any coordinate lands on the same screen pixel whichever level draws it, so a neighbouring
+        // level can sit underneath the current one while its tiles load.
+        val cam = MapCamera(16.2, taipei.lat, taipei.lng) // level 16
+        val lat = 25.0355
+        val lng = 121.5620
+        val (x, y) = MapViewport.at(cam, 1080, 2400, 384).pixelFor(lat, lng)
+        listOf(15, 17).forEach { level ->
+            val v = MapViewport.at(cam, 1080, 2400, 384, level = level)
+            assertEquals(level, v.zoom)
+            val (lx, ly) = v.pixelFor(lat, lng)
+            assertTrue(abs(lx - x) < 0.5f && abs(ly - y) < 0.5f, "level $level: ($lx, $ly) vs ($x, $y)")
+        }
+    }
+
+    @Test fun at_clampsTheRequestedLevel() {
+        assertEquals(19, MapViewport.at(MapCamera(18.8, taipei.lat, taipei.lng), 800, 600, 256, level = 22).zoom)
+        assertEquals(0, MapViewport.at(MapCamera(0.2, taipei.lat, taipei.lng), 800, 600, 256, level = -1).zoom)
+    }
+
     @Test fun zoomedBy_isLog2_andClamped() {
         val cam = MapCamera(16.0, taipei.lat, taipei.lng)
         assertEquals(17.0, cam.zoomedBy(2f, minZoom = 10.0).zoom)

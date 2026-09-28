@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -122,9 +123,23 @@ private fun ZoomableMap(
         val minZoom = (fitted.zoom - ZOOM_OUT_ALLOWANCE).coerceAtLeast(0.0)
         var camera by remember(fitted) { mutableStateOf(MapCamera.fromViewport(fitted)) }
 
+        // Crossing a zoom level swaps every tile; until the new level's tiles arrive, the last level
+        // whose on-screen tiles all loaded stays underneath (only tiles already in hand — no new requests).
+        val loaded = remember(fitted) { mutableStateSetOf<TileKey>() }
+        var settledLevel by remember(fitted) { mutableStateOf<Int?>(null) }
+
         // Gesture lambdas live across recompositions, so they must build the viewport from the
         // latest `camera` (read through the state delegate) rather than a value captured earlier.
         fun viewportFor(c: MapCamera): MapViewport = MapViewport.at(c, widthPx, heightPx, tileSizePx)
+
+        fun onTileLoaded(key: TileKey) {
+            loaded += key
+            val current = viewportFor(camera)
+            if (current.tiles().all { it.key in loaded }) {
+                settledLevel = current.zoom
+                loaded.retainAll { it.zoom == current.zoom }
+            }
+        }
 
         Box(
             modifier = Modifier
@@ -150,7 +165,10 @@ private fun ZoomableMap(
             val clusters = remember(locations, viewport, mergeDistancePx) {
                 clusterPlaces(locations, viewport, mergeDistancePx)
             }
-            TileLayer(viewport)
+            TileLayer(
+                tiles = layeredTiles(camera, widthPx, heightPx, tileSizePx, settledLevel, loaded),
+                onLoaded = ::onTileLoaded,
+            )
             clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
         }
     }
