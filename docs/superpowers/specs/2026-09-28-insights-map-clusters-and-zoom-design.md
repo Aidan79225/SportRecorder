@@ -1,6 +1,6 @@
 # Insights map: clustered markers + full-screen zoom — Design
 
-**Status:** approved 2026-09-28 · **Builds on:** `2026-09-27-insights-places-map-design.md`
+**Status:** implemented in PR #70 (approved 2026-09-28; adds a last-loaded-level tile underlay so level changes never draw blank, see §3) · **Builds on:** `2026-09-27-insights-places-map-design.md`
 
 ## Problem
 
@@ -65,6 +65,13 @@ around the tap)`; `TileLayer` and cluster markers from `clusterPlaces(locations,
 diameter)` recomputed per camera; a close button (top-end, `IconButton` with a content
 description) and the OSM attribution (bottom-end). Whole map is one semantics node with the same
 summary as the card, plus the close button. Colours and marker style identical to the card.
+
+**Tile underlay (added in review).** `TileLayering.kt` `layeredTiles(camera, w, h, tileSizePx,
+settledLevel, loaded)` draws the last fully-loaded level's tiles (only those in `loaded`, at most
+3 levels away, at the current camera) under the new level's tiles until every new tile has
+loaded, so a level change never shows blank tiles. `TileLayer` reports each successful load via
+`onLoaded(TileKey)`; the full-screen map settles a level when all of its tiles are loaded and
+prunes `loaded` to that level.
 
 The card (`PlacesMap`) gets `onClick: (() -> Unit)?`; `LocationsCard` holds `var expanded` and
 renders `FullScreenPlacesMap` when true. The card's content description gains 「點一下可放大」.

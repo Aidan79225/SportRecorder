@@ -61,7 +61,8 @@ val TilePlacement.key: TileKey get() = TileKey(zoom, x, y)
  * A fixed, non-interactive map window: a zoom level plus the world pixel that sits at the
  * viewport's top-left. World pixels are tile units × [drawnTilePx]. [renderScale] lets tiles be
  * drawn larger or smaller than their native [tileSizePx] — used to smooth a pinch between integer
- * zoom levels (see `MapCamera.at`); it defaults to 1, which leaves every result unchanged.
+ * zoom levels (see `MapViewport.Companion.at`); it defaults to 1, which leaves every result
+ * unchanged.
  */
 data class MapViewport(
     val zoom: Int,
@@ -205,8 +206,8 @@ fun MapViewport.Companion.at(
 }
 
 /**
- * The interactive full-screen map's state: a fractional [zoom] (its integer part picks the tile
- * level, the fractional remainder becomes [MapViewport.renderScale] via [MapViewport.Companion.at])
+ * The interactive full-screen map's state: a fractional [zoom] (rounded to the nearest integer for
+ * the tile level, the fractional remainder becomes [MapViewport.renderScale] via [MapViewport.Companion.at])
  * and the geographic point at the centre of the viewport. Pure data and arithmetic; gestures in
  * `FullScreenPlacesMap` turn into calls on this type.
  */

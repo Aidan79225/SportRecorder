@@ -132,6 +132,8 @@ private fun ZoomableMap(
         // latest `camera` (read through the state delegate) rather than a value captured earlier.
         fun viewportFor(c: MapCamera): MapViewport = MapViewport.at(c, widthPx, heightPx, tileSizePx)
 
+        // Only successful loads count: a tile that keeps failing (offline, rate-limited) never
+        // settles its level, so the previous settled level keeps serving as the underlay.
         fun onTileLoaded(key: TileKey) {
             loaded += key
             val current = viewportFor(camera)
