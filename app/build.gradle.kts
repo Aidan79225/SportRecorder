@@ -121,8 +121,6 @@ dependencies {
     androidTestImplementation(composeBom)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.window.size)
-    implementation(libs.androidx.compose.material.navigation)
-    implementation(libs.androidx.compose.material) // ModalBottomSheetState for the sheet navigator
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
