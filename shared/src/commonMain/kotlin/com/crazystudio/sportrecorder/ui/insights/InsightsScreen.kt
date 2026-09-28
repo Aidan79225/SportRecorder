@@ -23,7 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -457,8 +457,9 @@ private fun LocationsCard(locations: List<LocationCount>) {
             locations.size,
             locations.sumOf { it.count },
         )
-        // The card stays a still picture; a tap opens the closer, zoomable look.
-        var expanded by remember { mutableStateOf(false) }
+        // The card stays a still picture; a tap opens the closer, zoomable look (kept open across
+        // rotation and other recreation).
+        var expanded by rememberSaveable { mutableStateOf(false) }
         PlacesMap(locations = locations, contentDescription = summary, onClick = { expanded = true })
         if (expanded) {
             FullScreenPlacesMap(locations = locations, contentDescription = summary, onDismiss = { expanded = false })

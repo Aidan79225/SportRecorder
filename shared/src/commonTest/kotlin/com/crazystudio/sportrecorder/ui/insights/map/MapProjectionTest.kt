@@ -73,15 +73,15 @@ class MapProjectionTest {
 
     @Test fun renderScale_defaultsToOne_andLeavesPixelForAndTilesUnchanged() {
         val viewport = MapViewport.fit(listOf(taipei, kaohsiung), width, height, tile, padding)!!
-        assertClose(1.0, viewport.renderScale.toDouble())
+        assertClose(1.0, viewport.renderScale)
         assertClose(tile.toDouble(), viewport.drawnTilePx)
         assertTrue(viewport.tiles().all { it.sizePx == tile })
     }
 
     @Test fun renderScale_scalesDrawnTileSize_pixelForAndTileSizePx() {
         val z = 5
-        val scale = 1.5f
-        val drawn = tile * scale.toDouble()
+        val scale = 1.5
+        val drawn = tile * scale
         val p = WebMercator.project(taipei.lat, taipei.lng, z)
         val viewport = MapViewport(
             zoom = z,

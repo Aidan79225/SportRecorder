@@ -37,8 +37,8 @@ private val MARKER_RING = 2.dp
 private const val MARKER_GROWTH_CAP = 8
 private const val ATTRIBUTION_ALPHA = 0.8f
 
-/** Two markers at their largest size touch when their centres are this many diameters apart. */
-private const val MARKER_DIAMETERS = 2
+/** A diameter is two radii: two markers at their largest size touch when their centres are one diameter apart. */
+private const val RADII_PER_DIAMETER = 2
 
 /**
  * Tile positions and sizes are rounded independently, so between integer zoom levels two
@@ -64,7 +64,7 @@ internal fun Density.mapTileSizePx(): Int =
 
 /** Markers closer than this (the largest marker's diameter) would overlap, so they cluster. */
 internal fun Density.clusterMergeDistancePx(): Float =
-    (MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * MARKER_GROWTH_CAP).toPx() * MARKER_DIAMETERS
+    (MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * MARKER_GROWTH_CAP).toPx() * RADII_PER_DIAMETER
 
 @Composable
 internal fun TileLayer(viewport: MapViewport) {

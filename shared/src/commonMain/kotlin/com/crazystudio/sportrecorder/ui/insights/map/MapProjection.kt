@@ -65,11 +65,11 @@ data class MapViewport(
     val widthPx: Int,
     val heightPx: Int,
     val tileSizePx: Int,
-    val renderScale: Float = 1f,
+    val renderScale: Double = 1.0,
 ) {
 
     /** The on-screen size of one tile: [tileSizePx] scaled by [renderScale]. */
-    val drawnTilePx: Double get() = tileSizePx * renderScale.toDouble()
+    val drawnTilePx: Double get() = tileSizePx * renderScale
 
     /** Viewport-relative pixel position of a coordinate. */
     fun pixelFor(lat: Double, lng: Double): Pair<Float, Float> {
@@ -174,7 +174,7 @@ data class MapViewport(
  */
 fun MapViewport.Companion.at(camera: MapCamera, widthPx: Int, heightPx: Int, tileSizePx: Int): MapViewport {
     val level = camera.zoom.roundToInt().coerceIn(0, MapCamera.MAX_ZOOM.toInt())
-    val scale = 2.0.pow(camera.zoom - level).toFloat()
+    val scale = 2.0.pow(camera.zoom - level)
     val drawn = tileSizePx * scale
     val center = WebMercator.project(camera.centerLat, camera.centerLng, level)
     return MapViewport(
@@ -244,7 +244,7 @@ data class MapCamera(val zoom: Double, val centerLat: Double, val centerLng: Dou
                 (v.originY + v.heightPx / 2.0) / v.drawnTilePx,
                 v.zoom,
             )
-            return MapCamera(v.zoom + log2(v.renderScale.toDouble()), center.lat, center.lng)
+            return MapCamera(v.zoom + log2(v.renderScale), center.lat, center.lng)
         }
     }
 }

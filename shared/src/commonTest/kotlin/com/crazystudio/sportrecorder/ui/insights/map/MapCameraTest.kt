@@ -23,7 +23,7 @@ class MapCameraTest {
     @Test fun at_usesRoundedLevel_andScaleBetweenLevels() {
         val v = MapViewport.at(MapCamera(16.5, taipei.lat, taipei.lng), 800, 600, 256)
         assertEquals(17, v.zoom) // 16.5 rounds to 17
-        assertTrue(abs(v.renderScale - 2f.pow(-0.5f)) < 1e-6)
+        assertTrue(abs(v.renderScale - 2.0.pow(-0.5)) < 1e-9)
         assertEquals(800, v.widthPx)
     }
 
@@ -52,5 +52,31 @@ class MapCameraTest {
         val v2 = MapViewport.at(zoomed, 800, 600, 256)
         val (fx2, fy2) = v2.pixelFor(focus.lat, focus.lng)
         assertTrue(abs(fx2 - fx) < 1f && abs(fy2 - fy) < 1f)
+    }
+
+    // A 336 px tile (2.625x density) at a fractional zoom exercises the case where the viewport's
+    // origin and its drawn tile size must agree exactly; any mismatch compounds on every gesture event.
+    @Test fun panByZero_doesNotDrift_atFractionalZoom_withNonPowerOfTwoTiles() {
+        val tile = 336
+        var c = MapCamera(17.3, taipei.lat, taipei.lng)
+        repeat(100) { c = c.pannedBy(0f, 0f, MapViewport.at(c, 1080, 2400, tile)) }
+        val (x, y) = MapViewport.at(c, 1080, 2400, tile).pixelFor(taipei.lat, taipei.lng)
+        assertTrue(abs(x - 540f) < 0.01f && abs(y - 1200f) < 0.01f, "drifted to ($x, $y)")
+    }
+
+    @Test fun zoomedAround_acrossALevelBoundary_keepsFocusFixed() {
+        val tile = 336
+        val cam = MapCamera(15.3, taipei.lat, taipei.lng)
+        val v = MapViewport.at(cam, 1080, 2400, tile)
+        val focus = WebMercator.unproject(
+            (v.originX + 300.0) / v.drawnTilePx,
+            (v.originY + 500.0) / v.drawnTilePx,
+            v.zoom,
+        )
+        val zoomed = cam.zoomedAround(1.5f, 300f, 500f, v, minZoom = 10.0) // 15.3 -> ~15.88, level 15 -> 16
+        val v2 = MapViewport.at(zoomed, 1080, 2400, tile)
+        assertEquals(16, v2.zoom)
+        val (fx, fy) = v2.pixelFor(focus.lat, focus.lng)
+        assertTrue(abs(fx - 300f) < 0.5f && abs(fy - 500f) < 0.5f, "focus moved to ($fx, $fy)")
     }
 }
