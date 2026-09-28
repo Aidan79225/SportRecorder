@@ -11,7 +11,7 @@ import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.FastingType
 import com.crazystudio.sportrecorder.entity.Photo
 
-@Database(entities = [EatTime::class, FastingType::class, Photo::class], version = 7, exportSchema = false)
+@Database(entities = [EatTime::class, FastingType::class, Photo::class], version = 7, exportSchema = true)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getEatTimeDao(): EatTimeDao

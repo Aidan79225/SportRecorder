@@ -86,8 +86,12 @@
 
 - `JAVA_HOME` 需指向 Android Studio JBR(本機 PATH 上沒有 Java)。
 - 動到 `commonMain` 時,另外需要 iOS 驗證:`./gradlew :shared:iosSimulatorArm64Test`(需 macOS;CI 有 `macos-latest` job)。
-- 測試現況:22 個測試檔;純邏輯計算機(`DietWindow`、`InsightsAggregator`、`ReminderPlanner`)與
-  備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`。
+- 測試現況:50 個測試檔;純邏輯計算機(`DietWindow`、`InsightsAggregator`、`ReminderPlanner`)與
+  備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`;
+  instrumented tests 現在也涵蓋 Room migration 與 repository 契約、餐點編輯器 UI、照片管線、
+  提醒(AlarmManager slot 與 receiver)。
+- `AppDatabase` 已開啟 `exportSchema`,`shared/schemas/` 下的 JSON 必須隨每次 schema 變更一起
+  commit;migration 測試在 `app/src/androidTest/.../database/`。
 - **Instrumented tests(本機、不進 CI)**:`app/src/androidTest/.../backup/` 用真的 Room、真的
   `BackupForegroundService` 與通知、真的 `BackupScreen`,只假造雲端。跑法:先開一台模擬器,然後
   `$env:ANDROID_SERIAL="emulator-5556"; .\gradlew.bat :app:connectedDebugAndroidTest`
@@ -140,6 +144,7 @@
 | 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 實作中(同一分支) |
 | 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
 | 09-27 | 備份 instrumented tests(本機) | ✓ | ✓ | 已完成(同 PR #67) |
+| 09-28 | 測試覆蓋缺口(migration、Room 契約、編輯器 UI、照片管線、提醒、備份小洞) | ✓ | ✓ | 已完成 |
 | 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 實作中(PR #69) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
