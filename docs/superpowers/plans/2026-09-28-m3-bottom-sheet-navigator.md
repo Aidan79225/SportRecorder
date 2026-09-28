@@ -90,8 +90,9 @@ class BottomSheetNavigator : Navigator<BottomSheetNavigator.Destination>(NAVIGAT
 
     override fun popBackStack(popUpTo: NavBackStackEntry, savedState: Boolean) {
         state.popWithTransition(popUpTo, savedState)
-        // Entries above the popped one were held in STARTED as "transitioning"; release them so
-        // they can be destroyed. The popped one is released by the host after its exit animation.
+        // popWithTransition also marks the incoming sheet below the popped one as transitioning,
+        // holding it in STARTED; release it so it can move to RESUMED. The popped entry itself is
+        // released by the host once its slide-out ends.
         val popIndex = state.transitionsInProgress.value.indexOf(popUpTo)
         state.transitionsInProgress.value.forEachIndexed { index, entry ->
             if (index > popIndex) onTransitionComplete(entry)
@@ -334,7 +335,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 - Modify: `app/build.gradle.kts`, `gradle/libs.versions.toml` (remove `androidx-compose-material` and `androidx-compose-material-navigation`)
 - Modify: `shared/src/commonMain/kotlin/com/crazystudio/sportrecorder/ui/diet/select/SelectFastingTypeScreen.kt`, `ui/diet/create/fasting/CreateFastingTypeScreen.kt`, `ui/diet/editor/EatTimeEditorSheet.kt` (drop the `statusBarsPadding()` lines and their imports added on this branch; keep the selector's `fillMaxWidth` + `navigationBarsPadding`)
 
-- [ ] **Step 1: AppRoot** — replace imports `androidx.compose.material.navigation.{ModalBottomSheetLayout, bottomSheet, rememberBottomSheetNavigator}` and `com.crazystudio.sportrecorder.ui.nav.rememberAppBottomSheetNavigator` with `com.crazystudio.sportrecorder.ui.nav.{BottomSheetNavigator, BottomSheetHost, bottomSheet}`; `val bottomSheetNavigator = remember { BottomSheetNavigator() }`; remove the `ModalBottomSheetLayout(bottomSheetNavigator) { … }` wrapper (keep its body) and add `BottomSheetHost(bottomSheetNavigator)` right after the `Scaffold(...)` call inside `AppRoot`. The four `bottomSheet<Route.X> { … }` calls stay as they are.
+- [ ] **Step 1: AppRoot** — replace imports `androidx.compose.material.navigation.{ModalBottomSheetLayout, bottomSheet, rememberBottomSheetNavigator}` and `com.crazystudio.sportrecorder.ui.nav.rememberAppBottomSheetNavigator` with `com.crazystudio.sportrecorder.ui.nav.{BottomSheetNavigator, BottomSheetHost, bottomSheet}`; `val bottomSheetNavigator = remember { BottomSheetNavigator() }`; remove the `ModalBottomSheetLayout(bottomSheetNavigator) { … }` wrapper (keep its body) and add `BottomSheetHost(bottomSheetNavigator)` inside the `Scaffold` content lambda, right after `NavHost` (not after the `Scaffold(...)` call: Scaffold subcomposes its content, so a sibling would read the navigator's state before `NavHost` attaches it and crash). The four `bottomSheet<Route.X> { … }` calls stay as they are.
 - [ ] **Step 2: Dependencies** — delete the two catalog entries and the two `implementation(...)` lines; `grep -rn "compose.material\." app/src/main` must show only `material3` imports.
 - [ ] **Step 3: Revert the paddings** — remove the three `statusBarsPadding()` modifiers (and now-unused imports). Keep `SelectFastingTypeScreen`'s `fillMaxWidth()` + `navigationBarsPadding()`.
 - [ ] **Step 4: Gate + test APK + emulator run** of `BottomSheetHostTest` and `EatTimeEditorSheetTest`.

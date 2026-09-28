@@ -45,11 +45,12 @@ class BottomSheetNavigator : Navigator<BottomSheetNavigator.Destination>() {
     internal val transitionsInProgress get() = state.transitionsInProgress
 
     /**
-     * A user dismissal (swipe, scrim, back) — the sheet has already animated out. Ignored for an
-     * entry already popped from code: its sheet is still sliding out and can report a dismissal too.
+     * A user dismissal (swipe, scrim, back) — the sheet has already animated out. For an entry
+     * already popped from code (back or a drag interrupted its slide-out, and M3 then reports the
+     * dismissal) there is nothing left to pop, so just release it.
      */
     internal fun dismiss(entry: NavBackStackEntry) {
-        if (state.backStack.value.contains(entry)) popBackStack(entry, false)
+        if (state.backStack.value.contains(entry)) popBackStack(entry, false) else onTransitionComplete(entry)
     }
 
     override fun navigate(entries: List<NavBackStackEntry>, navOptions: NavOptions?, navigatorExtras: Extras?) {
@@ -60,8 +61,9 @@ class BottomSheetNavigator : Navigator<BottomSheetNavigator.Destination>() {
 
     override fun popBackStack(popUpTo: NavBackStackEntry, savedState: Boolean) {
         state.popWithTransition(popUpTo, savedState)
-        // Entries above the popped one were held in STARTED as "transitioning"; release them so
-        // they can be destroyed. The popped one is released by the host after its exit animation.
+        // popWithTransition also marks the incoming sheet below the popped one as transitioning,
+        // holding it in STARTED; release it so it can move to RESUMED. The popped entry itself is
+        // released by the host once its slide-out ends.
         val popIndex = state.transitionsInProgress.value.indexOf(popUpTo)
         state.transitionsInProgress.value.forEachIndexed { index, entry ->
             if (index > popIndex) onTransitionComplete(entry)
@@ -80,7 +82,8 @@ class BottomSheetNavigator : Navigator<BottomSheetNavigator.Destination>() {
 }
 
 /** Builder behind [bottomSheet], mirroring `NavGraphBuilder.dialog<T>`. */
-class BottomSheetNavigatorDestinationBuilder(
+@PublishedApi
+internal class BottomSheetNavigatorDestinationBuilder(
     private val sheetNavigator: BottomSheetNavigator,
     route: KClass<*>,
     typeMap: Map<KType, NavType<*>>,
@@ -104,6 +107,12 @@ inline fun <reified T : Any> NavGraphBuilder.bottomSheet(
  * Renders every visible sheet entry as a [ModalBottomSheet] that skips the half-height stop, so a
  * tall sheet (the meal editor) opens with its confirm button on screen. A user dismissal pops the
  * entry; a programmatic pop slides the sheet out before the entry is released.
+ *
+ * Placement: compose it after the `NavHost` that attaches [navigator] (reading the navigator's
+ * state before it is attached throws "You cannot access the Navigator's state until the Navigator
+ * is attached"), and keep it composed for as long as the NavController can hold sheet entries. In
+ * `AppRoot` that means inside the same `Scaffold` content lambda, after `NavHost`: a sibling placed
+ * after `Scaffold(...)` runs first, because Scaffold subcomposes its content.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,8 +138,12 @@ fun BottomSheetHost(navigator: BottomSheetNavigator) {
             LaunchedEffect(inBackStack) {
                 if (!inBackStack) {
                     // Popped from code (e.g. after saving): animate out, then let the entry go.
-                    sheetState.hide()
-                    navigator.onTransitionComplete(entry)
+                    // Back or a drag during the slide interrupts hide() (MutatorMutex); release anyway.
+                    try {
+                        sheetState.hide()
+                    } finally {
+                        navigator.onTransitionComplete(entry)
+                    }
                 }
             }
             ModalBottomSheet(

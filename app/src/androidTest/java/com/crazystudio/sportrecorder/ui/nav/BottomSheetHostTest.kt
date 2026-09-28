@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -28,6 +29,7 @@ import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.getString
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -55,7 +57,14 @@ class BottomSheetHostTest {
                 val navController = rememberNavController(navigator)
                 NavHost(navController, startDestination = Home) {
                     composable<Home> {
-                        Button(onClick = { navController.navigate(Editor) }) { Text("open") }
+                        Column {
+                            Button(onClick = { navController.navigate(Editor) }) { Text("open") }
+                            // Push and pop in one frame: the entry is popped before it is ever composed.
+                            Button(onClick = {
+                                navController.navigate(Editor)
+                                navController.popBackStack()
+                            }) { Text("flash") }
+                        }
                     }
                     bottomSheet<Editor> {
                         Column {
@@ -66,13 +75,18 @@ class BottomSheetHostTest {
                             Button(onClick = { taps++ }) { Text("taps $taps") }
                             EatTimeEditorSheet(
                                 state = EatTimeEditorUiState(), photoModel = { null },
-                                onPickDate = {}, onPickTime = {}, onNoteChange = {}, onAddPhoto = {}, onSelectPhoto = {},
-                                onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
+                                onPickDate = {}, onPickTime = {}, onNoteChange = {},
+                                onAddPhoto = {}, onSelectPhoto = {}, onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
                                 onClearLocation = {}, onConfirm = {},
                             )
                         }
                     }
-                    bottomSheet<Second> { Text("second sheet") }
+                    bottomSheet<Second> {
+                        Column {
+                            Text("second sheet")
+                            Button(onClick = { navController.popBackStack() }) { Text("pop second") }
+                        }
+                    }
                 }
                 BottomSheetHost(navigator)
             }
@@ -135,6 +149,48 @@ class BottomSheetHostTest {
         assertSheetClosedAndReleased()
     }
 
+    /**
+     * Back pressed while a programmatic slide-out runs: M3's back handler starts its own `hide()`,
+     * which interrupts the host's (MutatorMutex), then reports `onDismissRequest` for an entry that
+     * is already off the back stack. The entry must still be released, not left in transition.
+     */
+    @Test fun backDuringProgrammaticSlideOut_stillReleasesTheEntry() {
+        setUpGraph(); openEditor()
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithText("pop").performClick()
+        compose.mainClock.advanceTimeByFrame()
+        // Still paused, so Espresso's sync with Compose doesn't wait for the slide-out to finish.
+        Espresso.pressBack()
+        compose.mainClock.autoAdvance = true
+        assertSheetClosedAndReleased()
+    }
+
+    @Test fun poppingTheTopSheet_revealsTheFirstAndReleasesTheSecond() {
+        setUpGraph(); openEditor()
+        compose.onNodeWithText("stack").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("second sheet").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("pop second").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("second sheet").fetchSemanticsNodes().isEmpty() &&
+                navigator.transitionsInProgress.value.isEmpty()
+        }
+        assertTrue(navigator.backStack.value.single().destination.hasRoute<Editor>())
+        compose.onNodeWithText("pop").assertIsDisplayed()
+    }
+
+    @Test fun pushThenPopBeforeComposition_leavesNothingInTransition() {
+        setUpGraph()
+        compose.onNodeWithText("flash").performClick()
+        compose.waitUntil(5_000) { navigator.transitionsInProgress.value.isEmpty() }
+        assertTrue(navigator.backStack.value.isEmpty())
+        assertFalse(sheetShown())
+    }
+
+    /**
+     * A guard, not a regression test: it passes on the brief's host too, because the window
+     * recomposer is paused while the activity is stopped, so the ON_STOP/ON_START remove/re-add of
+     * the entry never reaches composition. It pins the camera/photo-picker round trip.
+     */
     @Test fun activityStopAndStart_keepsTheSheetComposed() {
         setUpGraph(); openEditor()
         compose.onNodeWithText("taps 0").performClick()

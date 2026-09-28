@@ -14,7 +14,7 @@ owner's rule: the app is Material 3 only.
 AndroidX ships a sheet navigator only for Material 2. Nothing equivalent exists for M3 on Google
 Maven or Maven Central (only `material3-adaptive-navigation-suite`, which is unrelated). Navigation
 Compose's own `DialogNavigator` + `DialogHost` (~220 lines, public APIs: `Navigator`,
-`NavigatorState.pushWithTransition/popWithTransition/markTransitionComplete`, `FloatingWindow`,
+`NavigatorState.push/popWithTransition/markTransitionComplete`, `FloatingWindow`,
 `NavBackStackEntry.LocalOwnersProvider`, `NavDestinationBuilder`) is the exact shape we need with
 `Dialog` swapped for `ModalBottomSheet`. Porting it keeps routes, typed arguments, per-entry
 ViewModels and `SavedStateHandle` untouched.
@@ -25,8 +25,9 @@ ViewModels and `SavedStateHandle` untouched.
 sheet host is an `:app` concern like `AppRoot`):
 
 - `@Navigator.Name("bottomSheet") class BottomSheetNavigator : Navigator<BottomSheetNavigator.Destination>()`
-  - `navigate` → `state.pushWithTransition(entry)`; `popBackStack` → `state.popWithTransition`, then
-    mark later in-transition entries complete exactly as `DialogNavigator` does.
+  - `navigate` → `state.push(entry)` (as upstream `DialogNavigator`); `popBackStack` →
+    `state.popWithTransition`, then release the incoming sheet below the popped one (held in STARTED
+    as transitioning) so it can reach RESUMED, exactly as `DialogNavigator` does.
   - `Destination(navigator, content: @Composable (NavBackStackEntry) -> Unit) : NavDestination, FloatingWindow`.
 - `inline fun <reified T : Any> NavGraphBuilder.bottomSheet(typeMap = emptyMap(), noinline content)` —
   a `NavDestinationBuilder<Destination>` subclass, mirroring `NavGraphBuilder.dialog<T>`.
@@ -37,14 +38,17 @@ sheet host is an `:app` concern like `AppRoot`):
   - **User dismiss** (swipe, scrim, back): M3 animates the hide, then calls `onDismissRequest` →
     `popBackStack(entry, false)`.
   - **Programmatic pop** (`navController.popBackStack()` after save): the entry leaves `backStack`
-    but stays in `transitionsInProgress` (STARTED, still composed). A `LaunchedEffect` on "in back
-    stack?" runs `sheetState.hide()` then `navigator.onTransitionComplete(entry)`, so the sheet
-    slides out instead of vanishing. The `DisposableEffect`/`dialogsToDispose` leak guard from
+    but stays in `transitionsInProgress`. NavController moves it to CREATED at once, which drops it
+    from the visible list, so the host keeps rendering composed, popped, in-transition entries. A
+    `LaunchedEffect` on "in back stack?" runs `sheetState.hide()` and, in a `finally` (back or a drag
+    can interrupt the hide), `navigator.onTransitionComplete(entry)`, so the sheet slides out instead
+    of vanishing and is always released. The `DisposableEffect`/`dialogsToDispose` leak guard from
     `DialogHost` is kept.
   - Sheet over sheet (選類型 → 新增類型) composes two `ModalBottomSheet`s; the newer one stacks on
     top, and dismissing it reveals the first — same as two dialogs today.
 - `AppRoot`: `ModalBottomSheetLayout(bottomSheetNavigator) { … }` → `BottomSheetHost(navigator)`
-  placed after the `Scaffold`; `rememberNavController(navigator)` unchanged; the four `bottomSheet<…>`
+  placed inside the `Scaffold` content lambda, after `NavHost` (a sibling after `Scaffold(...)` runs
+  before the subcomposed `NavHost` attaches the navigator and crashes); `rememberNavController(navigator)` unchanged; the four `bottomSheet<…>`
   bodies unchanged apart from the import.
 
 ### Sheet screens
