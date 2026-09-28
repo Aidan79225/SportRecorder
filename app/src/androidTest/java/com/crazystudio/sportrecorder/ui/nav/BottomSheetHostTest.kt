@@ -112,10 +112,12 @@ class BottomSheetHostTest {
 
     @Test fun tallSheet_opensWithConfirmButtonOnScreen() {
         setUpGraph(); openEditor()
+        compose.onNodeWithText(createLabel()).assertIsDisplayed()
         val confirm = compose.onNodeWithText(createLabel()).fetchSemanticsNode()
         // The sheet's own window root: the M3 sheet window spans the screen.
         val rootHeight = confirm.layoutInfo.coordinates.findRootCoordinates().size.height
-        val bottom = confirm.boundsInRoot.bottom
+        // positionInRoot + size (not boundsInRoot) so this reflects the unclipped layout bottom.
+        val bottom = confirm.positionInRoot.y + confirm.size.height
         assertTrue("confirm bottom $bottom > sheet window bottom $rootHeight", bottom <= rootHeight)
     }
 

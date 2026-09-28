@@ -140,7 +140,7 @@
 | 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 實作中(同一分支) |
 | 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
 | 09-27 | 備份 instrumented tests(本機) | ✓ | ✓ | 已完成(同 PR #67) |
-| 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 已完成 |
+| 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 實作中(PR #69) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

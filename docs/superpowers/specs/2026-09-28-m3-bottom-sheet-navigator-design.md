@@ -74,7 +74,8 @@ deleted.
   bottom is within the root (the #69 regression, now on M3), (2) dismissing via
   `onDismissRequest` pops the entry (home visible, sheet gone), (3) `popBackStack()` from the sheet
   content removes the sheet, (4) navigating sheet → sheet shows the second sheet's content.
-- Existing `EatTimeEditorSheetTest` unchanged.
+- `EatTimeEditorSheetTest` lives on PR #68's branch (`claude/test-coverage-gaps`); re-run it against
+  this host once both PRs merge.
 - Manual on emulator: all four sheets open fully, pickers appear above the editor, keyboard on the
   note field keeps the confirm button reachable, system back closes the sheet.
 

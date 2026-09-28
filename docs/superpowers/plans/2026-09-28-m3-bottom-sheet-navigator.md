@@ -22,6 +22,10 @@
 
 ### Task 1: `BottomSheetNavigator` + `BottomSheetHost` + `bottomSheet<T>` with an instrumented host test
 
+> Historical brief. The shipped code — including the fix-round changes in 8b82f9c (`finally` release,
+> `dismiss` completing popped entries, `exitingEntries`, `@PublishedApi internal` builder, no-arg
+> constructor) — is `app/src/main/java/com/crazystudio/sportrecorder/ui/nav/BottomSheetNavigator.kt`.
+
 **Files:**
 - Create: `app/src/main/java/com/crazystudio/sportrecorder/ui/nav/BottomSheetNavigator.kt`
 - Create: `app/src/androidTest/java/com/crazystudio/sportrecorder/ui/nav/BottomSheetHostTest.kt`

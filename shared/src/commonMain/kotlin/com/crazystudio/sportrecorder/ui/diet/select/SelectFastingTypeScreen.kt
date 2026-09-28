@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -45,9 +45,10 @@ fun SelectFastingTypeScreen(
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        // Content-sized, not fillMaxSize: as a bottom sheet this is measured against the whole
-        // screen, and filling it made the sheet always full-screen with the title under the
-        // status bar. The inset padding only kicks in when the grid really reaches the top.
+        // Content-sized (fillMaxWidth, not fillMaxSize) so the Material 3 sheet wraps it instead of
+        // stretching full-screen. M3 applies the system-bar insets to the sheet itself, so
+        // navigationBarsPadding() here is a no-op inside the sheet; it is kept only so this screen
+        // also lays out correctly if it is ever hosted outside a sheet.
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
