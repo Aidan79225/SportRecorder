@@ -1,5 +1,7 @@
 # 回顧 / Insights — 地點卡改為地圖 design
 
+2026-09-28:marker 合併與全螢幕縮放見 `2026-09-28-insights-map-clusters-and-zoom-design.md`
+
 - **Date:** 2026-09-27
 - **Status:** Implemented on `claude/insight-page-improvements-2fe29z` (this spec + code in one PR).
 - **Supersedes:** bucket **B3** of `2026-09-21-insights-improvements-design.md` (place names via a
