@@ -21,6 +21,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -73,6 +77,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
+import com.crazystudio.sportrecorder.ui.insights.map.FullScreenPlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
 import kotlinx.datetime.TimeZone
@@ -452,7 +457,12 @@ private fun LocationsCard(locations: List<LocationCount>) {
             locations.size,
             locations.sumOf { it.count },
         )
-        PlacesMap(locations = locations, contentDescription = summary)
+        // The card stays a still picture; a tap opens the closer, zoomable look.
+        var expanded by remember { mutableStateOf(false) }
+        PlacesMap(locations = locations, contentDescription = summary, onClick = { expanded = true })
+        if (expanded) {
+            FullScreenPlacesMap(locations = locations, contentDescription = summary, onDismiss = { expanded = false })
+        }
         Text(
             text = summary,
             style = MaterialTheme.typography.bodySmall,

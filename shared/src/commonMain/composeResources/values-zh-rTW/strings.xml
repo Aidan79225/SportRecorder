@@ -38,6 +38,8 @@
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d 個地點 · %2$d 餐記了位置</string>
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
+    <string name="insights_map_expand_hint">點一下可放大</string>
+    <string name="insights_map_close">關閉地圖</string>
     <string-array name="insights_weekday_initials">
         <item>日</item>
         <item>一</item>
