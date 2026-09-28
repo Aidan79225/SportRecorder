@@ -8,9 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.navigation.ModalBottomSheetLayout
-import androidx.compose.material.navigation.bottomSheet
-import androidx.compose.material.navigation.rememberBottomSheetNavigator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -54,7 +51,10 @@ import com.crazystudio.sportrecorder.ui.insights.DayRecordsSheet
 import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsScreen
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
+import com.crazystudio.sportrecorder.ui.nav.BottomSheetHost
+import com.crazystudio.sportrecorder.ui.nav.BottomSheetNavigator
 import com.crazystudio.sportrecorder.ui.nav.Route
+import com.crazystudio.sportrecorder.ui.nav.bottomSheet
 import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
@@ -65,7 +65,7 @@ private data class Tab(val route: Route, val label: String, @DrawableRes val ico
 @Composable
 @Suppress("LongMethod") // cohesive single navigation-graph builder; splitting hurts readability
 fun AppRoot() {
-    val bottomSheetNavigator = rememberBottomSheetNavigator()
+    val bottomSheetNavigator = remember { BottomSheetNavigator() }
     val navController = rememberNavController(bottomSheetNavigator)
 
     val tabs = listOf(
@@ -74,240 +74,243 @@ fun AppRoot() {
         Tab(Route.Insights, stringResource(R.string.title_insights), R.drawable.ic_baseline_insights_24),
     )
 
-    ModalBottomSheetLayout(bottomSheetNavigator) {
-        Scaffold(
-            bottomBar = {
-                val backStackEntry by navController.currentBackStackEntryAsState()
-                val currentDest = backStackEntry?.destination
-                NavigationBar {
-                    tabs.forEach { tab ->
-                        val selected = currentDest?.hierarchy?.any { dest ->
-                            when (tab.route) {
-                                Route.Diet -> dest.hasRoute(Route.Diet::class)
-                                Route.Record -> dest.hasRoute(Route.Record::class)
-                                Route.Insights -> dest.hasRoute(Route.Insights::class)
-                                else -> false
-                            }
-                        } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                // popUpTo(Diet) drops anything above Diet (incl. the Settings
-                                // sub-screen) before switching tabs. No saveState/restoreState:
-                                // that pair is for nested tab back stacks and would otherwise
-                                // re-restore Settings, trapping the user on it.
-                                navController.navigate(tab.route) {
-                                    popUpTo(Route.Diet)
-                                    launchSingleTop = true
-                                }
-                            },
-                            icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
-                            label = { Text(tab.label) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
-                            ),
-                        )
-                    }
-                }
-            }
-        ) { padding ->
-            NavHost(
-                navController = navController,
-                startDestination = Route.Diet,
-                modifier = Modifier.fillMaxSize().padding(padding),
-            ) {
-                composable<Route.Diet> {
-                    val vm: DietViewModel = koinViewModel()
-                    val state by vm.uiState.collectAsStateWithLifecycle()
-                    DietScreen(
-                        state = state,
-                        onEditFastingType = { navController.navigate(Route.SelectFastingType) },
-                        onAddEatTime = { navController.navigate(Route.EatTimeEditor()) },
-                        onOpenSettings = { navController.navigate(Route.Settings) },
-                    )
-                }
-                composable<Route.Settings> {
-                    SettingsRoute(
-                        onBack = { navController.popBackStack() },
-                        onOpenBackup = { navController.navigate(Route.Backup) },
-                    )
-                }
-                composable<Route.Backup> {
-                    BackupRoute(onBack = { navController.popBackStack() })
-                }
-                composable<Route.Record> {
-                    val vm: DietRecordViewModel = koinViewModel()
-                    val records by vm.records.collectAsStateWithLifecycle()
-                    PhotoViewerHost { onPhotoClick ->
-                        RecordScreen(
-                            records = records,
-                            onDelete = vm::deleteRecord,
-                            onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
-                            photoModel = vm::photoModel,
-                            onPhotoClick = onPhotoClick,
-                        )
-                    }
-                }
-                composable<Route.Insights> {
-                    val vm: InsightsViewModel = koinViewModel()
-                    val state by vm.uiState.collectAsStateWithLifecycle()
-                    PhotoViewerHost { onPhotoClick ->
-                        InsightsScreen(
-                            state = state,
-                            onSelectPeriod = vm::setPeriod,
-                            onShiftPeriod = vm::shiftPeriod,
-                            onDayClick = { dayStart -> navController.navigate(Route.DayRecords(dayStart)) },
-                            photoModel = vm::photoModel,
-                            onPhotoClick = onPhotoClick,
-                        )
-                    }
-                }
-                bottomSheet<Route.DayRecords> {
-                    // dayStart reaches the VM through its SavedStateHandle, like EatTimeEditor's id.
-                    val vm: DayRecordsViewModel = koinViewModel()
-                    val records by vm.records.collectAsStateWithLifecycle()
-                    // The viewer is a Dialog, so a tapped photo opens above the sheet, not inside it.
-                    PhotoViewerHost { onPhotoClick ->
-                        DayRecordsSheet(
-                            dayStart = vm.dayStart,
-                            records = records,
-                            photoModel = vm::photoModel,
-                            onPhotoClick = onPhotoClick,
-                        )
-                    }
-                }
-
-                bottomSheet<Route.SelectFastingType> {
-                    val vm: SelectFastingTypeViewModel = koinViewModel()
-                    val items by vm.fastingItemFlow.collectAsStateWithLifecycle(emptyList())
-                    SelectFastingTypeScreen(
-                        items,
-                        { navController.navigate(Route.CreateFastingType) },
-                        { fastingHours, eatingHours ->
-                            vm.saveSelection(fastingHours, eatingHours)
-                            navController.popBackStack()
-                        },
-                    )
-                }
-                bottomSheet<Route.CreateFastingType> {
-                    val vm: CreateFastingTypeViewModel = koinViewModel()
-                    val scope = rememberCoroutineScope()
-                    CreateFastingTypeScreen(
-                        onDismissRequest = { navController.popBackStack() },
-                        onConfirmRequest = { name, fastingTime, eatingTime ->
-                            val fastingHours = fastingTime.toLong()
-                            val eatingHours = eatingTime.toLong()
-                            scope.launch {
-                                vm.createCustomFastingType(fastingHours, eatingHours, name)
-                                navController.popBackStack()
+    Scaffold(
+        bottomBar = {
+            val backStackEntry by navController.currentBackStackEntryAsState()
+            val currentDest = backStackEntry?.destination
+            NavigationBar {
+                tabs.forEach { tab ->
+                    val selected = currentDest?.hierarchy?.any { dest ->
+                        when (tab.route) {
+                            Route.Diet -> dest.hasRoute(Route.Diet::class)
+                            Route.Record -> dest.hasRoute(Route.Record::class)
+                            Route.Insights -> dest.hasRoute(Route.Insights::class)
+                            else -> false
+                        }
+                    } == true
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = {
+                            // popUpTo(Diet) drops anything above Diet (incl. the Settings
+                            // sub-screen) before switching tabs. No saveState/restoreState:
+                            // that pair is for nested tab back stacks and would otherwise
+                            // re-restore Settings, trapping the user on it.
+                            navController.navigate(tab.route) {
+                                popUpTo(Route.Diet)
+                                launchSingleTop = true
                             }
                         },
-                    )
-                }
-                bottomSheet<Route.EatTimeEditor> {
-                    val vm: EatTimeEditorViewModel = koinViewModel()
-                    val state by vm.uiState.collectAsStateWithLifecycle()
-                    val context = LocalContext.current
-                    val scope = rememberCoroutineScope()
-
-                    // Hold the pending capture file across the camera launch.
-                    var captureFile by remember { mutableStateOf<java.io.File?>(null) }
-                    val cameraLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.TakePicture()
-                    ) { success ->
-                        val file = captureFile
-                        if (success && file != null) {
-                            vm.addCapturedPhoto(file.absolutePath)
-                        } else {
-                            file?.delete()
-                        }
-                        captureFile = null
-                    }
-                    val photoPickerLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.PickVisualMedia()
-                    ) { uri ->
-                        if (uri != null) vm.addPickedPhoto(uri.toString())
-                    }
-                    val locationPermLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.RequestMultiplePermissions()
-                    ) { result ->
-                        if (result.values.any { it }) vm.requestLocation() else vm.locationDenied()
-                    }
-                    LaunchedEffect(Unit) {
-                        if (!state.isEditMode) {
-                            locationPermLauncher.launch(
-                                arrayOf(
-                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                                )
-                            )
-                        }
-                    }
-
-                    EatTimeEditorSheet(
-                        state = state,
-                        photoModel = vm::photoModel,
-                        onPickDate = {
-                            val cal = calendarAt(vm.currentMillis)
-                            DatePickerDialog(
-                                context,
-                                R.style.DialogStyle,
-                                { _, year, month, dayOfMonth ->
-                                    vm.updateDate(year, month, dayOfMonth)
-                                },
-                                cal.get(java.util.Calendar.YEAR),
-                                cal.get(java.util.Calendar.MONTH),
-                                cal.get(java.util.Calendar.DAY_OF_MONTH),
-                            ).show()
-                        },
-                        onPickTime = {
-                            val cal = calendarAt(vm.currentMillis)
-                            TimePickerDialog(
-                                context,
-                                R.style.TimeDialogStyle,
-                                { _, hourOfDay, minute -> vm.updateTime(hourOfDay, minute) },
-                                cal.get(java.util.Calendar.HOUR_OF_DAY),
-                                cal.get(java.util.Calendar.MINUTE),
-                                true,
-                            ).apply {
-                                window?.decorView?.setBackgroundColor(
-                                    ContextCompat.getColor(context, R.color.bg_black)
-                                )
-                            }.show()
-                        },
-                        onNoteChange = vm::setNote,
-                        onAddPhoto = {
-                            val (file, uri) = PhotoStorage.newCaptureTarget(context)
-                            captureFile = file
-                            cameraLauncher.launch(uri)
-                        },
-                        onSelectPhoto = {
-                            photoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        onRemovePendingPhoto = vm::removePendingPhoto,
-                        onRemoveExistingPhoto = vm::removeExistingPhoto,
-                        onRecaptureLocation = {
-                            locationPermLauncher.launch(
-                                arrayOf(
-                                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                                )
-                            )
-                        },
-                        onClearLocation = vm::clearLocation,
-                        onConfirm = {
-                            scope.launch { if (vm.save()) navController.popBackStack() }
-                        },
+                        icon = { Icon(painterResource(tab.icon), contentDescription = tab.label) },
+                        label = { Text(tab.label) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
+                        ),
                     )
                 }
             }
         }
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = Route.Diet,
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) {
+            composable<Route.Diet> {
+                val vm: DietViewModel = koinViewModel()
+                val state by vm.uiState.collectAsStateWithLifecycle()
+                DietScreen(
+                    state = state,
+                    onEditFastingType = { navController.navigate(Route.SelectFastingType) },
+                    onAddEatTime = { navController.navigate(Route.EatTimeEditor()) },
+                    onOpenSettings = { navController.navigate(Route.Settings) },
+                )
+            }
+            composable<Route.Settings> {
+                SettingsRoute(
+                    onBack = { navController.popBackStack() },
+                    onOpenBackup = { navController.navigate(Route.Backup) },
+                )
+            }
+            composable<Route.Backup> {
+                BackupRoute(onBack = { navController.popBackStack() })
+            }
+            composable<Route.Record> {
+                val vm: DietRecordViewModel = koinViewModel()
+                val records by vm.records.collectAsStateWithLifecycle()
+                PhotoViewerHost { onPhotoClick ->
+                    RecordScreen(
+                        records = records,
+                        onDelete = vm::deleteRecord,
+                        onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
+                        photoModel = vm::photoModel,
+                        onPhotoClick = onPhotoClick,
+                    )
+                }
+            }
+            composable<Route.Insights> {
+                val vm: InsightsViewModel = koinViewModel()
+                val state by vm.uiState.collectAsStateWithLifecycle()
+                PhotoViewerHost { onPhotoClick ->
+                    InsightsScreen(
+                        state = state,
+                        onSelectPeriod = vm::setPeriod,
+                        onShiftPeriod = vm::shiftPeriod,
+                        onDayClick = { dayStart -> navController.navigate(Route.DayRecords(dayStart)) },
+                        photoModel = vm::photoModel,
+                        onPhotoClick = onPhotoClick,
+                    )
+                }
+            }
+            bottomSheet<Route.DayRecords> {
+                // dayStart reaches the VM through its SavedStateHandle, like EatTimeEditor's id.
+                val vm: DayRecordsViewModel = koinViewModel()
+                val records by vm.records.collectAsStateWithLifecycle()
+                // The viewer is a Dialog, so a tapped photo opens above the sheet, not inside it.
+                PhotoViewerHost { onPhotoClick ->
+                    DayRecordsSheet(
+                        dayStart = vm.dayStart,
+                        records = records,
+                        photoModel = vm::photoModel,
+                        onPhotoClick = onPhotoClick,
+                    )
+                }
+            }
+
+            bottomSheet<Route.SelectFastingType> {
+                val vm: SelectFastingTypeViewModel = koinViewModel()
+                val items by vm.fastingItemFlow.collectAsStateWithLifecycle(emptyList())
+                SelectFastingTypeScreen(
+                    items,
+                    { navController.navigate(Route.CreateFastingType) },
+                    { fastingHours, eatingHours ->
+                        vm.saveSelection(fastingHours, eatingHours)
+                        navController.popBackStack()
+                    },
+                )
+            }
+            bottomSheet<Route.CreateFastingType> {
+                val vm: CreateFastingTypeViewModel = koinViewModel()
+                val scope = rememberCoroutineScope()
+                CreateFastingTypeScreen(
+                    onDismissRequest = { navController.popBackStack() },
+                    onConfirmRequest = { name, fastingTime, eatingTime ->
+                        val fastingHours = fastingTime.toLong()
+                        val eatingHours = eatingTime.toLong()
+                        scope.launch {
+                            vm.createCustomFastingType(fastingHours, eatingHours, name)
+                            navController.popBackStack()
+                        }
+                    },
+                )
+            }
+            bottomSheet<Route.EatTimeEditor> {
+                val vm: EatTimeEditorViewModel = koinViewModel()
+                val state by vm.uiState.collectAsStateWithLifecycle()
+                val context = LocalContext.current
+                val scope = rememberCoroutineScope()
+
+                // Hold the pending capture file across the camera launch.
+                var captureFile by remember { mutableStateOf<java.io.File?>(null) }
+                val cameraLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.TakePicture()
+                ) { success ->
+                    val file = captureFile
+                    if (success && file != null) {
+                        vm.addCapturedPhoto(file.absolutePath)
+                    } else {
+                        file?.delete()
+                    }
+                    captureFile = null
+                }
+                val photoPickerLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.PickVisualMedia()
+                ) { uri ->
+                    if (uri != null) vm.addPickedPhoto(uri.toString())
+                }
+                val locationPermLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestMultiplePermissions()
+                ) { result ->
+                    if (result.values.any { it }) vm.requestLocation() else vm.locationDenied()
+                }
+                LaunchedEffect(Unit) {
+                    if (!state.isEditMode) {
+                        locationPermLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    }
+                }
+
+                EatTimeEditorSheet(
+                    state = state,
+                    photoModel = vm::photoModel,
+                    onPickDate = {
+                        val cal = calendarAt(vm.currentMillis)
+                        DatePickerDialog(
+                            context,
+                            R.style.DialogStyle,
+                            { _, year, month, dayOfMonth ->
+                                vm.updateDate(year, month, dayOfMonth)
+                            },
+                            cal.get(java.util.Calendar.YEAR),
+                            cal.get(java.util.Calendar.MONTH),
+                            cal.get(java.util.Calendar.DAY_OF_MONTH),
+                        ).show()
+                    },
+                    onPickTime = {
+                        val cal = calendarAt(vm.currentMillis)
+                        TimePickerDialog(
+                            context,
+                            R.style.TimeDialogStyle,
+                            { _, hourOfDay, minute -> vm.updateTime(hourOfDay, minute) },
+                            cal.get(java.util.Calendar.HOUR_OF_DAY),
+                            cal.get(java.util.Calendar.MINUTE),
+                            true,
+                        ).apply {
+                            window?.decorView?.setBackgroundColor(
+                                ContextCompat.getColor(context, R.color.bg_black)
+                            )
+                        }.show()
+                    },
+                    onNoteChange = vm::setNote,
+                    onAddPhoto = {
+                        val (file, uri) = PhotoStorage.newCaptureTarget(context)
+                        captureFile = file
+                        cameraLauncher.launch(uri)
+                    },
+                    onSelectPhoto = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    onRemovePendingPhoto = vm::removePendingPhoto,
+                    onRemoveExistingPhoto = vm::removeExistingPhoto,
+                    onRecaptureLocation = {
+                        locationPermLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                            )
+                        )
+                    },
+                    onClearLocation = vm::clearLocation,
+                    onConfirm = {
+                        scope.launch { if (vm.save()) navController.popBackStack() }
+                    },
+                )
+            }
+        }
+        // Composed after NavHost (same subcomposition pass as this content slot) so the
+        // navigator is attached by the time it reads navigator.backStack; Scaffold defers
+        // this slot to its SubcomposeLayout measure pass, so a sibling placed after the
+        // Scaffold(...) call itself would run first, before NavHost attaches the navigator.
+        BottomSheetHost(bottomSheetNavigator)
     }
 }
 
