@@ -1,6 +1,5 @@
-New in 0.8.0
-• Backups keep running in the background, even with the screen off, with progress and a cancel button in the notification shade.
-• Faster: photos upload in parallel; restore skips photos already on your phone.
-• Safer restore: your current records are backed up first, so you can bring them back from the backup list.
-• Insights: pick a period, group by eating day, tap a day for its records, a weekly rhythm chart, and places on a map.
-• A failed backup now tells you why.
+New in 0.9.0
+• Insights map: places that sit close together now merge into one numbered marker, so the map stays readable.
+• Tap the places map to open it full screen. Pinch or double-tap to zoom in, and drag to look around.
+• The add/edit record sheet now opens fully, so the Create button is on screen without scrolling.
+• Pop-up sheets have a refreshed look.
