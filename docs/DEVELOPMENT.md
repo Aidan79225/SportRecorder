@@ -36,6 +36,7 @@
 **`:app`(Android 專屬,只剩薄薄一層)**
 
 `MainActivity`、`SportApplication`、`di/AppModule`(Koin)、`ui/AppRoot`+`nav/Route`、
+`ui/nav/BottomSheetNavigator`(M3 sheet host;AndroidX 沒有 M3 版的 sheet navigator,自寫,仿 `DialogNavigator`)、
 `reminder/`(AlarmManager、通知、BootReceiver)、`platform/` 與 `data/` 的 Android actuals、
 `backup/GoogleBackupAuth`+`GoogleDriveBackupStore`、`backup/DriveRestClient`+`BackupForegroundService`、
 `util/PhotoStorage` 等。
@@ -144,6 +145,7 @@
 | 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
 | 09-27 | 備份 instrumented tests(本機) | ✓ | ✓ | 已完成(同 PR #67) |
 | 09-28 | 測試覆蓋缺口(migration、Room 契約、編輯器 UI、照片管線、提醒、備份小洞) | ✓ | ✓ | 已完成 |
+| 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 已完成(PR #69) |
 | 09-28 | 回顧地圖:marker 合併 + 全螢幕縮放 | ✓ | ✓ | PR #70 |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)

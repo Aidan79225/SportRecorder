@@ -84,6 +84,8 @@ fun EatTimeEditorSheet(
         // (location row, photo rows, or the keyboard opening for Note).
         modifier = modifier
             .background(colorScheme.surface)
+            // Inside the M3 sheet these are no-ops (M3 already consumes the insets); kept so this
+            // sheet still lays out correctly if it is ever hosted outside a sheet.
             .navigationBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
