@@ -56,6 +56,50 @@ class MapProjectionTest {
         assertClose(1.0, southPole.y, tolerance = 1e-9)
     }
 
+    @Test fun unproject_roundTripsProject() {
+        val p = WebMercator.project(taipei.lat, taipei.lng, 16)
+        val back = WebMercator.unproject(p.x, p.y, 16)
+        assertClose(taipei.lat, back.lat, tolerance = 1e-6)
+        assertClose(taipei.lng, back.lng, tolerance = 1e-6)
+    }
+
+    @Test fun unproject_originAtZoomZero_isTheCentreOfTheSingleTile() {
+        val p = WebMercator.unproject(0.5, 0.5, 0)
+        assertClose(0.0, p.lat, tolerance = 1e-9)
+        assertClose(0.0, p.lng, tolerance = 1e-9)
+    }
+
+    // --- renderScale ---------------------------------------------------------
+
+    @Test fun renderScale_defaultsToOne_andLeavesPixelForAndTilesUnchanged() {
+        val viewport = MapViewport.fit(listOf(taipei, kaohsiung), width, height, tile, padding)!!
+        assertClose(1.0, viewport.renderScale)
+        assertClose(tile.toDouble(), viewport.drawnTilePx)
+        assertTrue(viewport.tiles().all { it.sizePx == tile })
+    }
+
+    @Test fun renderScale_scalesDrawnTileSize_pixelForAndTileSizePx() {
+        val z = 5
+        val scale = 1.5
+        val drawn = tile * scale
+        val p = WebMercator.project(taipei.lat, taipei.lng, z)
+        val viewport = MapViewport(
+            zoom = z,
+            originX = p.x * drawn - width / 2.0,
+            originY = p.y * drawn - height / 2.0,
+            widthPx = width,
+            heightPx = height,
+            tileSizePx = tile,
+            renderScale = scale,
+        )
+        assertClose(drawn, viewport.drawnTilePx)
+        val (x, y) = viewport.pixelFor(taipei.lat, taipei.lng)
+        assertClose(width / 2.0, x.toDouble(), tolerance = 0.5)
+        assertClose(height / 2.0, y.toDouble(), tolerance = 0.5)
+        assertTrue(viewport.tiles().isNotEmpty())
+        assertTrue(viewport.tiles().all { it.sizePx == 384 }) // 256 * 1.5
+    }
+
     // --- fitting ------------------------------------------------------------
 
     @Test fun fit_nothingToShow_isNull() {
