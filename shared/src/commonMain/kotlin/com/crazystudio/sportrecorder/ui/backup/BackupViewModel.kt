@@ -37,14 +37,19 @@ class BackupViewModel(
     init {
         viewModelScope.launch {
             backupAuth.account.collect { account ->
+                // Snapshots belong to the account that listed them: drop them whenever the
+                // account changes (sign-out, or switching to another Google account) so the
+                // restore list / "last backed up" never shows the previous account's data.
+                val changed = _uiState.value.account?.email != account?.email
+                // Bump the generation so a listing already in flight for the previous account can
+                // never land its (now-stale) result, and reset the loading flag ourselves since
+                // that discarded refresh will never do it.
+                if (changed) listGeneration++
                 _uiState.update { state ->
-                    // Snapshots belong to the account that listed them: drop them whenever the
-                    // account changes (sign-out, or switching to another Google account) so the
-                    // restore list / "last backed up" never shows the previous account's data.
-                    if (state.account?.email == account?.email) {
-                        state.copy(account = account)
+                    if (changed) {
+                        state.copy(account = account, snapshots = emptyList(), isLoadingSnapshots = false)
                     } else {
-                        state.copy(account = account, snapshots = emptyList())
+                        state.copy(account = account)
                     }
                 }
             }
@@ -73,8 +78,11 @@ class BackupViewModel(
         // Only the newest request may write its result, so a slow, stale listing can never
         // overwrite a fresher one (or clear the loading flag while that one is still running).
         val generation = ++listGeneration
+        // Set loading together with the bump, not inside the launch: an account change that runs
+        // before the launch resets it, and a launch that set it afterwards would then find its
+        // generation stale and return — stranding loading = true with nobody left to clear it.
+        _uiState.update { it.copy(isLoadingSnapshots = true) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingSnapshots = true) }
             val result = runCatching { backupService.listSnapshots() }
             if (generation != listGeneration) return@launch
             result
