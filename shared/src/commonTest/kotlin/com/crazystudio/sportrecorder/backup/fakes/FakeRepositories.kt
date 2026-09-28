@@ -13,6 +13,7 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -38,6 +39,9 @@ class FakeEatRecordRepository(initial: List<EatRecord> = emptyList()) : EatRecor
 
     /** Timestamp stamped onto photos inserted by [save]; the real repo uses the wall clock. */
     var photoCreatedAt: Long = 0L
+
+    /** When set, [replaceAll] suspends on it first — models a restore's apply step parked mid-write. */
+    var replaceAllGate: CompletableDeferred<Unit>? = null
 
     override fun observeAll(): Flow<List<EatRecord>> =
         state.map { records -> records.sortedByDescending { it.time } }
@@ -79,6 +83,7 @@ class FakeEatRecordRepository(initial: List<EatRecord> = emptyList()) : EatRecor
     }
 
     override suspend fun replaceAll(records: List<EatRecord>) {
+        replaceAllGate?.await()
         state.value = records
         nextRecordId = (records.maxOfOrNull { it.id } ?: 0) + 1
         nextPhotoId = (records.flatMap { it.photos }.maxOfOrNull { it.id } ?: 0) + 1
