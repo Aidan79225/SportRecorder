@@ -2,10 +2,14 @@ package com.crazystudio.sportrecorder.ui.insights.map
 
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import kotlin.math.PI
+import kotlin.math.atan
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
+import kotlin.math.log2
+import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sinh
 import kotlin.math.tan
 
 /** Native pixel size of a standard slippy-map raster tile. */
@@ -35,14 +39,24 @@ object WebMercator {
         val y = (1.0 - ln(tan(latRad) + 1.0 / cos(latRad)) / PI) / 2.0 * n
         return TilePoint(x, y)
     }
+
+    /** Inverse of [project]: a fractional tile position at [zoom] back to a coordinate. */
+    fun unproject(x: Double, y: Double, zoom: Int): GeoPoint {
+        val n = tilesAcross(zoom).toDouble()
+        val lng = x / n * FULL_TURN_DEGREES - HALF_TURN_DEGREES
+        val latRad = atan(sinh(PI * (1 - 2 * y / n)))
+        return GeoPoint(latRad * HALF_TURN_DEGREES / PI, lng)
+    }
 }
 
-/** One raster tile and where its top-left corner lands inside the viewport (px). */
-data class TilePlacement(val zoom: Int, val x: Int, val y: Int, val leftPx: Int, val topPx: Int)
+/** One raster tile and where its top-left corner lands inside the viewport (px), at [sizePx]. */
+data class TilePlacement(val zoom: Int, val x: Int, val y: Int, val leftPx: Int, val topPx: Int, val sizePx: Int)
 
 /**
  * A fixed, non-interactive map window: a zoom level plus the world pixel that sits at the
- * viewport's top-left. World pixels are tile units × [tileSizePx].
+ * viewport's top-left. World pixels are tile units × [drawnTilePx]. [renderScale] lets tiles be
+ * drawn larger or smaller than their native [tileSizePx] — used to smooth a pinch between integer
+ * zoom levels (see `MapCamera.at`); it defaults to 1, which leaves every result unchanged.
  */
 data class MapViewport(
     val zoom: Int,
@@ -51,12 +65,16 @@ data class MapViewport(
     val widthPx: Int,
     val heightPx: Int,
     val tileSizePx: Int,
+    val renderScale: Float = 1f,
 ) {
+
+    /** The on-screen size of one tile: [tileSizePx] scaled by [renderScale]. */
+    val drawnTilePx: Double get() = tileSizePx * renderScale.toDouble()
 
     /** Viewport-relative pixel position of a coordinate. */
     fun pixelFor(lat: Double, lng: Double): Pair<Float, Float> {
         val p = WebMercator.project(lat, lng, zoom)
-        return (p.x * tileSizePx - originX).toFloat() to (p.y * tileSizePx - originY).toFloat()
+        return (p.x * drawnTilePx - originX).toFloat() to (p.y * drawnTilePx - originY).toFloat()
     }
 
     /**
@@ -65,10 +83,11 @@ data class MapViewport(
      */
     fun tiles(): List<TilePlacement> {
         val n = WebMercator.tilesAcross(zoom)
-        val firstX = floor(originX / tileSizePx).toInt()
-        val lastX = floor((originX + widthPx - 1) / tileSizePx).toInt()
-        val firstY = floor(originY / tileSizePx).toInt().coerceAtLeast(0)
-        val lastY = floor((originY + heightPx - 1) / tileSizePx).toInt().coerceAtMost(n - 1)
+        val drawn = drawnTilePx
+        val firstX = floor(originX / drawn).toInt()
+        val lastX = floor((originX + widthPx - 1) / drawn).toInt()
+        val firstY = floor(originY / drawn).toInt().coerceAtLeast(0)
+        val lastY = floor((originY + heightPx - 1) / drawn).toInt().coerceAtMost(n - 1)
         if (firstY > lastY) return emptyList()
         return (firstY..lastY).flatMap { ty ->
             (firstX..lastX).map { tx ->
@@ -76,8 +95,9 @@ data class MapViewport(
                     zoom = zoom,
                     x = ((tx % n) + n) % n,
                     y = ty,
-                    leftPx = (tx.toDouble() * tileSizePx - originX).roundToInt(),
-                    topPx = (ty.toDouble() * tileSizePx - originY).roundToInt(),
+                    leftPx = (tx.toDouble() * drawn - originX).roundToInt(),
+                    topPx = (ty.toDouble() * drawn - originY).roundToInt(),
+                    sizePx = drawn.roundToInt(),
                 )
             }
         }
@@ -143,6 +163,88 @@ data class MapViewport(
                 maxX = projected.maxOf { it.x } * tileSizePx,
                 maxY = projected.maxOf { it.y } * tileSizePx,
             )
+        }
+    }
+}
+
+/**
+ * Builds the [MapViewport] for [camera]: the nearest integer zoom level (clamped to the world's
+ * range), with [MapViewport.renderScale] covering the fractional remainder so a pinch between
+ * levels scales the current tiles smoothly instead of jumping when the level changes.
+ */
+fun MapViewport.Companion.at(camera: MapCamera, widthPx: Int, heightPx: Int, tileSizePx: Int): MapViewport {
+    val level = camera.zoom.roundToInt().coerceIn(0, MapCamera.MAX_ZOOM.toInt())
+    val scale = 2.0.pow(camera.zoom - level).toFloat()
+    val drawn = tileSizePx * scale
+    val center = WebMercator.project(camera.centerLat, camera.centerLng, level)
+    return MapViewport(
+        zoom = level,
+        originX = center.x * drawn - widthPx / 2.0,
+        originY = center.y * drawn - heightPx / 2.0,
+        widthPx = widthPx,
+        heightPx = heightPx,
+        tileSizePx = tileSizePx,
+        renderScale = scale,
+    )
+}
+
+/**
+ * The interactive full-screen map's state: a fractional [zoom] (its integer part picks the tile
+ * level, the fractional remainder becomes [MapViewport.renderScale] via [MapViewport.Companion.at])
+ * and the geographic point at the centre of the viewport. Pure data and arithmetic; gestures in
+ * `FullScreenPlacesMap` turn into calls on this type.
+ */
+data class MapCamera(val zoom: Double, val centerLat: Double, val centerLng: Double) {
+
+    /** Applies [factor] in log2 space (doubling the visual scale is +1 zoom), then clamps. */
+    fun zoomedBy(factor: Float, minZoom: Double, maxZoom: Double = MAX_ZOOM): MapCamera =
+        copy(zoom = (zoom + log2(factor.toDouble())).coerceIn(minZoom, maxZoom))
+
+    /** Moves the centre so the content appears dragged by ([dxPx], [dyPx]) screen pixels. */
+    fun pannedBy(dxPx: Float, dyPx: Float, viewport: MapViewport): MapCamera {
+        val centerTileX = (viewport.originX + viewport.widthPx / 2.0 - dxPx) / viewport.drawnTilePx
+        val centerTileY = (viewport.originY + viewport.heightPx / 2.0 - dyPx) / viewport.drawnTilePx
+        val center = WebMercator.unproject(centerTileX, centerTileY, viewport.zoom)
+        return copy(centerLat = center.lat, centerLng = center.lng)
+    }
+
+    /**
+     * Zooms by [factor] while keeping the point under ([focusXPx], [focusYPx]) in [viewport] fixed
+     * on screen — the point under the fingers during a pinch, or under the tap for a double-tap.
+     */
+    fun zoomedAround(
+        factor: Float,
+        focusXPx: Float,
+        focusYPx: Float,
+        viewport: MapViewport,
+        minZoom: Double,
+        maxZoom: Double = MAX_ZOOM,
+    ): MapCamera {
+        val focus = WebMercator.unproject(
+            (viewport.originX + focusXPx) / viewport.drawnTilePx,
+            (viewport.originY + focusYPx) / viewport.drawnTilePx,
+            viewport.zoom,
+        )
+        val zoomed = zoomedBy(factor, minZoom, maxZoom)
+        val zoomedViewport = MapViewport.at(zoomed, viewport.widthPx, viewport.heightPx, viewport.tileSizePx)
+        val (focusXAfter, focusYAfter) = zoomedViewport.pixelFor(focus.lat, focus.lng)
+        val remainderDx = focusXPx - focusXAfter
+        val remainderDy = focusYPx - focusYAfter
+        return zoomed.pannedBy(dxPx = remainderDx, dyPx = remainderDy, viewport = zoomedViewport)
+    }
+
+    companion object {
+        /** OSM's largest published raster zoom level. */
+        const val MAX_ZOOM = 19.0
+
+        /** The camera that reproduces [v] exactly: same centre, same effective (fractional) zoom. */
+        fun fromViewport(v: MapViewport): MapCamera {
+            val center = WebMercator.unproject(
+                (v.originX + v.widthPx / 2.0) / v.drawnTilePx,
+                (v.originY + v.heightPx / 2.0) / v.drawnTilePx,
+                v.zoom,
+            )
+            return MapCamera(v.zoom + log2(v.renderScale.toDouble()), center.lat, center.lng)
         }
     }
 }
