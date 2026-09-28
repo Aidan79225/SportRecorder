@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -84,6 +85,7 @@ fun EatTimeEditorSheet(
         // (location row, photo rows, or the keyboard opening for Note).
         modifier = modifier
             .background(colorScheme.surface)
+            .statusBarsPadding() // only non-zero when photos/keyboard push the sheet to the top
             .navigationBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
