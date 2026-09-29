@@ -52,10 +52,62 @@
 
     <string name="diet_remaining_time">Eating time remaining</string>
     <string name="diet_fasting_time">Fasting time</string>
-    <string name="diet_status_eating">You're eating!</string>
-    <string name="diet_status_success">You did it!</string>
-    <string name="diet_status_fasting">You're fasting!</string>
-    <string name="diet_status_idle">Ready to start?</string>
+    <!-- Home headline pools; one line is picked per visit (see HomeTaglinePicker). -->
+    <string-array name="diet_tagline_idle_morning">
+        <item>Good morning. Take it slow</item>
+        <item>A new day, whenever you're ready</item>
+        <item>What's your first bite today?</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_afternoon">
+        <item>Good afternoon</item>
+        <item>What's on your plate?</item>
+        <item>Start whenever you like</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_evening">
+        <item>Good evening</item>
+        <item>How was your day?</item>
+        <item>Capture tonight's flavors</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_night">
+        <item>It's late, rest well</item>
+        <item>Tomorrow is a fine start too</item>
+        <item>A quiet night</item>
+    </string-array>
+    <string-array name="diet_tagline_eating">
+        <item>You're eating!</item>
+        <item>Enjoy this meal</item>
+        <item>Savor every bite</item>
+        <item>Snap a tasty moment</item>
+        <item>Eat slowly, taste fully</item>
+    </string-array>
+    <string-array name="diet_tagline_eating_winding_down">
+        <item>Window closing soon</item>
+        <item>Enjoy the last bites</item>
+        <item>Feeling satisfied?</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting_just_started">
+        <item>Your fast has begun</item>
+        <item>Freshly fed, time to rest</item>
+        <item>Letting your body digest</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting">
+        <item>You're fasting!</item>
+        <item>Fasting alongside you</item>
+        <item>A sip of water, maybe?</item>
+        <item>Your body is resting</item>
+        <item>Notice how you feel</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting_almost_there">
+        <item>Almost there</item>
+        <item>Just a little longer</item>
+        <item>Nearly at your target time</item>
+    </string-array>
+    <string-array name="diet_tagline_success">
+        <item>You did it!</item>
+        <item>You reached your set time</item>
+        <item>Next meal, whenever you're ready</item>
+        <item>What is your body asking for?</item>
+    </string-array>
     <string name="diet_no_record">Add your first meal</string>
     <string name="fast_started_label">Started Fasting</string>
     <string name="fast_ending_label">Fast Ending</string>
@@ -81,7 +133,7 @@
     <string name="settings_backup_row_title">Backup &amp; restore</string>
     <string name="settings_backup_row_desc">Save your records to your own Google Drive</string>
     <string name="backup_title">Backup &amp; restore</string>
-    <string name="backup_intro">Back up your records to your own Google Drive, so a new phone or a reinstall never loses a moment. It\'s optional, and only you can see it.</string>
+    <string name="backup_intro">Back up your records to your own Google Drive, so a new phone or a reinstall never loses a moment. It's optional, and only you can see it.</string>
     <string name="backup_sign_in">Sign in with Google</string>
     <string name="backup_signed_in_as">Signed in as %1$s</string>
     <string name="backup_sign_out">Sign out</string>
@@ -102,9 +154,9 @@
     <string name="backup_msg_schema_too_new">This backup is from a newer version of the app. Please update to restore it.</string>
     <string name="backup_msg_failed">Something went wrong. Please try again.</string>
     <string name="backup_msg_cancelled">Cancelled. Nothing was changed.</string>
-    <string name="backup_msg_safety_backup_failed">Couldn\'t back up what\'s on this device first, so nothing was restored. Please try again.</string>
+    <string name="backup_msg_safety_backup_failed">Couldn't back up what's on this device first, so nothing was restored. Please try again.</string>
     <string name="backup_step_preparing">Getting ready…</string>
-    <string name="backup_step_safety_backup">Backing up what\'s on this device first…</string>
+    <string name="backup_step_safety_backup">Backing up what's on this device first…</string>
     <string name="backup_step_uploading_photos">Uploading photos %1$d / %2$d</string>
     <string name="backup_step_uploading_manifest">Writing the backup index…</string>
     <string name="backup_step_pruning">Tidying older backups…</string>

@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.flow
 
 import app.cash.turbine.test
+import com.crazystudio.sportrecorder.domain.diet.TaglineMood
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
@@ -14,10 +15,6 @@ import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
 import com.crazystudio.sportrecorder.shared.resources.diet_no_record
 import com.crazystudio.sportrecorder.shared.resources.diet_remaining_time
-import com.crazystudio.sportrecorder.shared.resources.diet_status_eating
-import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
-import com.crazystudio.sportrecorder.shared.resources.diet_status_idle
-import com.crazystudio.sportrecorder.shared.resources.diet_status_success
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import com.crazystudio.sportrecorder.ui.diet.DietUiState
 import com.crazystudio.sportrecorder.ui.diet.DietViewModel
@@ -101,7 +98,7 @@ class DietHomeFlowTest {
 
         val state = home.stateAt(f)
 
-        assertEquals(Res.string.diet_status_idle, state.statusText)
+        assertEquals(TaglineMood.IDLE_NIGHT, state.tagline.mood)
         assertEquals(Res.string.diet_no_record, state.promptText)
         assertEquals("00:00:00", state.elapsedText)
         assertNull(state.fastStart)
@@ -111,12 +108,12 @@ class DietHomeFlowTest {
     @Test
     fun loggingAMeal_opensTheEatingWindow() = runTest(mainRule.testDispatcher.scheduler) {
         val home = Home()
-        assertEquals(Res.string.diet_status_idle, home.stateAt(f).statusText)
+        assertEquals(TaglineMood.IDLE_NIGHT, home.stateAt(f).tagline.mood)
 
         home.save(meal(f), emptyList(), emptyList(), now = f)
 
         val state = home.stateAt(f + h(1))
-        assertEquals(Res.string.diet_status_eating, state.statusText)
+        assertEquals(TaglineMood.EATING, state.tagline.mood)
         assertEquals(Res.string.diet_remaining_time, state.promptText)
         assertEquals("07:00:00", state.elapsedText) // 8h window, 1h in
         assertEquals("16 : 8", state.fastingLabel)
@@ -128,11 +125,11 @@ class DietHomeFlowTest {
         home.save(meal(f), emptyList(), emptyList(), now = f)
 
         val fasting = home.stateAt(f + h(12))
-        assertEquals(Res.string.diet_status_fasting, fasting.statusText)
+        assertEquals(TaglineMood.FASTING, fasting.tagline.mood)
         assertEquals(Res.string.diet_fasting_time, fasting.promptText)
 
         val success = home.stateAt(f + h(17))
-        assertEquals(Res.string.diet_status_success, success.statusText)
+        assertEquals(TaglineMood.SUCCESS, success.tagline.mood)
         assertEquals(100f, success.progress, 0.01f)
     }
 
@@ -155,13 +152,13 @@ class DietHomeFlowTest {
     fun changingTheFastingWindow_rerendersTheHomeState() = runTest(mainRule.testDispatcher.scheduler) {
         val home = Home()
         home.save(meal(f), emptyList(), emptyList(), now = f)
-        assertEquals(Res.string.diet_status_eating, home.stateAt(f + h(6)).statusText)
+        assertEquals(TaglineMood.EATING, home.stateAt(f + h(6)).tagline.mood)
 
         home.selectWindow(FastingWindow(fastingHours = 20, eatingHours = 4))
 
         // The 4h window already closed 6h in, so the very same moment now reads as a fast.
         val state = home.stateAt(f + h(6))
-        assertEquals(Res.string.diet_status_fasting, state.statusText)
+        assertEquals(TaglineMood.FASTING, state.tagline.mood)
         assertEquals("20 : 4", state.fastingLabel)
         assertEquals(
             DietSettings(fastingHours = 20, eatingHours = 4),
@@ -176,11 +173,11 @@ class DietHomeFlowTest {
 
         vm.uiState.test {
             skipItems(1)
-            assertEquals(Res.string.diet_status_idle, awaitItem().statusText)
+            assertEquals(TaglineMood.IDLE_NIGHT, awaitItem().tagline.mood)
 
             home.save(meal(f), emptyList(), emptyList(), now = f)
 
-            assertEquals(Res.string.diet_status_eating, awaitItem().statusText)
+            assertEquals(TaglineMood.EATING, awaitItem().tagline.mood)
             cancelAndIgnoreRemainingEvents()
         }
     }
