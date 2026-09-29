@@ -85,13 +85,7 @@ fun DietScreen(
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp),
                 )
-                Text(
-                    text = taglineText(state.tagline),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp, start = 24.dp, end = 24.dp),
-                )
+                Tagline(state.tagline, modifier = Modifier.padding(top = 4.dp, start = 24.dp, end = 24.dp))
                 // Edit fasting-type chip — moved under the status text, with a little padding around it.
                 Row(
                     modifier = Modifier
@@ -231,12 +225,38 @@ private fun FastTimeColumn(
     }
 }
 
-/** Resolves a [HomeTagline] to one line of its mood's pool (pools may differ in size per locale). */
+/**
+ * One line of the tagline's mood pool (pools may differ in size per locale). A quote carries its
+ * source after [QUOTE_SOURCE_SEPARATOR]; it is set a size smaller, with the source underneath.
+ */
 @Composable
-private fun taglineText(tagline: HomeTagline): String {
+private fun Tagline(tagline: HomeTagline, modifier: Modifier = Modifier) {
+    val colorScheme = MaterialTheme.colorScheme
     val lines = stringArrayResource(tagline.mood.pool())
-    return if (lines.isEmpty()) "" else lines[tagline.variant % lines.size]
+    if (lines.isEmpty()) return
+    val line = lines[tagline.variant % lines.size]
+    val sourceAt = line.lastIndexOf(QUOTE_SOURCE_SEPARATOR)
+    val typography = MaterialTheme.typography
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = if (sourceAt < 0) line else line.substring(0, sourceAt),
+            style = if (sourceAt < 0) typography.headlineMedium else typography.titleLarge,
+            color = colorScheme.primary,
+            textAlign = TextAlign.Center,
+        )
+        if (sourceAt >= 0) {
+            Text(
+                text = "— " + line.substring(sourceAt + QUOTE_SOURCE_SEPARATOR.length),
+                style = typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
 }
+
+private const val QUOTE_SOURCE_SEPARATOR = " — "
 
 private fun TaglineMood.pool(): StringArrayResource = when (this) {
     TaglineMood.IDLE_MORNING -> Res.array.diet_tagline_idle_morning

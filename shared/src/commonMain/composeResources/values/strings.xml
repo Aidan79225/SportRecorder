@@ -52,28 +52,56 @@
 
     <string name="diet_remaining_time">Eating time remaining</string>
     <string name="diet_fasting_time">Fasting time</string>
-    <!-- Home headline pools; one line is picked per visit (see HomeTaglinePicker). -->
+    <!-- Home headline pools; one line is picked per visit (see HomeTaglinePicker).
+         A quote carries its source after " — "; the screen shows it as a smaller second line. -->
     <string-array name="diet_tagline_idle_morning">
+        <item>Keep the first light of morning for yourself</item>
+        <item>Every day is a good day. — Yunmen Wenyan</item>
+        <item>Go slowly, and enjoy the view. — Zhu Guangqian</item>
+        <item>Pay attention. Be astonished. Tell about it. — Mary Oliver</item>
         <item>Good morning. Take it slow</item>
         <item>A new day, whenever you're ready</item>
-        <item>What's your first bite today?</item>
     </string-array>
     <string-array name="diet_tagline_idle_afternoon">
+        <item>Busy day? Remember to look after yourself</item>
+        <item>Let the afternoon sun sit with you a while</item>
+        <item>You deserve to be treated kindly today too</item>
+        <item>Tired? Pause and take a breath</item>
+        <item>Go have some tea. — Zen master Zhaozhou</item>
+        <item>Adopt the pace of nature: her secret is patience. — Ralph Waldo Emerson</item>
         <item>Good afternoon</item>
         <item>What's on your plate?</item>
-        <item>Start whenever you like</item>
     </string-array>
     <string-array name="diet_tagline_idle_evening">
+        <item>Long day. And here you are</item>
+        <item>The evening breeze is gentle, and so are you</item>
+        <item>Home yet? Let yourself unwind</item>
+        <item>Any small good moments today?</item>
+        <item>Where the heart finds peace, there is home. — Su Shi</item>
+        <item>With no idle worries on your mind, every season is a good one. — Wumen Huikai</item>
         <item>Good evening</item>
         <item>How was your day?</item>
         <item>Capture tonight's flavors</item>
     </string-array>
     <string-array name="diet_tagline_idle_night">
+        <item>It's late. Gently set today down</item>
+        <item>Good night. See you tomorrow</item>
+        <item>Sleep well. Everything else can wait</item>
+        <item>The moon is here, and so am I</item>
+        <item>Rest is not idleness. — John Lubbock</item>
         <item>It's late, rest well</item>
         <item>Tomorrow is a fine start too</item>
         <item>A quiet night</item>
     </string-array>
     <string-array name="diet_tagline_eating">
+        <item>Eating well is a way of loving yourself</item>
+        <item>This bite is a small kindness to yourself</item>
+        <item>Eat slowly. This moment is yours</item>
+        <item>Good food deserves to be remembered</item>
+        <item>Spend some time with flavors you love</item>
+        <item>The truest flavor in life is simple joy. — Su Shi</item>
+        <item>People who love to eat are always the best people. — Julia Child</item>
+        <item>If more of us valued food and cheer and song above hoarded gold, it would be a merrier world. — J.R.R. Tolkien</item>
         <item>You're eating!</item>
         <item>Enjoy this meal</item>
         <item>Savor every bite</item>
@@ -81,32 +109,51 @@
         <item>Eat slowly, taste fully</item>
     </string-array>
     <string-array name="diet_tagline_eating_winding_down">
+        <item>Did this meal make you happy?</item>
+        <item>Keep a little of the taste with you</item>
+        <item>Thank you, little meal, for the company</item>
+        <item>Smile, breathe, and go slowly. — Thich Nhat Hanh</item>
         <item>Window closing soon</item>
         <item>Enjoy the last bites</item>
         <item>Feeling satisfied?</item>
     </string-array>
     <string-array name="diet_tagline_fasting_just_started">
+        <item>Your body is slowly taking in the warmth</item>
+        <item>From here, let your body do the work</item>
+        <item>Knowing others is wisdom; knowing yourself is clarity. — Laozi</item>
         <item>Your fast has begun</item>
         <item>Freshly fed, time to rest</item>
         <item>Letting your body digest</item>
     </string-array>
     <string-array name="diet_tagline_fasting">
+        <item>I'm here, walking slowly beside you</item>
+        <item>Feeling hungry is okay. It's your body talking</item>
+        <item>Sip some warm water. Give yourself a hug</item>
+        <item>Be still and listen to your body</item>
+        <item>You are enough, right now</item>
+        <item>Adopt the pace of nature: her secret is patience. — Ralph Waldo Emerson</item>
+        <item>Knowing others is wisdom; knowing yourself is clarity. — Laozi</item>
         <item>You're fasting!</item>
         <item>Fasting alongside you</item>
-        <item>A sip of water, maybe?</item>
         <item>Your body is resting</item>
         <item>Notice how you feel</item>
     </string-array>
     <string-array name="diet_tagline_fasting_almost_there">
+        <item>Almost there. I've been with you the whole way</item>
+        <item>A little longer, then a good meal</item>
+        <item>Deep breath. Slow is just fine</item>
+        <item>Walk to where the water ends; sit and watch the clouds rise. — Wang Wei</item>
         <item>Almost there</item>
         <item>Just a little longer</item>
         <item>Nearly at your target time</item>
     </string-array>
     <string-array name="diet_tagline_success">
+        <item>You're here. Thank you for caring for yourself</item>
+        <item>When you're ready, enjoy a good meal</item>
+        <item>Eat when hungry, sleep when tired. — Dazhu Huihai</item>
+        <item>Every day is a good day. — Yunmen Wenyan</item>
         <item>You did it!</item>
-        <item>You reached your set time</item>
         <item>Next meal, whenever you're ready</item>
-        <item>What is your body asking for?</item>
     </string-array>
     <string name="diet_no_record">Add your first meal</string>
     <string name="fast_started_label">Started Fasting</string>

@@ -23,8 +23,11 @@ read the same, so the line faded into the background.
   | FASTING | `FASTING` | otherwise |
   | SUCCESS | `SUCCESS` | — |
 
-- **Pools** — one `string-array` per mood (`diet_tagline_*`, en + zh-TW, 3–5 lines each). The
-  original four lines are kept inside their pools.
+- **Pools** — one `string-array` per mood (`diet_tagline_*`, en + zh-TW, 6–13 lines each),
+  hand-picked by the owner from a candidate list of warmer rewrites, sourced quotes and the
+  previous lines. A quote stores its source after ` — ` (e.g. `此心安處是吾鄉 — 蘇軾〈定風波〉`);
+  the screen splits it off, sets the quote in `titleLarge` and the source as a small second line.
+  Only quotes with a clear source were offered; translations of foreign quotes are our own.
 - **Variety without flicker** — `DietViewModel` draws a new seed each time its `uiState` upstream
   starts (every Home visit, via `WhileSubscribed`), so the line differs between visits but stays
   put while the per-second ticker runs. The mood can still change mid-visit as context changes
