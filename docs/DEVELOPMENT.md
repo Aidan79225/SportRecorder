@@ -147,6 +147,7 @@
 | 09-28 | 測試覆蓋缺口(migration、Room 契約、編輯器 UI、照片管線、提醒、備份小洞) | ✓ | ✓ | 已完成 |
 | 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 已完成(PR #69) |
 | 09-28 | 回顧地圖:marker 合併 + 全螢幕縮放 | ✓ | ✓ | PR #70 |
+| 09-29 | Home 動態標語(依時段 / 進度輪替) | ✓ | — | 實作中(`claude/busy-mccarthy-t7xloj`) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

@@ -20,20 +20,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.crazystudio.sportrecorder.domain.diet.HomeTagline
+import com.crazystudio.sportrecorder.domain.diet.TaglineMood
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.day_today
 import com.crazystudio.sportrecorder.shared.resources.day_tomorrow
 import com.crazystudio.sportrecorder.shared.resources.day_yesterday
 import com.crazystudio.sportrecorder.shared.resources.fast_ending_label
 import com.crazystudio.sportrecorder.shared.resources.fast_started_label
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_morning
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_afternoon
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_evening
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_night
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_eating
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_eating_winding_down
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_fasting_just_started
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_fasting
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_fasting_almost_there
+import com.crazystudio.sportrecorder.shared.resources.diet_tagline_success
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_settings_24
 import com.crazystudio.sportrecorder.shared.resources.settings_title
 import com.crazystudio.sportrecorder.ui.component.CircleProgress
+import org.jetbrains.compose.resources.StringArrayResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringArrayResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -70,12 +85,7 @@ fun DietScreen(
                     tint = colorScheme.onSurface,
                     modifier = Modifier.size(36.dp),
                 )
-                Text(
-                    text = stringResource(state.statusText),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Tagline(state.tagline, modifier = Modifier.padding(top = 4.dp, start = 24.dp, end = 24.dp))
                 // Edit fasting-type chip — moved under the status text, with a little padding around it.
                 Row(
                     modifier = Modifier
@@ -213,4 +223,50 @@ private fun FastTimeColumn(
             color = colorScheme.onSurface,
         )
     }
+}
+
+/**
+ * One line of the tagline's mood pool (pools may differ in size per locale). A quote carries its
+ * source after [QUOTE_SOURCE_SEPARATOR]; it is set a size smaller, with the source underneath.
+ */
+@Composable
+private fun Tagline(tagline: HomeTagline, modifier: Modifier = Modifier) {
+    val colorScheme = MaterialTheme.colorScheme
+    val lines = stringArrayResource(tagline.mood.pool())
+    if (lines.isEmpty()) return
+    val line = lines[tagline.variant % lines.size]
+    val sourceAt = line.lastIndexOf(QUOTE_SOURCE_SEPARATOR)
+    val typography = MaterialTheme.typography
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = if (sourceAt < 0) line else line.substring(0, sourceAt),
+            style = if (sourceAt < 0) typography.headlineMedium else typography.titleLarge,
+            color = colorScheme.primary,
+            textAlign = TextAlign.Center,
+        )
+        if (sourceAt >= 0) {
+            Text(
+                text = "— " + line.substring(sourceAt + QUOTE_SOURCE_SEPARATOR.length),
+                style = typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+private const val QUOTE_SOURCE_SEPARATOR = " — "
+
+private fun TaglineMood.pool(): StringArrayResource = when (this) {
+    TaglineMood.IDLE_MORNING -> Res.array.diet_tagline_idle_morning
+    TaglineMood.IDLE_AFTERNOON -> Res.array.diet_tagline_idle_afternoon
+    TaglineMood.IDLE_EVENING -> Res.array.diet_tagline_idle_evening
+    TaglineMood.IDLE_NIGHT -> Res.array.diet_tagline_idle_night
+    TaglineMood.EATING -> Res.array.diet_tagline_eating
+    TaglineMood.EATING_WINDING_DOWN -> Res.array.diet_tagline_eating_winding_down
+    TaglineMood.FASTING_JUST_STARTED -> Res.array.diet_tagline_fasting_just_started
+    TaglineMood.FASTING -> Res.array.diet_tagline_fasting
+    TaglineMood.FASTING_ALMOST_THERE -> Res.array.diet_tagline_fasting_almost_there
+    TaglineMood.SUCCESS -> Res.array.diet_tagline_success
 }

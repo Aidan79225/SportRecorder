@@ -1,6 +1,8 @@
 package com.crazystudio.sportrecorder.ui.diet
 
 import app.cash.turbine.test
+import com.crazystudio.sportrecorder.domain.diet.HomeTagline
+import com.crazystudio.sportrecorder.domain.diet.TaglineMood
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
@@ -10,10 +12,6 @@ import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
 import com.crazystudio.sportrecorder.shared.resources.diet_no_record
 import com.crazystudio.sportrecorder.shared.resources.diet_remaining_time
-import com.crazystudio.sportrecorder.shared.resources.diet_status_eating
-import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
-import com.crazystudio.sportrecorder.shared.resources.diet_status_idle
-import com.crazystudio.sportrecorder.shared.resources.diet_status_success
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_no_food_24
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
@@ -22,6 +20,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -62,11 +61,12 @@ class DietViewModelTest {
     private fun viewModel(
         eats: List<EatRecord>,
         settings: DietSettings = DietSettings(fastingHours = 16, eatingHours = 8),
+        taglineSeeds: () -> Int = { 0 },
         now: () -> Long,
     ): DietViewModel {
         val eatRepo = FakeEatRecordRepository(initial = eats)
         val settingsRepo = FakeDietSettingsRepository(settings)
-        return DietViewModel(ObserveDietStateUseCase(eatRepo, settingsRepo), now)
+        return DietViewModel(ObserveDietStateUseCase(eatRepo, settingsRepo), now, taglineSeeds)
     }
 
     @Test
@@ -76,7 +76,7 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1) // initial DietUiState() default
             val s = awaitItem()
-            assertEquals(Res.string.diet_status_fasting, s.statusText)
+            assertEquals(TaglineMood.FASTING, s.tagline.mood)
             assertEquals(Res.drawable.ic_baseline_no_food_24, s.statusIcon)
             assertEquals(Res.string.diet_fasting_time, s.promptText)
             // Single meal: fast clock starts 1h after the meal, so at +12h it's 11h (68.75%).
@@ -96,7 +96,7 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(Res.string.diet_status_eating, s.statusText)
+            assertEquals(TaglineMood.EATING, s.tagline.mood)
             assertEquals(Res.drawable.ic_baseline_fastfood_24, s.statusIcon)
             assertEquals(Res.string.diet_remaining_time, s.promptText)
             assertEquals(25f, s.progress, 0.01f)
@@ -113,7 +113,7 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(Res.string.diet_status_success, s.statusText)
+            assertEquals(TaglineMood.SUCCESS, s.tagline.mood)
             assertEquals(Res.drawable.ic_baseline_no_food_24, s.statusIcon)
             assertEquals(100f, s.progress, 0.01f)
             cancelAndIgnoreRemainingEvents()
@@ -127,7 +127,7 @@ class DietViewModelTest {
         vm.uiState.test {
             skipItems(1)
             val s = awaitItem()
-            assertEquals(Res.string.diet_status_idle, s.statusText)
+            assertEquals(TaglineMood.IDLE_NIGHT, s.tagline.mood)
             assertEquals(Res.string.diet_no_record, s.promptText)
             assertEquals("00:00:00", s.elapsedText)
             assertEquals(null, s.fastStart)
@@ -149,6 +149,33 @@ class DietViewModelTest {
             advanceTimeBy(TimeUnit.SECONDS.toMillis(1))
 
             assertEquals("11:00:01", awaitItem().elapsedText)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun tagline_staysPutWhileTicking_andChangesOnTheNextVisit() = runTest(mainRule.testDispatcher.scheduler) {
+        var nowMs = f + h(12)
+        var seed = 0
+        val vm = viewModel(eats = listOf(eat(f)), taglineSeeds = { seed++ }) { nowMs }
+
+        lateinit var firstVisit: HomeTagline
+        vm.uiState.test {
+            skipItems(1)
+            firstVisit = awaitItem().tagline
+            nowMs += TimeUnit.SECONDS.toMillis(1)
+            advanceTimeBy(TimeUnit.SECONDS.toMillis(1))
+            assertEquals(firstVisit, awaitItem().tagline)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // Leave Home long enough for WhileSubscribed to stop upstream, then come back.
+        advanceTimeBy(TimeUnit.SECONDS.toMillis(10))
+        vm.uiState.test {
+            assertEquals(firstVisit, awaitItem().tagline) // the cached state from the last visit
+            val secondVisit = awaitItem().tagline
+            assertEquals(firstVisit.mood, secondVisit.mood)
+            assertNotEquals(firstVisit.variant, secondVisit.variant)
             cancelAndIgnoreRemainingEvents()
         }
     }

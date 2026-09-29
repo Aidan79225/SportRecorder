@@ -1,8 +1,9 @@
 package com.crazystudio.sportrecorder.ui.diet
 
+import com.crazystudio.sportrecorder.domain.diet.HomeTagline
+import com.crazystudio.sportrecorder.domain.diet.TaglineMood
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_fasting_time
-import com.crazystudio.sportrecorder.shared.resources.diet_status_fasting
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -12,7 +13,8 @@ data class DietUiState(
     val progress: Float = 0f, // 0..100 for CircleProgress
     val fastingLabel: String = "", // e.g. "16 : 8"
     val statusIcon: DrawableResource = Res.drawable.ic_baseline_fastfood_24,
-    val statusText: StringResource = Res.string.diet_status_fasting,
+    // Headline above the chip; the screen resolves it to one line of the mood's pool.
+    val tagline: HomeTagline = HomeTagline(TaglineMood.FASTING, variant = 0),
     val promptText: StringResource = Res.string.diet_fasting_time,
     // Fast window blocks below the ring; null hides them (e.g. IDLE / no record).
     val fastStart: FastTimeLabel? = null,

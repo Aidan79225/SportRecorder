@@ -52,10 +52,109 @@
 
     <string name="diet_remaining_time">剩餘時間</string>
     <string name="diet_fasting_time">已禁食時間</string>
-    <string name="diet_status_eating">進食中，好好享受！</string>
-    <string name="diet_status_success">你做到了！</string>
-    <string name="diet_status_fasting">斷食中，加油！</string>
-    <string name="diet_status_idle">準備好了嗎？</string>
+    <!-- Home headline pools; one line is picked per visit (see HomeTaglinePicker).
+         A quote carries its source after " — "; the screen shows it as a smaller second line. -->
+    <string-array name="diet_tagline_idle_morning">
+        <item>早晨的第一道光，先留給自己</item>
+        <item>日日是好日 — 雲門文偃</item>
+        <item>慢慢走，欣賞啊！ — 朱光潛《談美》</item>
+        <item>留心，驚奇，然後說出來。 — 瑪麗·奧利弗〈Sometimes〉</item>
+        <item>早安，慢慢開始今天</item>
+        <item>新的一天，隨時開始</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_afternoon">
+        <item>忙了半天，記得照顧自己</item>
+        <item>午後的陽光，陪你坐一會兒</item>
+        <item>今天的你，也值得被好好對待</item>
+        <item>累了嗎？停下來喘口氣</item>
+        <item>喫茶去。 — 趙州從諗</item>
+        <item>跟上大自然的步調，她的祕訣是耐心。 — 愛默生</item>
+        <item>午安！</item>
+        <item>今天吃了什麼呢？</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_evening">
+        <item>辛苦了，今天也走到這裡了</item>
+        <item>晚風很溫柔，你也是</item>
+        <item>回到家了嗎？慢慢放鬆</item>
+        <item>今天有什麼小小的美好嗎？</item>
+        <item>此心安處是吾鄉 — 蘇軾〈定風波〉</item>
+        <item>若無閒事掛心頭，便是人間好時節 — 無門慧開</item>
+        <item>晚安，今天過得好嗎？</item>
+        <item>傍晚了，辛苦了</item>
+        <item>記下今晚的味道</item>
+    </string-array>
+    <string-array name="diet_tagline_idle_night">
+        <item>夜深了，把今天輕輕放下</item>
+        <item>晚安，明天見</item>
+        <item>好好睡一覺，其他的明天再說</item>
+        <item>月亮在，我也在</item>
+        <item>休息不是懶散。 — 約翰·盧伯克</item>
+        <item>夜深了，好好休息</item>
+        <item>明天再開始也很好</item>
+        <item>安靜的夜晚</item>
+    </string-array>
+    <string-array name="diet_tagline_eating">
+        <item>好好吃飯，就是好好愛自己</item>
+        <item>這一口，是給自己的溫柔</item>
+        <item>慢慢吃，這一刻屬於你</item>
+        <item>好吃的東西，值得被記住</item>
+        <item>和喜歡的味道，好好相處</item>
+        <item>人間有味是清歡 — 蘇軾〈浣溪沙〉</item>
+        <item>愛吃的人，總是最好的人。 — 茱莉亞·柴爾德</item>
+        <item>如果更多人重視美食、歡笑與歌聲勝過囤積的黃金，世界會快樂得多。 — 托爾金《哈比人》</item>
+        <item>進食中，好好享受！</item>
+        <item>好好品嚐這一餐</item>
+        <item>吃得開心最重要</item>
+        <item>拍下美味的瞬間</item>
+        <item>慢慢吃，細細嚐</item>
+    </string-array>
+    <string-array name="diet_tagline_eating_winding_down">
+        <item>這一餐，吃得開心嗎？</item>
+        <item>留一點回味給自己</item>
+        <item>謝謝這一餐的陪伴</item>
+        <item>微笑，呼吸，慢慢走。 — 一行禪師</item>
+        <item>進食時間快結束囉</item>
+        <item>最後幾口，慢慢享受</item>
+        <item>吃飽了嗎？</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting_just_started">
+        <item>身體正在慢慢收下這份溫暖</item>
+        <item>接下來，交給身體就好</item>
+        <item>知人者智，自知者明。 — 老子《道德經》</item>
+        <item>斷食開始了</item>
+        <item>剛吃飽，休息一下</item>
+        <item>讓身體慢慢消化</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting">
+        <item>我在這裡，陪你慢慢走</item>
+        <item>餓了也沒關係，那是身體在說話</item>
+        <item>喝口溫水，抱抱自己</item>
+        <item>靜下來，聽聽身體的聲音</item>
+        <item>此刻的你，已經很好了</item>
+        <item>跟上大自然的步調，她的祕訣是耐心。 — 愛默生</item>
+        <item>知人者智，自知者明。 — 老子《道德經》</item>
+        <item>斷食中，加油！</item>
+        <item>斷食中，陪著你</item>
+        <item>身體正在休息</item>
+        <item>感受此刻的自己</item>
+    </string-array>
+    <string-array name="diet_tagline_fasting_almost_there">
+        <item>快到了，一路都有我陪著</item>
+        <item>再一會兒，就能好好吃一頓了</item>
+        <item>深呼吸，慢慢來就好</item>
+        <item>行到水窮處，坐看雲起時 — 王維〈終南別業〉</item>
+        <item>就快到了</item>
+        <item>再一下下就好</item>
+        <item>快到你設定的時間了</item>
+    </string-array>
+    <string-array name="diet_tagline_success">
+        <item>到了。謝謝你這麼照顧自己</item>
+        <item>準備好時，好好吃一頓吧</item>
+        <item>饑來吃飯，睏來即眠。 — 大珠慧海</item>
+        <item>日日是好日 — 雲門文偃</item>
+        <item>你做到了！</item>
+        <item>準備好了，再享用下一餐</item>
+    </string-array>
     <string name="diet_no_record">新增第一餐</string>
     <string name="fast_started_label">開始斷食</string>
     <string name="fast_ending_label">結束斷食</string>
