@@ -34,6 +34,8 @@
     <string name="insights_duration_hm">%1$dh %2$dm</string>
     <string name="insights_photo_count">Photos in this period: %1$d</string>
     <string name="insights_empty_photos">No meal photos in this period</string>
+    <string name="insights_photos_show_all">Show all %1$d</string>
+    <string name="insights_photos_collapse">Show fewer</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>

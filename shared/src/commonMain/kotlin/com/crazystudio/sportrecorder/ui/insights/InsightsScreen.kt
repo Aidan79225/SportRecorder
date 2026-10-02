@@ -6,20 +6,25 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
@@ -69,6 +76,8 @@ import com.crazystudio.sportrecorder.shared.resources.insights_period_range
 import com.crazystudio.sportrecorder.shared.resources.insights_period_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_period_week
 import com.crazystudio.sportrecorder.shared.resources.insights_photo_count
+import com.crazystudio.sportrecorder.shared.resources.insights_photos_collapse
+import com.crazystudio.sportrecorder.shared.resources.insights_photos_show_all
 import com.crazystudio.sportrecorder.shared.resources.insights_prev_period
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_days
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_first
@@ -92,8 +101,19 @@ import kotlin.time.Instant
 private const val WEEK_COLUMNS = 7
 private const val PHOTO_COLUMNS = 3
 
-/** The wall is a taste of the period, not the archive — the day sheet and the Record tab hold the rest. */
-private const val MAX_WALL_PHOTOS = 12
+/**
+ * How much of the wall is drawn before the user asks for the rest. This is a preview, **not a cap**:
+ * Insights is the one place to look back at a whole period at once, so truncating it would take the
+ * page's purpose away. "Show all" reaches every photo in the period (see [photoWallRows]), and the
+ * rows are lazy items so the ones off screen cost nothing.
+ */
+private const val WALL_PREVIEW_PHOTOS = 12
+
+/** Gap between the page's cards. Set per item, because the wall's own rows must sit flush. */
+private val CARD_GAP = 16.dp
+
+/** Matches `CardDefaults.shape` (`shapes.medium`), so a sliced card still looks like a card. */
+private val WALL_CORNER = 12.dp
 
 private const val MINUTES_PER_HOUR = 60
 private const val HOURS_PER_DAY = 24
@@ -118,34 +138,54 @@ fun InsightsScreen(
     onPhotoClick: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // Nothing is drawn before the first real state: painting the empty card for that frame
-        // would greet every returning user with 「這裡還空著」.
-        if (!state.isLoaded) return@Column
-        if (!state.result.hasAnyRecords) {
-            NothingYetCard()
-            return@Column
-        }
-        PeriodHeader(
-            period = state.period,
-            range = state.result.range,
-            canGoForward = !state.result.isCurrentPeriod,
-            onSelectPeriod = onSelectPeriod,
-            onShiftPeriod = onShiftPeriod,
-        )
-        RhythmCard(state.period, state.result.calendarDays, state.result.summary, onDayClick)
-        // Seven rows read as a shape; thirty-one read as a barcode. The chart is a week thing.
-        if (state.period == Period.WEEK) RhythmChartCard(state.result.bands, onDayClick)
-        StatsCard(state.result.stats)
-        PhotoWallCard(state.result.photoFileNames, photoModel, onPhotoClick)
-        LocationsCard(state.result.locations)
+    // Nothing is drawn before the first real state: painting the empty card for that frame
+    // would greet every returning user with 「這裡還空著」.
+    if (!state.isLoaded) return
+    if (!state.result.hasAnyRecords) {
+        Box(modifier.fillMaxWidth().padding(16.dp)) { NothingYetCard() }
+        return
     }
+    // Kept outside the LazyColumn: an item's own state dies when it scrolls out of view.
+    var photosExpanded by rememberSaveable { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(16.dp),
+    ) {
+        item {
+            Spaced {
+                PeriodHeader(
+                    period = state.period,
+                    range = state.result.range,
+                    canGoForward = !state.result.isCurrentPeriod,
+                    onSelectPeriod = onSelectPeriod,
+                    onShiftPeriod = onShiftPeriod,
+                )
+            }
+        }
+        item {
+            Spaced { RhythmCard(state.period, state.result.calendarDays, state.result.summary, onDayClick) }
+        }
+        // Seven rows read as a shape; thirty-one read as a barcode. The chart is a week thing.
+        if (state.period == Period.WEEK) {
+            item { Spaced { RhythmChartCard(state.result.bands, onDayClick) } }
+        }
+        item { Spaced { StatsCard(state.result.stats) } }
+        photoWall(
+            fileNames = state.result.photoFileNames,
+            expanded = photosExpanded,
+            onToggleExpanded = { photosExpanded = !photosExpanded },
+            photoModel = photoModel,
+            onPhotoClick = onPhotoClick,
+        )
+        item { LocationsCard(state.result.locations) }
+    }
+}
+
+/** A card plus the gap that follows it. The wall sets its own spacing, so this is per item. */
+@Composable
+private fun Spaced(content: @Composable () -> Unit) {
+    Box(Modifier.padding(bottom = CARD_GAP)) { content() }
 }
 
 /**
@@ -411,36 +451,101 @@ private fun StatsCard(stats: InsightsStats) {
     }
 }
 
-@Composable
-private fun PhotoWallCard(
+/**
+ * The wall, as a run of lazy items rather than one card: a period can hold hundreds of photos, and
+ * only the rows on screen should be composed (or ask Coil for an image). The pieces carry the card's
+ * corners between them — rounded at the two ends, square in the middle — so the seam does not show.
+ */
+private fun LazyListScope.photoWall(
     fileNames: List<String>,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
     photoModel: (String) -> Any?,
-    onClick: (List<String>, Int) -> Unit,
+    onPhotoClick: (List<String>, Int) -> Unit,
 ) {
-    SectionCard(stringResource(Res.string.insights_card_photos)) {
-        if (fileNames.isEmpty()) {
-            Text(stringResource(Res.string.insights_empty_photos), style = MaterialTheme.typography.bodyMedium)
-            return@SectionCard
+    if (fileNames.isEmpty()) {
+        item {
+            Spaced {
+                SectionCard(stringResource(Res.string.insights_card_photos)) {
+                    Text(
+                        text = stringResource(Res.string.insights_empty_photos),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
         }
-        // Only a bounded prefix is composed; tapping still opens the whole period in the viewer.
-        fileNames.take(MAX_WALL_PHOTOS).withIndex().chunked(PHOTO_COLUMNS).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                row.forEach { (index, name) ->
+        return
+    }
+    val rows = photoWallRows(
+        fileNames = fileNames,
+        expanded = expanded,
+        columns = PHOTO_COLUMNS,
+        previewCount = WALL_PREVIEW_PHOTOS,
+    )
+    item {
+        WallPiece(shape = RoundedCornerShape(topStart = WALL_CORNER, topEnd = WALL_CORNER)) {
+            Text(
+                text = stringResource(Res.string.insights_card_photos),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 16.dp, bottom = 12.dp),
+            )
+        }
+    }
+    items(rows, key = { row -> "wall-${row.first().index}" }) { row ->
+        WallPiece(shape = RectangleShape) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                row.forEach { photo ->
                     PhotoThumbnail(
-                        model = photoModel(name),
+                        model = photoModel(photo.fileName),
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { onClick(fileNames, index) },
+                            .clickable { onPhotoClick(fileNames, photo.index) },
                     )
                 }
                 repeat(PHOTO_COLUMNS - row.size) { Box(Modifier.weight(1f)) }
             }
         }
-        Text(
-            text = stringResource(Res.string.insights_photo_count, fileNames.size),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+    }
+    item {
+        WallPiece(shape = RoundedCornerShape(bottomStart = WALL_CORNER, bottomEnd = WALL_CORNER)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.insights_photo_count, fileNames.size),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (fileNames.size > WALL_PREVIEW_PHOTOS) {
+                    TextButton(onClick = onToggleExpanded) {
+                        Text(
+                            if (expanded) {
+                                stringResource(Res.string.insights_photos_collapse)
+                            } else {
+                                stringResource(Res.string.insights_photos_show_all, fileNames.size)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+    item { Spacer(Modifier.height(CARD_GAP)) }
+}
+
+/**
+ * One slice of the wall's card. [shape] rounds only the ends of the run; every slice shares the card
+ * colour and sits flush against its neighbours, so the run reads as a single card.
+ */
+@Composable
+private fun WallPiece(shape: Shape, content: @Composable () -> Unit) {
+    Card(shape = shape, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 16.dp)) { content() }
     }
 }
 

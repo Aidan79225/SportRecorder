@@ -5,7 +5,9 @@
   B7, B8 implemented 2026-09-27** on `claude/insight-page-improvements-2fe29z` — see
   `2026-09-27-insights-places-map-design.md` (B3 → a map) and
   `2026-09-27-insights-one-period-eating-days-design.md` (B4/B6/B7/B8 + eating-day bucketing).
-  **B2 / B5 remain open.**
+  **B5 implemented 2026-10-03** (`LazyColumn` + an expandable photo wall; the owner decided the
+  wall must reach the whole period, so A7's 12-photo cap became a preview with a 「顯示全部」 control).
+  **B2 remains open.**
 - **Supersedes nothing** — builds on `docs/superpowers/specs/2026-06-16-insights-reflection-design.md`
 
 ## Goal
@@ -178,7 +180,8 @@ the Android fakes) and gains forward-clamp / initial-anchor cases.
 | **B3** ✅ *superseded* | Turn coordinates into **place names** (`expect/actual` geocoder) or a small static map | Platform APIs on both targets, and a privacy question (whether any lookup leaves the device). | Do the on-device geocoder; skip the map SDK. If it can’t stay on-device, drop the card instead of shipping coordinates. |
 |  | ↳ **2026-09-27:** the owner chose a **map**. The card now draws OSM tiles with one marker per place (`2026-09-27-insights-places-map-design.md`), which settles the privacy question explicitly rather than avoiding it. | | |
 | **B4** ✅ *done 09-27* | **Tap a calendar day → that day’s meals** | The biggest content win, but it needs navigation design (filtered Record tab vs. a sheet) beyond the Insights feature. | Do it next. It is what turns a pattern back into a moment, and closes the loop to Re-engage. |
-| **B5** | Rewrite the screen as a `LazyColumn` with a fully lazy photo wall | Structural refactor of the whole screen; A7 caps the cost instead. | Do it when the wall becomes a real browsing surface (i.e. alongside B4). |
+| **B5** ✅ *done 10-03* | Rewrite the screen as a `LazyColumn` with a fully lazy photo wall | Structural refactor of the whole screen; A7 caps the cost instead. | Do it when the wall becomes a real browsing surface (i.e. alongside B4). |
+|  | ↳ **2026-10-03:** done once the wall became exactly that. The owner overruled A7's cap: Insights is the one place to review a whole period at once, so truncating it removes the page's purpose. 12 is now a **preview**, and 「顯示全部」 reaches every photo — which is what made the lazy rewrite necessary rather than optional. | | |
 | **B6** ✅ *done 09-27* | Drop 「22:00 後有紀錄的天數」, or make the hour user-set | Even re-worded, it is the one metric with an implicit norm baked in. | Make the hour a setting, or drop it. A fixed 22:00 is someone else’s opinion of a late meal. |
 | **B7** ✅ *done 09-27 (Week only)* | A **rhythm chart** — first/last meal per day as bands across the period | New drawing code (hand-rolled Canvas; no chart lib in CMP), and it is the page’s next big feature, not a fix. | Do it. A band chart says 「這是你的模式」 better than any four numbers can. |
 | **B8** ✅ *done 09-27* | Make Week/Month drive the calendar too (one period control) | Changes the card’s information model; A6 disambiguates the current split instead. | Only alongside B4/B7, when the page is re-laid-out anyway. |
