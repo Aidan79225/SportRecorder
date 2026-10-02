@@ -49,6 +49,7 @@ import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_date_range_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_delete_24
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_camera_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_library_24
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
@@ -182,7 +183,7 @@ fun EatTimeEditorSheet(
         }
         // TAKE PHOTO (camera) row
         HeaderRow(
-            icon = Res.drawable.ic_baseline_add_24,
+            icon = Res.drawable.ic_baseline_photo_camera_24,
             title = stringResource(Res.string.photo_add),
             content = "",
             actionIcon = Res.drawable.ic_baseline_add_24,
@@ -193,7 +194,7 @@ fun EatTimeEditorSheet(
             icon = Res.drawable.ic_baseline_photo_library_24,
             title = stringResource(Res.string.photo_select),
             content = "",
-            actionIcon = Res.drawable.ic_baseline_photo_library_24,
+            actionIcon = Res.drawable.ic_baseline_add_24,
             onActionClick = onSelectPhoto,
         )
         // EXISTING photos (edit mode)
