@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -213,18 +214,19 @@ fun AppRoot() {
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
 
-                // Hold the pending capture file across the camera launch.
-                var captureFile by remember { mutableStateOf<java.io.File?>(null) }
+                // Hold the pending capture path across the camera launch. Saveable: the camera
+                // often recreates this activity, and a plain remember would drop the result.
+                var capturePath by rememberSaveable { mutableStateOf<String?>(null) }
                 val cameraLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.TakePicture()
                 ) { success ->
-                    val file = captureFile
-                    if (success && file != null) {
-                        vm.addCapturedPhoto(file.absolutePath)
-                    } else {
-                        file?.delete()
+                    val path = capturePath
+                    if (success && path != null) {
+                        vm.addCapturedPhoto(path)
+                    } else if (path != null) {
+                        java.io.File(path).delete()
                     }
-                    captureFile = null
+                    capturePath = null
                 }
                 val photoPickerLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.PickVisualMedia()
@@ -281,7 +283,7 @@ fun AppRoot() {
                     onNoteChange = vm::setNote,
                     onAddPhoto = {
                         val (file, uri) = PhotoStorage.newCaptureTarget(context)
-                        captureFile = file
+                        capturePath = file.absolutePath
                         cameraLauncher.launch(uri)
                     },
                     onSelectPhoto = {
