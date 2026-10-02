@@ -1,5 +1,4 @@
-New in 0.9.0
-• Insights map: places that sit close together now merge into one numbered marker, so the map stays readable.
-• Tap the places map to open it full screen. Pinch or double-tap to zoom in, and drag to look around.
-• The add/edit record sheet now opens fully, so the Create button is on screen without scrolling.
-• Pop-up sheets have a refreshed look.
+New in 0.10.0
+• The Home screen greets you with a gentle line that changes with the moment, including a few warm hand-picked quotes.
+• Fixed: photos taken with the camera while adding a meal now show up and are saved.
+• Clearer icons when adding photos to a meal.
