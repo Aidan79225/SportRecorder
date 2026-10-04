@@ -2,12 +2,14 @@ package com.crazystudio.sportrecorder.ui.backup
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.crazystudio.sportrecorder.backup.AutoBackupScheduler
 import com.crazystudio.sportrecorder.backup.BackupAuth
 import com.crazystudio.sportrecorder.backup.BackupJobKind
 import com.crazystudio.sportrecorder.backup.BackupJobRunner
 import com.crazystudio.sportrecorder.backup.BackupJobState
 import com.crazystudio.sportrecorder.backup.BackupOutcome
 import com.crazystudio.sportrecorder.backup.BackupService
+import com.crazystudio.sportrecorder.domain.repository.AutoBackupPreferencesRepository
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,8 @@ class BackupViewModel(
     private val backupService: BackupService,
     backupAuth: BackupAuth,
     observeEatRecords: ObserveEatRecordsUseCase,
+    private val autoBackupPreferences: AutoBackupPreferencesRepository,
+    private val autoBackupScheduler: AutoBackupScheduler,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BackupUiState())
@@ -35,6 +39,11 @@ class BackupViewModel(
     private var listGeneration = 0
 
     init {
+        viewModelScope.launch {
+            autoBackupPreferences.prefs.collect { prefs ->
+                _uiState.update { it.copy(autoBackup = prefs) }
+            }
+        }
         viewModelScope.launch {
             backupAuth.account.collect { account ->
                 // Snapshots belong to the account that listed them: drop them whenever the
@@ -118,6 +127,17 @@ class BackupViewModel(
 
     /** Surface a failure that originated outside a VM operation (e.g. sign-in in the :app layer). */
     fun reportFailure() = _uiState.update { it.copy(message = BackupMessage.Failed) }
+
+    /**
+     * Turns the daily background backup on or off. The preference is what the Settings screen
+     * reads back; arming the scheduler is what actually makes it happen, so the two move together.
+     */
+    fun setAutoBackupEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            autoBackupPreferences.setEnabled(enabled)
+            if (enabled) autoBackupScheduler.schedule() else autoBackupScheduler.cancel()
+        }
+    }
 }
 
 private fun BackupJobState.Finished.toMessage(): BackupMessage = when (outcome) {

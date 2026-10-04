@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.ui.backup
 
+import com.crazystudio.sportrecorder.backup.AutoBackupPrefs
 import com.crazystudio.sportrecorder.backup.BackupAccount
 import com.crazystudio.sportrecorder.backup.BackupJobState
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
@@ -16,6 +17,7 @@ data class BackupUiState(
     /** Meals currently on this device — the restore dialog says how many get a safety snapshot. */
     val localMealCount: Int = 0,
     val message: BackupMessage? = null,
+    val autoBackup: AutoBackupPrefs = AutoBackupPrefs(),
 ) {
     val isSignedIn: Boolean get() = account != null
     val isBusy: Boolean get() = job is BackupJobState.Running || isLoadingSnapshots

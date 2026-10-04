@@ -189,6 +189,12 @@
     <string name="backup_now">Back up now</string>
     <string name="backup_last_backed_up">Last backed up %1$s</string>
     <string name="backup_never">Not backed up yet</string>
+    <string name="backup_auto_title">Automatic backup</string>
+    <string name="backup_auto_desc">Backs up once a day, while charging on Wi-Fi</string>
+    <string name="backup_auto_last">Last automatic backup %1$s</string>
+    <string name="backup_auto_never">No automatic backup yet</string>
+    <string name="backup_auto_failed">The last automatic backup didn't go through (%1$s). It will try again.</string>
+    <string name="backup_auto_needs_sign_in">Sign in again to keep backing up automatically</string>
     <string name="backup_restore_heading">Restore from a backup</string>
     <string name="backup_restore_empty">No backups yet</string>
     <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>

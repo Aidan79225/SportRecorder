@@ -54,6 +54,7 @@ class BackupScreenTest {
                     onSignIn = {}, onSignOut = {}, onBackup = {},
                     onRestore = { restores.add(it) },
                     onCancel = { cancels++ },
+                    onToggleAutoBackup = {},
                     onConsumeMessage = { consumed++ },
                     onBack = {},
                 )

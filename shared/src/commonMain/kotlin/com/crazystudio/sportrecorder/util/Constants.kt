@@ -6,6 +6,11 @@ object Constants {
 
     // Reminder preferences (stored in the same DataStore as the diet settings).
     const val REMINDER_WINDOW_CLOSING_ENABLED = "reminder_window_closing_enabled"
+
+    const val AUTO_BACKUP_ENABLED = "auto_backup_enabled"
+    const val AUTO_BACKUP_LAST_SUCCESS_AT = "auto_backup_last_success_at"
+    const val AUTO_BACKUP_LAST_FAILURE_AT = "auto_backup_last_failure_at"
+    const val AUTO_BACKUP_LAST_FAILURE_NEEDS_SIGN_IN = "auto_backup_last_failure_needs_sign_in"
     const val REMINDER_FAST_COMPLETE_ENABLED = "reminder_fast_complete_enabled"
     const val REMINDER_LEAD_MINUTES = "reminder_lead_minutes"
     const val REMINDER_QUIET_ENABLED = "reminder_quiet_enabled"
