@@ -36,6 +36,8 @@
     <string name="insights_empty_photos">這段期間沒有餐點照片</string>
     <string name="insights_photos_show_all">顯示全部 %1$d 張</string>
     <string name="insights_photos_collapse">收起</string>
+    <string name="insights_on_this_day_title">去年的今天</string>
+    <string name="insights_on_this_day_hint">看看那天吃了什麼</string>
     <string name="insights_empty_locations">這段期間沒有地點紀錄</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d 個地點 · %2$d 餐記了位置</string>
