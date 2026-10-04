@@ -41,8 +41,8 @@ Consequences, stated rather than hidden:
   value (23:30 and 00:30 average to 24:00, i.e. midnight, not 12:00) and the UI wraps it to the
   clock for display; the sheet marks such a meal 「隔天 00:30」.
 - Changing the fasting type re-buckets the past (the merge limit depends on it). That was already
-  true of the calendar's colours (B2); it is now also true of which day a meal lands on. B2 stays
-  open and unchanged in scope.
+  true of the calendar's colours (B2); it is now also true of which day a meal lands on. (B2 was
+  later dropped, 2026-10-04: re-bucketing the past is accepted behaviour.)
 
 ### One period control (B8)
 

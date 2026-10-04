@@ -7,7 +7,7 @@
   `2026-09-27-insights-one-period-eating-days-design.md` (B4/B6/B7/B8 + eating-day bucketing).
   **B5 implemented 2026-10-03** (`LazyColumn` + an expandable photo wall; the owner decided the
   wall must reach the whole period, so A7's 12-photo cap became a preview with a 「顯示全部」 control).
-  **B2 remains open.**
+  **B2 dropped 2026-10-04** (owner's decision; see the B2 row).
 - **Supersedes nothing** — builds on `docs/superpowers/specs/2026-06-16-insights-reflection-design.md`
 
 ## Goal
@@ -176,7 +176,7 @@ the Android fakes) and gains forward-clamp / initial-anchor cases.
 | # | Idea | Why it needs a decision | Recommendation |
 |---|---|---|---|
 | **B1** ✅ *done* | **Remove the streak entirely**, leaving only 「這個月 N 天在你的視窗內」 | CLAUDE.md names streaks as borderline-by-design; A3 only softens it. Deleting a shipped feature is the owner’s call. | **Do it.** It is the last pressure mechanic on the page, and the month summary already says the same thing without a chain that can break. |
-| **B2** | Per-day **historical fasting targets** | Only the current `eatingHours` is stored; every past day is re-scored whenever the goal changes. Needs a stored goal history + migration. | Worth doing — until then the calendar quietly rewrites the past. Medium effort, no UI. |
+| **B2** ✖ *dropped 10-04* | Per-day **historical fasting targets** | Only the current `eatingHours` is stored; every past day is re-scored whenever the goal changes. Needs a stored goal history + migration. | ~~Worth doing~~ **Dropped by the owner (2026-10-04).** Past days keep being re-scored against the current goal; that is a known, accepted behaviour, not a pending fix. |
 | **B3** ✅ *superseded* | Turn coordinates into **place names** (`expect/actual` geocoder) or a small static map | Platform APIs on both targets, and a privacy question (whether any lookup leaves the device). | Do the on-device geocoder; skip the map SDK. If it can’t stay on-device, drop the card instead of shipping coordinates. |
 |  | ↳ **2026-09-27:** the owner chose a **map**. The card now draws OSM tiles with one marker per place (`2026-09-27-insights-places-map-design.md`), which settles the privacy question explicitly rather than avoiding it. | | |
 | **B4** ✅ *done 09-27* | **Tap a calendar day → that day’s meals** | The biggest content win, but it needs navigation design (filtered Record tab vs. a sheet) beyond the Insights feature. | Do it next. It is what turns a pattern back into a moment, and closes the loop to Re-engage. |

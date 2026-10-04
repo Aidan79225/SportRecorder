@@ -1,6 +1,6 @@
 # 開發現況總覽 · Development status
 
-> 最後整理:2026-09-21(對應 `master` @ `360ca2a`,PR #57 合併後)
+> 最後整理:2026-10-04(對應 `master` @ `2c2a70b`,PR #73 合併後)
 >
 > 這份文件是**目前開發資訊的索引**:專案長什麼樣、做到哪裡、下一步是什麼、怎麼建置與發布。
 > 設計文件(spec)與實作計畫(plan)仍住在 `docs/superpowers/`;初衷與設計原則見 `README.md` 與 `CLAUDE.md`。
@@ -10,7 +10,7 @@
 | 項目 | 現況 |
 | --- | --- |
 | App | SportRecorder(`com.crazystudio.sportrecorder`)— 從斷食出發的飲食紀錄 app |
-| 版本 | `versionName 0.6.2` / `versionCode 20`(最新 release tag:`0.6.2`) |
+| 版本 | `versionName 0.10.0` / `versionCode 25`(最新 release tag:`0.10.0`,2026-10-02) |
 | 平台 | Android 出貨中;iOS 尚未建立 host app(`:shared` 已可編到 iOS) |
 | Modules | `:app`(Android host + platform actuals)、`:shared`(KMP:domain / data / UI / VM) |
 | SDK | `minSdk 24`、`targetSdk 36`、`compileSdk 36`、Java 21 |
@@ -25,12 +25,12 @@
 **`:shared/commonMain`(平台無關,絕大多數程式碼在這裡)**
 
 - `domain/` — 純邏輯:`diet/DietWindow`、`insights/InsightsAggregator`、`reminder/ReminderPlanner`
-  + `model/`、`repository/`(介面)、`usecase/`(9 個)
+  、`diet/HomeTagline`(首頁標語挑選)+ `model/`、`repository/`(介面)、`usecase/`(9 個)
 - `data/` — `repository/`(Room + DataStore 實作)、`mapper/`;`dao/`、`entity/`、`database/`
 - `backup/` — `BackupService`、`BackupDocument`(含 `SCHEMA_VERSION`)、`BackupMappers`、
   `BackupStore`/`BackupAuth` 介面、`BackupJobRunner`、`BackupProgress`
 - `ui/` — Compose Multiplatform 畫面:`diet/`(home、record、editor、select、create/fasting)、
-  `insights/`、`settings/`、`theme/`、`component/`;**7 個 ViewModel 全部在 commonMain**
+  `insights/`、`settings/`、`backup/`、`theme/`、`component/`;**9 個 ViewModel 全部在 commonMain**
 - `platform/` — `expect`/介面形式的平台抽象(`LocationProvider`、`PhotoImporter`;照片檔案存取的介面在 `data/`)
 
 **`:app`(Android 專屬,只剩薄薄一層)**
@@ -57,25 +57,29 @@
 | KMP 遷移 Phase 1–5 | ✅ | 1 domain → 2 Koin → 3a DataStore / 3b Room → 4 Compose Multiplatform UI → 5 use case + ViewModel |
 | Google Drive 備份 Phase 1(commonMain 引擎) | ✅ PR #56 | `BackupService` backup/restore/listSnapshots,以 fake 做 TDD |
 | Google Drive 備份 Phase 2(Google actuals) | ✅ PR #57 | `GoogleBackupAuth`(drive.appdata)、`GoogleDriveBackupStore`(Drive v3 REST) |
+| Google Drive 備份 Phase 3(設定頁「備份與還原」) | ✅ PR #58,0.7.0 上架 | 之後 #62 修登入無反應、#63 修逾時與錯誤診斷 |
+| 備份優化(issue #64) | ✅ PR #67,0.8.0 | 前景服務、進度與取消、照片並行、Drive 分頁、還原前安全快照 |
+| 上架前外部待辦(issue #65) | ✅ 2026-10 關閉 | Play 資料安全表單、前景服務宣告、OAuth sensitive scope 驗證 |
+| 回顧改善 A + B1、B3–B8 | ✅ PR #60 / #66 / #70 / #73 | 地點地圖(含合併與全螢幕縮放)、單一期間控制、日曆點擊 sheet、週節奏圖、可展開照片牆(`LazyColumn`);**B2 已放棄** |
+| 測試覆蓋補洞、E2E flow 測試 | ✅ PR #61 / #68 | Room migration 與契約、編輯器 UI、照片管線、提醒 |
+| Material 3 bottom-sheet navigator | ✅ PR #69 | 移除 Material 2 依賴 |
+| 首頁動態標語 | ✅ PR #71,0.10.0 | 依時段與進度輪替、含名言出處 |
+| 編輯器拍照跨 activity 重建保留 | ✅ PR #72,0.10.0 | |
 
 ## 4. 進行中 / 下一步
 
-1. **Google Drive 備份 Phase 3 — PR #58 `claude/drive-backup-phase3`(open,尚未合併)**
-   內容:`BackupViewModel`(commonMain)+ Koin wiring + Settings「備份與還原」畫面與 `BackupRoute`。
-   CI 在 `b5ff100` 上跑過且**全綠**(`build` + `ios-shared`,run #125),base 也沒有衝突 —
-   技術面已經可以合併。真正卡住的是需要人的兩件事:
-   - OAuth consent screen 設定與審核(`drive.appdata` 屬 sensitive scope,有審核前置時間)
-   - 實機端到端測試(PR 內附 10 項 checklist:登入 → 備份 → 重裝 → 還原)
-2. **備份引擎已知取捨(Phase 3 PR 明列,尚未處理)**
-   - 自訂斷食類型備份上限 ≤ 10 筆
-   - `sizeBytes` 只存在 manifest,UI 不顯示
-3. **iOS**:host app(Xcode 專案 / iOS Koin graph / DataStore 建立 / 通知)尚未開始;
-   目前僅由 CI 的 `ios-shared` job 以 `:shared:iosSimulatorArm64Test` 守住可編譯性。
-4. **文件狀態過期**:部分 spec 的 `Status` 沒跟上實作(見第 6 節標註),下次動到相關功能時順手更新。
-5. **備份優化(issue #64)— 分支 `claude/backup-optimization-64`**
-   `BackupJobRunner`(commonMain,app 等級 scope)+ Android `BackupForegroundService` 讓備份離開頁面、
-   關螢幕也會跑完;進度條與通知;照片並行傳輸、還原跳過本機已有照片;Drive 列表分頁;
-   還原前先自動備份一份安全快照。spec:`2026-09-27-backup-optimization-design.md`。
+目前**沒有進行中的分支或 open PR**,issue 也已全部關閉。待辦清單:
+
+1. **iOS**:host app(Xcode 專案 / iOS Koin graph / DataStore 建立 / 通知)尚未開始;
+   目前僅由 CI 的 `ios-shared` job 以 `:shared:iosSimulatorArm64Test` 守住可編譯性。需要 macOS。
+2. **備份引擎已知取捨**(PR #58 當時列出,之後未再處理):自訂斷食類型備份上限 ≤ 10 筆;
+   `sizeBytes` 只存在 manifest,UI 不顯示。
+3. **文件狀態過期**:部分舊 spec 的 `Status` 沒跟上實作(見第 6 節標註),下次動到相關功能時順手更新。
+
+**已放棄(不再列為待辦)**
+
+- **B2 每日歷史斷食目標**(2026-10-04,owner 決定):只存目前的目標,改目標時過去的日子會用新目標
+  重新判斷、重新分組。這是已知且接受的行為。
 
 ## 5. 建置、測試與發布
 
@@ -86,7 +90,7 @@
 
 - `JAVA_HOME` 需指向 Android Studio JBR(本機 PATH 上沒有 Java)。
 - 動到 `commonMain` 時,另外需要 iOS 驗證:`./gradlew :shared:iosSimulatorArm64Test`(需 macOS;CI 有 `macos-latest` job)。
-- 測試現況:50 個測試檔;純邏輯計算機(`DietWindow`、`InsightsAggregator`、`ReminderPlanner`)與
+- 測試現況:58 個測試檔(其中 13 個 instrumented);純邏輯計算機(`DietWindow`、`InsightsAggregator`、`ReminderPlanner`)與
   備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`;
   instrumented tests 現在也涵蓋 Room migration 與 repository 契約、餐點編輯器 UI、照片管線、
   提醒(AlarmManager slot 與 receiver)。
@@ -107,7 +111,7 @@
   簽章金鑰與 Play service account 走 repo secrets,repo 內不放 keystore(`debug.keystore` 除外)。
 
 > 註:tag `0.12.0` 是早期(2026-06-10)版號規則不同時留下的孤兒 tag,指向舊 commit;
-> 目前的版號線是 `0.0.x → 0.6.2`。
+> 目前的版號線是 `0.0.x → 0.10.0`。
 
 ## 6. 文件索引(`docs/superpowers/`)
 
@@ -137,17 +141,17 @@
 | 06-20 | KMP Phase 1(shared domain) | ✓ | — | 已完成(spec Status 仍寫 implementing) |
 | 06-20 | KMP Phase 2(Koin) | ✓ | — | 已完成 |
 | 06-20 | KMP Phase 3a(DataStore) | ✓ | — | 已完成 |
-| 06-23 | Google Drive 備份 | ✓ | ✓ | Phase 1–2 已合併;Phase 3 在 PR #58 |
-| 09-21 | 回顧 / Insights 改善(bucket A + B1) | ✓ | ✓(B4/B6/B7) | A + B1 已合併(PR #60);B4/B6/B7 已規劃未實作 |
+| 06-23 | Google Drive 備份 | ✓ | ✓ | 已完成(PR #56–#58,0.7.0 上架) |
+| 09-21 | 回顧 / Insights 改善(bucket A + B1) | ✓ | ✓(B4/B6/B7) | A + B1(PR #60)、B3–B8 已完成(#66 / #70 / #73);B2 已放棄 |
 | 09-21 | E2E / flow 測試套件 | ✓ | — | 已完成(PR #61) |
-| 09-27 | 回顧地點卡改為地圖(取代 B3) | ✓ | — | 實作中(`claude/insight-page-improvements-2fe29z`) |
-| 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 實作中(同一分支) |
-| 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 實作中(`claude/backup-optimization-64`) |
+| 09-27 | 回顧地點卡改為地圖(取代 B3) | ✓ | — | 已完成(PR #66) |
+| 09-27 | 回顧單一期間控制、進食日分組、日曆點擊 sheet、週節奏圖(B4/B6/B7/B8) | ✓ | — | 已完成(PR #66) |
+| 09-27 | 備份優化(進度、前景服務、並行、分頁、還原安全快照) | ✓ | ✓ | 已完成(PR #67) |
 | 09-27 | 備份 instrumented tests(本機) | ✓ | ✓ | 已完成(同 PR #67) |
 | 09-28 | 測試覆蓋缺口(migration、Room 契約、編輯器 UI、照片管線、提醒、備份小洞) | ✓ | ✓ | 已完成 |
 | 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 已完成(PR #69) |
-| 09-28 | 回顧地圖:marker 合併 + 全螢幕縮放 | ✓ | ✓ | PR #70 |
-| 09-29 | Home 動態標語(依時段 / 進度輪替) | ✓ | — | 實作中(`claude/busy-mccarthy-t7xloj`) |
+| 09-28 | 回顧地圖:marker 合併 + 全螢幕縮放 | ✓ | ✓ | 已完成(PR #70) |
+| 09-29 | Home 動態標語(依時段 / 進度輪替) | ✓ | — | 已完成(PR #71) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。
