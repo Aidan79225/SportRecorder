@@ -10,12 +10,19 @@ import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.minus
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.TimeUnit
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InsightsViewModelTest {
@@ -135,6 +142,43 @@ class InsightsViewModelTest {
             assertEquals(7, lastWeek.result.range.dayStarts.size)
             assertTrue(lastWeek.result.range.endInclusive < thisWeek.result.range.start)
             assertFalse(lastWeek.result.isCurrentPeriod)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** Local midnight a year before [now], in the zone the VM itself uses. */
+    private fun oneYearAgo(now: Long): Long {
+        val zone = TimeZone.currentSystemDefault()
+        return Instant.fromEpochMilliseconds(now).toLocalDateTime(zone).date
+            .minus(1, DateTimeUnit.YEAR)
+            .atStartOfDayIn(zone)
+            .toEpochMilliseconds()
+    }
+
+    @Test
+    fun onThisDay_followsTodayAndNotTheSelectedPeriod() = runTest(mainRule.testDispatcher.scheduler) {
+        val anniversary = oneYearAgo(fixedNow)
+        val repo = FakeEatRecordRepository(initial = listOf(record(1, anniversary + h(12))))
+        val vm = viewModel(repo)
+
+        vm.uiState.test {
+            awaitItem()
+            assertEquals(anniversary, awaitItem().onThisDay?.dayStart)
+            // Paging the period must not move or clear the memory: it is a fixed day.
+            vm.shiftPeriod(-1)
+            assertEquals(anniversary, awaitItem().onThisDay?.dayStart)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun onThisDay_isNullWhenLastYearHasNothing() = runTest(mainRule.testDispatcher.scheduler) {
+        val repo = FakeEatRecordRepository(initial = listOf(record(1, fixedNow - d(2))))
+        val vm = viewModel(repo)
+
+        vm.uiState.test {
+            awaitItem()
+            assertNull(awaitItem().onThisDay)
             cancelAndIgnoreRemainingEvents()
         }
     }

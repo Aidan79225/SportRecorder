@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.ui.insights
 
 import com.crazystudio.sportrecorder.domain.insights.InsightsResult
+import com.crazystudio.sportrecorder.domain.insights.OnThisDayMemory
 import com.crazystudio.sportrecorder.domain.insights.Period
 
 /**
@@ -14,4 +15,6 @@ data class InsightsUiState(
     /** A day inside the shown period (epoch millis); `InsightsRange` turns it into the days shown. */
     val anchor: Long = 0L,
     val result: InsightsResult = InsightsResult.EMPTY,
+    /** A year ago today, or null when that day holds nothing. Not scoped by [period]. */
+    val onThisDay: OnThisDayMemory? = null,
 )

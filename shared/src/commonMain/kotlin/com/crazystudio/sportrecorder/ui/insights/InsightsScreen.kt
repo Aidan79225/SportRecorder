@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.domain.insights.DayBand
 import com.crazystudio.sportrecorder.domain.insights.DayCell
@@ -47,6 +48,7 @@ import com.crazystudio.sportrecorder.domain.insights.DayRange
 import com.crazystudio.sportrecorder.domain.insights.DayWindowState
 import com.crazystudio.sportrecorder.domain.insights.InsightsStats
 import com.crazystudio.sportrecorder.domain.insights.LocationCount
+import com.crazystudio.sportrecorder.domain.insights.OnThisDayMemory
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.insights.PeriodSummary
 import com.crazystudio.sportrecorder.shared.resources.Res
@@ -71,6 +73,8 @@ import com.crazystudio.sportrecorder.shared.resources.insights_legend_none
 import com.crazystudio.sportrecorder.shared.resources.insights_legend_within
 import com.crazystudio.sportrecorder.shared.resources.insights_map_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_next_period
+import com.crazystudio.sportrecorder.shared.resources.insights_on_this_day_hint
+import com.crazystudio.sportrecorder.shared.resources.insights_on_this_day_title
 import com.crazystudio.sportrecorder.shared.resources.insights_period_month
 import com.crazystudio.sportrecorder.shared.resources.insights_period_range
 import com.crazystudio.sportrecorder.shared.resources.insights_period_summary
@@ -118,6 +122,9 @@ private val WALL_CORNER = 12.dp
 private const val MINUTES_PER_HOUR = 60
 private const val HOURS_PER_DAY = 24
 
+/** 「去年的今天」 thumbnail: big enough to recognise the meal, small enough to stay a footnote. */
+private val MEMORY_THUMB = 56.dp
+
 /** Days of the current month that have not happened yet are drawn, but quietly. */
 private const val FUTURE_DAY_ALPHA = 0.4f
 
@@ -152,6 +159,11 @@ fun InsightsScreen(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(16.dp),
     ) {
+        // Above the period control on purpose: this is one fixed day, not part of the period
+        // that scopes every card below. Absent entirely when that day holds nothing.
+        state.onThisDay?.let { memory ->
+            item { Spaced { OnThisDayCard(memory, photoModel, onDayClick) } }
+        }
         item {
             Spaced {
                 PeriodHeader(
@@ -201,6 +213,47 @@ private fun NothingYetCard() {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/**
+ * 「去年的今天」. The day's own photo and note if it kept any, and the whole day when tapped —
+ * it reuses [onDayClick], so this card needed no new navigation. An invitation to look back,
+ * never a comparison between then and now.
+ */
+@Composable
+private fun OnThisDayCard(
+    memory: OnThisDayMemory,
+    photoModel: (String) -> Any?,
+    onDayClick: (Long) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onDayClick(memory.dayStart) },
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            memory.photoFileName?.let { fileName ->
+                PhotoThumbnail(model = photoModel(fileName), modifier = Modifier.size(MEMORY_THUMB))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(Res.string.insights_on_this_day_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = memory.note ?: stringResource(Res.string.insights_on_this_day_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

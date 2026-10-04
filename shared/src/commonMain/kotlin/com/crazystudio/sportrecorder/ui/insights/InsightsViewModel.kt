@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
 import com.crazystudio.sportrecorder.domain.insights.InsightsRange
+import com.crazystudio.sportrecorder.domain.insights.OnThisDay
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
@@ -48,6 +49,7 @@ class InsightsViewModel(
                 period = selectedPeriod,
                 anchor = selectedAnchor,
                 result = InsightsAggregator.compute(records, settings, now(), selectedPeriod, selectedAnchor),
+                onThisDay = OnThisDay.find(records, settings, now()),
             )
         }.stateIn(
             viewModelScope,
