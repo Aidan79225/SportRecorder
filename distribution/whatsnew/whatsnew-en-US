@@ -1,4 +1,6 @@
-New in 0.10.0
-• The Home screen greets you with a gentle line that changes with the moment, including a few warm hand-picked quotes.
-• Fixed: photos taken with the camera while adding a meal now show up and are saved.
-• Clearer icons when adding photos to a meal.
+New in 0.11.0
+• Automatic backup: turn it on in Backup & restore, and your records back up daily while charging on Wi-Fi.
+• Log a meal in one tap: add the "Log a meal" tile to your quick settings and record the moment without opening the app.
+• The month view in Insights now has the rhythm chart too — a whole month's shape at a glance.
+• A year ago today: if that day last year holds records, Insights quietly brings it back.
+• The photo wall now opens to the whole period, not just 12.
