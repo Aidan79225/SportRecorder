@@ -178,10 +178,9 @@ fun InsightsScreen(
         item {
             Spaced { RhythmCard(state.period, state.result.calendarDays, state.result.summary, onDayClick) }
         }
-        // Seven rows read as a shape; thirty-one read as a barcode. The chart is a week thing.
-        if (state.period == Period.WEEK) {
-            item { Spaced { RhythmChartCard(state.result.bands, onDayClick) } }
-        }
+        // Seven rows read as a shape; thirty-one only read as one when they close up into a
+        // block — which is what RhythmDensity.MONTH draws.
+        item { Spaced { RhythmChartCard(state.result.bands, state.period, onDayClick) } }
         item { Spaced { StatsCard(state.result.stats) } }
         photoWall(
             fileNames = state.result.photoFileNames,
@@ -339,9 +338,16 @@ private fun RhythmCard(
 }
 
 @Composable
-private fun RhythmChartCard(bands: List<DayBand>, onDayClick: (Long) -> Unit) {
+private fun RhythmChartCard(bands: List<DayBand>, period: Period, onDayClick: (Long) -> Unit) {
     SectionCard(stringResource(Res.string.insights_card_chart)) {
-        RhythmChart(bands = bands, onDayClick = onDayClick)
+        RhythmChart(
+            bands = bands,
+            onDayClick = onDayClick,
+            density = when (period) {
+                Period.WEEK -> RhythmDensity.WEEK
+                Period.MONTH -> RhythmDensity.MONTH
+            },
+        )
     }
 }
 

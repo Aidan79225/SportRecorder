@@ -15,6 +15,7 @@
     <string name="insights_card_chart">The shape of your days</string>
     <string name="insights_chart_row">%1$s: %2$d meals, %3$s – %4$s</string>
     <string name="insights_chart_row_empty">%1$s: no record</string>
+    <string name="insights_chart_month_summary">A month of eating rhythm: %1$d days with a record</string>
     <string name="insights_day_title">%1$d/%2$d/%3$d</string>
     <string name="insights_day_meals">%1$d meals this day</string>
     <string name="insights_day_empty">Nothing recorded this day</string>

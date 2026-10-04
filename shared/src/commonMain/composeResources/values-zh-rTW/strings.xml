@@ -15,6 +15,7 @@
     <string name="insights_card_chart">一天的形狀</string>
     <string name="insights_chart_row">%1$s,%2$d 餐,%3$s – %4$s</string>
     <string name="insights_chart_row_empty">%1$s,還沒有紀錄</string>
+    <string name="insights_chart_month_summary">一個月的進食節奏,%1$d 天有紀錄</string>
     <string name="insights_day_title">%1$d/%2$d/%3$d</string>
     <string name="insights_day_meals">這天有 %1$d 餐</string>
     <string name="insights_day_empty">這天還沒有紀錄</string>

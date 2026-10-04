@@ -230,6 +230,25 @@ class InsightsAggregatorTest {
         assertEquals(0, bands.single { it.dayOfMonth == 13 }.mealCount)
     }
 
+    @Test fun bandsFor_coversEveryDayOfAMonth() {
+        // The month chart draws one row per band, so a missing day would silently shift the block.
+        val now = at(2026, 3, 15, 12)
+        val days = byDay(rec(at(2026, 3, 1, 8)), rec(at(2026, 3, 31, 20)))
+        val bands = InsightsAggregator.bandsFor(InsightsRange.of(now, Period.MONTH, zone), days, zone)
+        assertEquals(31, bands.size)
+        assertEquals((1..31).toList(), bands.map { it.dayOfMonth })
+        assertEquals(1, bands.first().mealCount)
+        assertEquals(1, bands.last().mealCount)
+        assertEquals(29, bands.count { it.mealCount == 0 })
+    }
+
+    @Test fun bandsFor_aShortMonthHasItsOwnLength() {
+        val now = at(2026, 2, 10, 12)
+        val bands = InsightsAggregator.bandsFor(InsightsRange.of(now, Period.MONTH, zone), emptyMap(), zone)
+        assertEquals(28, bands.size) // 2026 is not a leap year
+        assertEquals(28, bands.last().dayOfMonth)
+    }
+
     // --- compute ------------------------------------------------------------
 
     @Test fun compute_assemblesEveryCardOverTheSameRange() {
