@@ -17,7 +17,15 @@ So the per-release manual work is just: **bump the version → edit `distributio
 
 - **Default track:** `internal`, `status=completed`. For production, run the workflow manually with `track=production` and **`status=draft`** so nothing auto-goes-live without a click in the Console.
 - **One-time setup (required before it works):** add repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** — the full JSON key of a Google Cloud service account granted access in Play Console → Users & permissions. Signing needs no secret (the keystore + passwords are in the repo).
-- **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration, the data-safety form, and the **foreground-service (`dataSync`) declaration** for the backup service (App content → Foreground service permissions: justify `FOREGROUND_SERVICE_DATA_SYNC` as a user-started Google Drive backup/restore that must keep running with the screen off).
+- **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration, the data-safety form (see below), and the **foreground-service (`dataSync`) declaration** for the backup service (App content → Foreground service permissions: justify `FOREGROUND_SERVICE_DATA_SYNC` as a user-started Google Drive backup/restore that must keep running with the screen off).
+- **Data safety: the app is no longer local-only.** It was until 0.7.0; since then Drive backup
+  sends meals, notes, locations and photos off the device, and since **0.11.0 a background job does
+  it daily on its own** once the user opts in. So the old "no collection, no network" answer is
+  wrong and must not be re-used. What is true: it goes to the **user's own Drive** (`drive.appdata`,
+  which the developer cannot read), only after the user signs in, and it covers the diary's whole
+  contents including photos. Whether Play counts that as *collection* or as a user-directed transfer
+  is **the owner's call to make in the Console** — it is a policy question, not a code question, so
+  confirm the current answers there rather than assuming this release can keep the previous ones.
 - Keep `whatsnew-*` files ≤ 500 chars, user-facing, both locales.
 
 The steps below remain the **local fallback** (and the source of truth for version-bump rules) when you want to build/inspect the AAB by hand or the Action isn't available.
@@ -67,7 +75,7 @@ The steps below remain the **local fallback** (and the source of truth for versi
    git push origin X.Y.Z
    ```
 
-8. **Hand over the artifact + notes.** Send the AAB to the user with SendUserFile, and draft **user-facing** release notes (zh-rTW primary + en-US default) — describe what users see, not internal refactors. Data safety form is "no collection" (local-only, no network).
+8. **Hand over the artifact + notes.** Send the AAB to the user with SendUserFile, and draft **user-facing** release notes (zh-rTW primary + en-US default) — describe what users see, not internal refactors. On the data-safety form, see below — **do not answer "no collection"**.
 
 ## Quick reference
 
