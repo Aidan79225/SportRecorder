@@ -52,4 +52,11 @@
     <string name="backup_channel_name">Backup progress</string>
     <string name="backup_notif_backing_up">Backing up</string>
     <string name="backup_notif_restoring">Restoring</string>
+
+    <!-- 快速記一餐:通知欄的快速設定按鈕。label 與 icon 由 manifest 引用。 -->
+    <string name="quick_tile_label">Log a meal</string>
+    <string name="quick_tile_none">No meals yet</string>
+    <string name="quick_tile_last">Last %1$s</string>
+    <string name="quick_tile_saved">Logged %1$s</string>
+    <string name="quick_tile_failed">Not saved — try again</string>
 </resources>

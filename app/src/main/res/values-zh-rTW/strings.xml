@@ -50,4 +50,11 @@
     <string name="backup_channel_name">備份進度</string>
     <string name="backup_notif_backing_up">正在備份</string>
     <string name="backup_notif_restoring">正在還原</string>
+
+    <!-- 快速記一餐:通知欄的快速設定按鈕。label 與 icon 由 manifest 引用。 -->
+    <string name="quick_tile_label">記一餐</string>
+    <string name="quick_tile_none">還沒有紀錄</string>
+    <string name="quick_tile_last">上次 %1$s</string>
+    <string name="quick_tile_saved">已記下 %1$s</string>
+    <string name="quick_tile_failed">沒有記下來,再試一次</string>
 </resources>

@@ -71,6 +71,18 @@
             android:name=".backup.BackupForegroundService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- 「記一餐」in the notification shade. The user adds it to the shade themselves. -->
+        <service
+            android:name=".quickrecord.QuickRecordTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_baseline_add_24"
+            android:label="@string/quick_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

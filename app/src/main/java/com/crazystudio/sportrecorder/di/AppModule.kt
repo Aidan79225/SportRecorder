@@ -37,6 +37,7 @@ import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveCustomFastingTypesUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
+import com.crazystudio.sportrecorder.domain.usecase.QuickRecordMealUseCase
 import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
@@ -115,6 +116,7 @@ val appModule = module {
     factory { CreateCustomFastingTypeUseCase(get()) }
     factory { LoadEatRecordUseCase(get()) }
     factory { SaveEatRecordUseCase(get(), get()) }
+    factory { QuickRecordMealUseCase(get()) }
     factory { DeleteEatRecordUseCase(get(), get()) }
     factory { SaveFastingSelectionUseCase(get(), get()) }
 
