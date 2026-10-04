@@ -34,6 +34,8 @@
     <string name="insights_duration_hm">%1$d 小時 %2$d 分</string>
     <string name="insights_photo_count">這段期間共 %1$d 張照片</string>
     <string name="insights_empty_photos">這段期間沒有餐點照片</string>
+    <string name="insights_photos_show_all">顯示全部 %1$d 張</string>
+    <string name="insights_photos_collapse">收起</string>
     <string name="insights_empty_locations">這段期間沒有地點紀錄</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d 個地點 · %2$d 餐記了位置</string>
