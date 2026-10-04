@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SportRecorder</string>
+    <string name="app_name">Sitora</string>
     <string name="title_home">首頁</string>
     <string name="title_record">紀錄</string>
     <string name="title_insights">回顧</string>
