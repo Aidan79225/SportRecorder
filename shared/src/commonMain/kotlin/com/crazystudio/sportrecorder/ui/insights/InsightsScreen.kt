@@ -231,7 +231,10 @@ private fun OnThisDayCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onDayClick(memory.dayStart) },
+            // Same click label as a calendar cell: both open the same day, so both say so.
+            .clickable(onClickLabel = stringResource(Res.string.insights_day_open)) {
+                onDayClick(memory.dayStart)
+            },
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
