@@ -21,9 +21,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.domain.insights.DayBand
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.insights_chart_month_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_chart_row
 import com.crazystudio.sportrecorder.shared.resources.insights_chart_row_empty
 import com.crazystudio.sportrecorder.shared.resources.insights_date_short
@@ -35,11 +37,26 @@ import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Instant
 
-private val ROW_HEIGHT = 22.dp
-private val TRACK_HEIGHT = 12.dp
 private val LABEL_WIDTH = 44.dp
 private val SINGLE_MEAL_MARK = 3.dp
 private val GRIDLINE = 1.dp
+
+/**
+ * How tightly the chart is drawn. A week is seven rows, so each one can be a labelled, tappable
+ * day. A month is thirty-one: drawn that way it is a barcode and a column of unreadable dates, so
+ * the rows close up into one block, a date marks every seventh day, and the calendar card keeps
+ * owning day taps — a 12dp row is not a touch target anyone can hit.
+ */
+enum class RhythmDensity(
+    val rowHeight: Dp,
+    val trackHeight: Dp,
+    val gap: Dp,
+    /** Draw a date every N rows. */
+    val labelEvery: Int,
+) {
+    WEEK(rowHeight = 22.dp, trackHeight = 12.dp, gap = 4.dp, labelEvery = 1),
+    MONTH(rowHeight = 12.dp, trackHeight = 11.dp, gap = 1.dp, labelEvery = 7),
+}
 
 /**
  * One row per day, time running left to right, each day's eating window a single band from its
@@ -54,16 +71,48 @@ fun RhythmChart(
     bands: List<DayBand>,
     onDayClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    density: RhythmDensity = RhythmDensity.WEEK,
 ) {
     val domainEnd = remember(bands) { RhythmChartScale.domainEnd(bands) }
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        bands.forEach { band -> BandRow(band, domainEnd, onDayClick) }
+    // A month speaks once: thirty-one rows would be thirty-one swipes of a screen reader, and the
+    // stats card right below carries the same month as numbers.
+    val blockDescription = stringResource(
+        Res.string.insights_chart_month_summary,
+        bands.count { it.mealCount > 0 },
+    ).takeIf { density == RhythmDensity.MONTH }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                blockDescription?.let { text ->
+                    Modifier.clearAndSetSemantics { contentDescription = text }
+                } ?: Modifier
+            ),
+        verticalArrangement = Arrangement.spacedBy(density.gap),
+    ) {
+        bands.forEachIndexed { index, band ->
+            BandRow(
+                band = band,
+                domainEnd = domainEnd,
+                density = density,
+                showLabel = index % density.labelEvery == 0,
+                // Only the week's rows are their own targets; see [RhythmDensity].
+                onDayClick = onDayClick.takeIf { density == RhythmDensity.WEEK },
+            )
+        }
         AxisLabels(domainEnd)
     }
 }
 
 @Composable
-private fun BandRow(band: DayBand, domainEnd: Int, onDayClick: (Long) -> Unit) {
+private fun BandRow(
+    band: DayBand,
+    domainEnd: Int,
+    density: RhythmDensity,
+    showLabel: Boolean,
+    onDayClick: ((Long) -> Unit)?,
+) {
     val dayLabel = stringResource(Res.string.insights_date_short, monthNumber(band.dayStart), band.dayOfMonth)
     val description = if (band.mealCount == 0) {
         stringResource(Res.string.insights_chart_row_empty, dayLabel)
@@ -80,17 +129,18 @@ private fun BandRow(band: DayBand, domainEnd: Int, onDayClick: (Long) -> Unit) {
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val bandColor = MaterialTheme.colorScheme.primaryContainer
     val gridColor = MaterialTheme.colorScheme.outlineVariant
-    val density = LocalDensity.current
-    val markPx = with(density) { SINGLE_MEAL_MARK.toPx() }
-    val gridPx = with(density) { GRIDLINE.toPx() }
+    // Not named `density`: that is this row's RhythmDensity.
+    val localDensity = LocalDensity.current
+    val markPx = with(localDensity) { SINGLE_MEAL_MARK.toPx() }
+    val gridPx = with(localDensity) { GRIDLINE.toPx() }
     val ticks = remember(domainEnd) { RhythmChartScale.ticks(domainEnd) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(ROW_HEIGHT)
+            .height(density.rowHeight)
             .then(
-                if (band.mealCount > 0) {
+                if (onDayClick != null && band.mealCount > 0) {
                     Modifier.clickable(onClickLabel = openLabel) { onDayClick(band.dayStart) }
                 } else {
                     Modifier
@@ -99,13 +149,17 @@ private fun BandRow(band: DayBand, domainEnd: Int, onDayClick: (Long) -> Unit) {
             .clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = dayLabel,
-            modifier = Modifier.width(LABEL_WIDTH),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Canvas(Modifier.weight(1f).height(TRACK_HEIGHT)) {
+        if (showLabel) {
+            Text(
+                text = dayLabel,
+                modifier = Modifier.width(LABEL_WIDTH),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Spacer(Modifier.width(LABEL_WIDTH))
+        }
+        Canvas(Modifier.weight(1f).height(density.trackHeight)) {
             val corner = CornerRadius(size.height / 2f)
             drawRoundRect(color = trackColor, cornerRadius = corner)
             ticks.forEach { tick ->
