@@ -105,6 +105,7 @@ fun BackupRoute(onBack: () -> Unit) {
         onSignOut = { auth.signOut() },
         onBackup = { authorizedThen { withNotificationPermission { vm.backup() } } },
         onRestore = { snapshot -> authorizedThen { withNotificationPermission { vm.restore(snapshot.id) } } },
+        onToggleAutoBackup = vm::setAutoBackupEnabled,
         onCancel = vm::cancel,
         onConsumeMessage = {
             // The snackbar has been shown for this outcome; the notification would only repeat it.

@@ -10,6 +10,9 @@ import com.crazystudio.sportrecorder.backup.BackupJson
 import com.crazystudio.sportrecorder.backup.BackupReminderPrefs
 import com.crazystudio.sportrecorder.backup.BackupService
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
+import com.crazystudio.sportrecorder.backup.AutoBackupPrefs
+import com.crazystudio.sportrecorder.backup.fakes.FakeAutoBackupPreferencesRepository
+import com.crazystudio.sportrecorder.backup.fakes.FakeAutoBackupScheduler
 import com.crazystudio.sportrecorder.backup.fakes.FakeBackupAuth
 import com.crazystudio.sportrecorder.backup.fakes.FakeBackupStore
 import com.crazystudio.sportrecorder.backup.fakes.FakeDietSettingsRepository
@@ -33,7 +36,9 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class BackupViewModelTest {
     private val dispatcher = StandardTestDispatcher()
@@ -47,6 +52,9 @@ class BackupViewModelTest {
             FakeReminderPreferencesRepository(), store, FakeRemindersRescheduler(), "0.7.1",
         ) { 1L }
 
+    private val autoPrefs = FakeAutoBackupPreferencesRepository()
+    private val autoScheduler = FakeAutoBackupScheduler()
+
     private fun vm(
         store: FakeBackupStore,
         eat: FakeEatRecordRepository = FakeEatRecordRepository(),
@@ -54,7 +62,7 @@ class BackupViewModelTest {
     ): BackupViewModel {
         val svc = service(store, eat)
         val runner = BackupJobRunner(svc, BackupJobHost.None, CoroutineScope(SupervisorJob() + dispatcher))
-        return BackupViewModel(runner, svc, auth, ObserveEatRecordsUseCase(eat))
+        return BackupViewModel(runner, svc, auth, ObserveEatRecordsUseCase(eat), autoPrefs, autoScheduler)
     }
 
     private fun emptyDocJson(): String = BackupJson.encodeToString(
@@ -268,5 +276,48 @@ class BackupViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(BackupMessage.RestoreSchemaTooNew, vm.uiState.value.message)
+    }
+    @Test fun autoBackup_isOffAndUnscheduledUntilTheUserAsks() = runTest(dispatcher) {
+        val vm = vm(FakeBackupStore())
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.autoBackup.enabled)
+        // Nothing armed behind the user's back: the scheduler was never touched.
+        assertEquals(0, autoScheduler.changes)
+        assertNull(autoScheduler.scheduled)
+    }
+
+    @Test fun enablingAutoBackup_persistsAndArmsTheJob() = runTest(dispatcher) {
+        val vm = vm(FakeBackupStore())
+
+        vm.setAutoBackupEnabled(true)
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(autoPrefs.current.enabled)
+        assertEquals(true, autoScheduler.scheduled)
+        assertTrue(vm.uiState.value.autoBackup.enabled)
+    }
+
+    @Test fun disablingAutoBackup_persistsAndCancelsTheJob() = runTest(dispatcher) {
+        val vm = vm(FakeBackupStore())
+        vm.setAutoBackupEnabled(true)
+        testScheduler.advanceUntilIdle()
+
+        vm.setAutoBackupEnabled(false)
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(autoPrefs.current.enabled)
+        assertEquals(false, autoScheduler.scheduled)
+    }
+
+    /** A failure recorded overnight has to reach the screen — that is the only place it is told. */
+    @Test fun aRecordedFailureSurfacesInTheState() = runTest(dispatcher) {
+        val prefs = AutoBackupPrefs(enabled = true, lastFailureAt = 99L, lastFailureNeedsSignIn = true)
+        autoPrefs.setEnabled(true)
+        autoPrefs.recordFailure(at = 99L, needsSignIn = true)
+        val vm = vm(FakeBackupStore())
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(prefs, vm.uiState.value.autoBackup)
     }
 }

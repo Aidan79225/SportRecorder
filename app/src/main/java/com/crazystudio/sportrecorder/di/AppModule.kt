@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.crazystudio.sportrecorder.BuildConfig
 import com.crazystudio.sportrecorder.backup.AndroidBackupJobHost
+import com.crazystudio.sportrecorder.backup.AutoBackupScheduler
 import com.crazystudio.sportrecorder.backup.BackupAuth
 import com.crazystudio.sportrecorder.backup.BackupJobHost
 import com.crazystudio.sportrecorder.backup.BackupJobRunner
@@ -15,10 +16,12 @@ import com.crazystudio.sportrecorder.backup.BackupService
 import com.crazystudio.sportrecorder.backup.BackupStore
 import com.crazystudio.sportrecorder.backup.GoogleBackupAuth
 import com.crazystudio.sportrecorder.backup.GoogleDriveBackupStore
+import com.crazystudio.sportrecorder.backup.WorkManagerAutoBackupScheduler
 import com.crazystudio.sportrecorder.data.AndroidPhotoFileStore
 import com.crazystudio.sportrecorder.data.AndroidPhotoImageSource
 import com.crazystudio.sportrecorder.data.PhotoFileStore
 import com.crazystudio.sportrecorder.data.PhotoImageSource
+import com.crazystudio.sportrecorder.data.repository.AutoBackupPreferencesRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.DietSettingsRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.EatRecordRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.FastingTypeRepositoryImpl
@@ -27,6 +30,7 @@ import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
 import com.crazystudio.sportrecorder.domain.reminder.ReminderScheduler
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
+import com.crazystudio.sportrecorder.domain.repository.AutoBackupPreferencesRepository
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
@@ -90,6 +94,8 @@ val appModule = module {
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
     single<ReminderPreferencesRepository> { ReminderPreferencesRepositoryImpl(get()) }
+    single<AutoBackupPreferencesRepository> { AutoBackupPreferencesRepositoryImpl(get()) }
+    single<AutoBackupScheduler> { WorkManagerAutoBackupScheduler(androidContext()) }
 
     // Backup
     single { GoogleBackupAuth(androidContext()) }
@@ -129,5 +135,5 @@ val appModule = module {
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
     viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { BackupViewModel(get(), get(), get(), get()) }
+    viewModel { BackupViewModel(get(), get(), get(), get(), get(), get()) }
 }

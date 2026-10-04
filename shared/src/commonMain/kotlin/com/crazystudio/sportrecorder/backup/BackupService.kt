@@ -120,7 +120,12 @@ class BackupService(
     }
 
     companion object {
-        /** Retain the newest N snapshots so an accidental empty backup can't destroy the only good one. */
-        const val KEEP_LAST = 3
+        /**
+         * Retain the newest N snapshots so an accidental empty backup can't destroy the only good
+         * one. Raised from 3 when automatic backup landed: a daily job would otherwise push every
+         * older snapshot out within three days, and「還原到上週」would stop being possible. Seven
+         * gives a week of history whether the snapshots came from the job or from the user.
+         */
+        const val KEEP_LAST = 7
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,12 +34,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.crazystudio.sportrecorder.backup.AutoBackupPrefs
 import com.crazystudio.sportrecorder.backup.BackupJobState
 import com.crazystudio.sportrecorder.backup.BackupStep
 import com.crazystudio.sportrecorder.backup.SnapshotInfo
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.backup_intro
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_desc
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_failed
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_last
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_needs_sign_in
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_never
+import com.crazystudio.sportrecorder.shared.resources.backup_auto_title
 import com.crazystudio.sportrecorder.shared.resources.backup_last_backed_up
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_backup_complete
 import com.crazystudio.sportrecorder.shared.resources.backup_msg_cancelled
@@ -90,6 +98,7 @@ fun BackupScreen(
     onBackup: () -> Unit,
     onRestore: (SnapshotInfo) -> Unit,
     onCancel: () -> Unit,
+    onToggleAutoBackup: (Boolean) -> Unit,
     onConsumeMessage: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -122,6 +131,7 @@ fun BackupScreen(
                     onBackup = onBackup,
                     onRestore = onRestore,
                     onCancel = onCancel,
+                    onToggleAutoBackup = onToggleAutoBackup,
                 )
             } else {
                 SignedOutContent(onSignIn = onSignIn, enabled = !state.isBusy)
@@ -190,6 +200,7 @@ private fun SignedInContent(
     onBackup: () -> Unit,
     onRestore: (SnapshotInfo) -> Unit,
     onCancel: () -> Unit,
+    onToggleAutoBackup: (Boolean) -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val enabled = !state.isBusy
@@ -232,6 +243,8 @@ private fun SignedInContent(
             CircularProgressIndicator(modifier = Modifier.padding(top = 16.dp).size(28.dp))
         }
     }
+
+    AutoBackupSection(prefs = state.autoBackup, enabled = enabled, onToggle = onToggleAutoBackup)
 
     Text(
         text = stringResource(Res.string.backup_restore_heading),
@@ -382,6 +395,52 @@ private fun RestoreConfirmDialog(
 }
 
 /** Format epoch millis as a locale-independent "yyyy-MM-dd HH:mm" in the device time zone. */
+/**
+ * The daily background backup. Its status is reported **here and nowhere else**: a backup that
+ * failed overnight is not worth a notification, so the user finds out the next time they look.
+ */
+@Composable
+private fun AutoBackupSection(prefs: AutoBackupPrefs, enabled: Boolean, onToggle: (Boolean) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(
+                text = stringResource(Res.string.backup_auto_title),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(Res.string.backup_auto_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = prefs.enabled, onCheckedChange = onToggle, enabled = enabled)
+    }
+    if (prefs.enabled) {
+        Text(
+            text = autoBackupStatus(prefs),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/** Plain description of the last attempt — never an alarm, and never a reason to sign in again now. */
+@Composable
+private fun autoBackupStatus(prefs: AutoBackupPrefs): String = when {
+    prefs.lastFailureNeedsSignIn -> stringResource(Res.string.backup_auto_needs_sign_in)
+    prefs.lastFailureAt != null ->
+        stringResource(Res.string.backup_auto_failed, formatTimestamp(prefs.lastFailureAt))
+    prefs.lastSuccessAt != null ->
+        stringResource(Res.string.backup_auto_last, formatTimestamp(prefs.lastSuccessAt))
+    else -> stringResource(Res.string.backup_auto_never)
+}
+
 private fun formatTimestamp(epochMillis: Long): String {
     val dt = Instant.fromEpochMilliseconds(epochMillis)
         .toLocalDateTime(TimeZone.currentSystemDefault())

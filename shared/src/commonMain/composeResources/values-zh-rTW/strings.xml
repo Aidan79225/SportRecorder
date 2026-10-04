@@ -192,6 +192,12 @@
     <string name="backup_now">立即備份</string>
     <string name="backup_last_backed_up">上次備份：%1$s</string>
     <string name="backup_never">還沒有備份</string>
+    <string name="backup_auto_title">自動備份</string>
+    <string name="backup_auto_desc">充電並連上 Wi-Fi 時,每天在背景備份一次</string>
+    <string name="backup_auto_last">上次自動備份：%1$s</string>
+    <string name="backup_auto_never">還沒有自動備份過</string>
+    <string name="backup_auto_failed">上次自動備份沒有成功(%1$s),之後會再試一次。</string>
+    <string name="backup_auto_needs_sign_in">要繼續自動備份,需要重新登入</string>
     <string name="backup_restore_heading">從備份還原</string>
     <string name="backup_restore_empty">還沒有任何備份</string>
     <string name="backup_snapshot_subtitle">%1$s · v%2$s</string>

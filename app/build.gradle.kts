@@ -139,6 +139,9 @@ dependencies {
     implementation(libs.play.services.auth)
     implementation(libs.okhttp)
     implementation(libs.androidx.exifinterface)
+    // Periodic background backup: WorkManager owns the charging/unmetered constraints and
+    // surviving a reboot, which AlarmManager would make us re-implement.
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
