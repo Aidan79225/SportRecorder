@@ -98,7 +98,7 @@ val appModule = module {
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
     single<ReminderPreferencesRepository> { ReminderPreferencesRepositoryImpl(get()) }
     single<AutoBackupPreferencesRepository> { AutoBackupPreferencesRepositoryImpl(get()) }
-    single<VenueRepository> { VenueRepositoryImpl(get()) }
+    single<VenueRepository> { VenueRepositoryImpl(get(), get()) }
     single<AutoBackupScheduler> { WorkManagerAutoBackupScheduler(androidContext()) }
 
     // Backup

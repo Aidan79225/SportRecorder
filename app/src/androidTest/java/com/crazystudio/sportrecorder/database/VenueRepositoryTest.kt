@@ -22,7 +22,7 @@ class VenueRepositoryTest {
 
     @Before fun setUp() {
         db = Room.inMemoryDatabaseBuilder<AppDatabase>(ApplicationProvider.getApplicationContext()).build()
-        repo = VenueRepositoryImpl(db.getVenueDao())
+        repo = VenueRepositoryImpl(db, db.getVenueDao())
     }
 
     @After fun tearDown() = db.close()

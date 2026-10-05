@@ -1,6 +1,9 @@
 package com.crazystudio.sportrecorder.data.repository
 
+import androidx.room.immediateTransaction
+import androidx.room.useWriterConnection
 import com.crazystudio.sportrecorder.dao.VenueDao
+import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
@@ -9,7 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-class VenueRepositoryImpl(private val venueDao: VenueDao) : VenueRepository {
+class VenueRepositoryImpl(
+    private val appDatabase: AppDatabase,
+    private val venueDao: VenueDao,
+) : VenueRepository {
 
     override fun observeAll(): Flow<List<Venue>> =
         venueDao.flowAll().map { rows -> rows.map { it.toDomain() } }
@@ -54,29 +60,38 @@ class VenueRepositoryImpl(private val venueDao: VenueDao) : VenueRepository {
             venueDao.update(renamed)
             return renamed.toDomain()
         }
-        // Merge: the records move to the survivor, then the emptied venue goes.
-        venueDao.repointRecords(fromId = venueId, toId = target.id)
-        venueDao.deleteById(venueId)
-        val survivor = target.copy(
-            lat = target.lat ?: row.lat,
-            lng = target.lng ?: row.lng,
-            lastUsedAt = now,
-        )
-        venueDao.update(survivor)
-        return survivor.toDomain()
+        // Merge: the records move to the survivor, then the emptied venue goes. One transaction, so
+        // a kill midway can never leave a stale empty venue or a survivor missing its coordinates.
+        return appDatabase.useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                venueDao.repointRecords(fromId = venueId, toId = target.id)
+                venueDao.deleteById(venueId)
+                val survivor = target.copy(
+                    lat = target.lat ?: row.lat,
+                    lng = target.lng ?: row.lng,
+                    lastUsedAt = now,
+                )
+                venueDao.update(survivor)
+                survivor.toDomain()
+            }
+        }
     }
 
     override suspend fun replaceAll(venues: List<Venue>) {
-        venueDao.deleteAll()
-        venues.forEach { venue ->
-            venueDao.insert(
-                VenueEntity(
-                    name = VenueName.normalize(venue.name),
-                    lat = venue.lat,
-                    lng = venue.lng,
-                    lastUsedAt = venue.lastUsedAt,
-                ),
-            )
+        appDatabase.useWriterConnection { transactor ->
+            transactor.immediateTransaction {
+                venueDao.deleteAll()
+                venues.forEach { venue ->
+                    venueDao.insert(
+                        VenueEntity(
+                            name = VenueName.normalize(venue.name),
+                            lat = venue.lat,
+                            lng = venue.lng,
+                            lastUsedAt = venue.lastUsedAt,
+                        ),
+                    )
+                }
+            }
         }
     }
 
