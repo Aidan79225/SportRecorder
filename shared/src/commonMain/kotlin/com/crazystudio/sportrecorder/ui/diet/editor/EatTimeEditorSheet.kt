@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +51,7 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
 import com.crazystudio.sportrecorder.shared.resources.editor_venue
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_clear
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_none
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_pick
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_access_time_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
@@ -138,7 +140,13 @@ fun EatTimeEditorSheet(
         )
         // VENUE row — the place the food came from; never where the user was (that is LOCATION).
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { onOpenVenuePicker() }.padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                // Announced as a button that chooses a place, not just "Place, Not set".
+                .clickable(onClickLabel = stringResource(Res.string.editor_venue_pick), role = Role.Button) {
+                    onOpenVenuePicker()
+                }
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(

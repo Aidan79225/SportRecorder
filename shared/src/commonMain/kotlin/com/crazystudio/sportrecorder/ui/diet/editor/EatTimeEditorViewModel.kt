@@ -68,6 +68,9 @@ class EatTimeEditorViewModel constructor(
     // Every venue, as last emitted; the picker's order is derived from it and the live note.
     private var allVenues: List<Venue> = emptyList()
 
+    // The venue the record already had when it was opened; saving it back is not a new use.
+    private var loadedVenueId: Int? = null
+
     init {
         viewModelScope.launch {
             venueRepository.observeAll().collect { venues ->
@@ -79,6 +82,7 @@ class EatTimeEditorViewModel constructor(
             viewModelScope.launch {
                 val record = loadEatRecord(eatTimeId) ?: return@launch
                 currentMillis = record.time
+                loadedVenueId = record.venue?.id
                 val loc = record.location?.let { EatTimeEditorUiState.LatLng(it.lat, it.lng) }
                 _uiState.update {
                     it.copy(
@@ -158,13 +162,13 @@ class EatTimeEditorViewModel constructor(
 
     fun confirmRename() {
         val pending = _uiState.value.pendingMerge ?: return
+        // Clear first: a second tap on Merge must find nothing pending, not rename a venue that
+        // the first one already merged away.
+        _uiState.update { it.copy(pendingMerge = null) }
         viewModelScope.launch {
             val survivor = venueRepository.rename(pending.from.id, pending.intoName, now())
             _uiState.update { state ->
-                state.copy(
-                    pendingMerge = null,
-                    venue = if (state.venue?.id == pending.from.id) survivor else state.venue,
-                )
+                state.copy(venue = if (state.venue?.id == pending.from.id) survivor else state.venue)
             }
         }
     }
@@ -254,8 +258,9 @@ class EatTimeEditorViewModel constructor(
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
             committed = true
-            // Recency should reflect use, not creation.
-            state.venue?.let { venueRepository.touch(it.id, now()) }
+            // Recency should reflect use, not creation, and not a later edit of an old record:
+            // fixing last month's note must not push that venue above what is eaten now.
+            state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }
         }
         return ok
     }

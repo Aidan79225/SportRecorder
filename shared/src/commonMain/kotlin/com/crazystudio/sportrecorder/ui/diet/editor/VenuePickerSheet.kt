@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueName
+import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_body
@@ -74,13 +75,19 @@ fun VenuePickerSheet(
     var query by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Venue?>(null) }
 
+    // A merge left pending must not outlive the sheet and reappear the next time it opens.
+    val dismiss = {
+        onCancelMerge()
+        onDismiss()
+    }
+
     // Slide out before the host drops the sheet, like the editor sheet itself does.
     fun finish(action: () -> Unit) {
         action()
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        scope.launch { sheetState.hide() }.invokeOnCompletion { dismiss() }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = dismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
@@ -96,9 +103,9 @@ fun VenuePickerSheet(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
             )
-            val matches = remember(state.venueOptions, query) { venuesMatching(state.venueOptions, query) }
+            val matches = remember(state.venueOptions, query) { VenuePicker.matching(state.venueOptions, query) }
+            val canCreate = VenuePicker.canCreate(state.venueOptions, query)
             val typed = VenueName.normalize(query)
-            val canCreate = typed.isNotEmpty() && state.venueOptions.none { VenueName.sameAs(it.name, typed) }
             LazyColumn {
                 if (canCreate) {
                     item(key = "create") {
@@ -137,12 +144,6 @@ fun VenuePickerSheet(
     state.pendingMerge?.let { pending ->
         MergeDialog(pending = pending, onConfirm = onConfirmMerge, onDismiss = onCancelMerge)
     }
-}
-
-/** Venues whose name contains what was typed, in the order given (the picker's suggested order). */
-private fun venuesMatching(venues: List<Venue>, query: String): List<Venue> {
-    val typed = VenueName.normalize(query)
-    return if (typed.isEmpty()) venues else venues.filter { it.name.contains(typed, ignoreCase = true) }
 }
 
 @Composable

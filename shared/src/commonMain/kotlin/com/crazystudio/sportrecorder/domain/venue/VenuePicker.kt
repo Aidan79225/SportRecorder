@@ -23,4 +23,24 @@ object VenuePicker {
             ?: return byRecency
         return listOf(suggested) + byRecency.filterNot { it.id == suggested.id }
     }
+
+    /**
+     * What the picker's search box shows: venues whose name contains [query], in the order given.
+     * Both sides are normalized first, so stray or full-width (U+3000) spaces never hide a match,
+     * and case is ignored. A blank query matches everything.
+     */
+    fun matching(venues: List<Venue>, query: String): List<Venue> {
+        val typed = VenueName.normalize(query)
+        if (typed.isEmpty()) return venues
+        return venues.filter { VenueName.normalize(it.name).contains(typed, ignoreCase = true) }
+    }
+
+    /**
+     * Whether to offer "use <query>" as a new venue: only for a name that is not blank once
+     * normalized and is not already one of [venues] (names are unique case-insensitively).
+     */
+    fun canCreate(venues: List<Venue>, query: String): Boolean {
+        val typed = VenueName.normalize(query)
+        return typed.isNotEmpty() && venues.none { VenueName.sameAs(it.name, typed) }
+    }
 }

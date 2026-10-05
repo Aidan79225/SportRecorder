@@ -113,6 +113,34 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
+    fun editingOnlyTheNote_doesNotBumpTheVenuesRecency() = runTest(mainRule.testDispatcher.scheduler) {
+        // Fixing last month's note is not a new visit: the venue must not jump above what the user
+        // eats now, so saving an already-venued record leaves its lastUsedAt alone.
+        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
+        val vm = editor.viewModel(eatTimeId = 1)
+        advanceUntilIdle()
+
+        vm.setNote("午餐(補記)")
+        assertTrue(vm.save())
+
+        assertEquals(1L, editor.venues.stored.single().lastUsedAt)
+    }
+
+    @Test
+    fun switchingAnOldMealToAnotherVenue_touchesOnlyTheNewOne() = runTest(mainRule.testDispatcher.scheduler) {
+        val other = Venue(id = 2, name = "星巴克", lat = null, lng = null, lastUsedAt = 5L)
+        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu, other))
+        val vm = editor.viewModel(eatTimeId = 1)
+        advanceUntilIdle()
+
+        vm.selectVenue(other)
+        assertTrue(vm.save())
+
+        assertEquals(1L, editor.venues.stored.first { it.id == 1 }.lastUsedAt)
+        assertTrue(editor.venues.stored.first { it.id == 2 }.lastUsedAt > 5L)
+    }
+
+    @Test
     fun editingOnlyTheNote_keepsTheMealsVenue() = runTest(mainRule.testDispatcher.scheduler) {
         // The update path rewrites the whole row from the EatRecord the editor builds, so a record
         // rebuilt without its venue would silently lose it. Edit the note and nothing else.
@@ -254,6 +282,27 @@ class EatTimeEditorViewModelTest {
             assertEquals(3, editor.venues.recordCount(keeper.id))
             assertEquals(keeper.id, vm.uiState.value.venue?.id)
         }
+
+    @Test
+    fun confirmingAMergeTwice_mergesOnlyOnce() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val vm = editor.viewModel()
+        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
+        val keeper = editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
+        editor.venues.recordCounts[typo.id] = 3
+        vm.requestRename(typo, "大戶屋")
+        advanceUntilIdle()
+
+        // A double tap: the second must find nothing pending instead of renaming a venue that the
+        // first one is about to delete.
+        vm.confirmRename()
+        vm.confirmRename()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.pendingMerge)
+        assertEquals(listOf(keeper.id), editor.venues.stored.map { it.id })
+        assertEquals(3, editor.venues.recordCount(keeper.id))
+    }
 
     @Test
     fun useThisPositionFor_correctsTheVenueFromTheRecordsFix() = runTest(mainRule.testDispatcher.scheduler) {
