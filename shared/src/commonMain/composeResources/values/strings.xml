@@ -256,6 +256,10 @@
     <string name="editor_venue_more">More options</string>
     <string name="editor_venue_use_here">Set its position from this record</string>
     <string name="editor_venue_merge_title">Merge with "%1$s"?</string>
-    <string name="editor_venue_merge_body">%1$d record(s) will move to "%2$s".</string>
+    <plurals name="editor_venue_merge_body">
+        <item quantity="one">%1$d record will move to "%2$s".</item>
+        <item quantity="other">%1$d records will move to "%2$s".</item>
+    </plurals>
+    <string name="editor_venue_position_updated">Place position updated</string>
     <string name="editor_venue_merge_confirm">Merge</string>
 </resources>

@@ -78,6 +78,7 @@ private fun VenuePickerHost(
         onCreate = vm::createVenue,
         onRename = vm::requestRename,
         onUseThisPosition = vm::useThisPositionFor,
+        onConsumeMessage = vm::consumeMessage,
         onConfirmMerge = vm::confirmRename,
         onCancelMerge = vm::cancelRename,
         onDismiss = onDismiss,

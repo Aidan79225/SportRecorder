@@ -319,6 +319,21 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
+    fun useThisPositionFor_confirmsInAMessage_thatConsumeClears() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
+        val vm = editor.viewModel(eatTimeId = 1)
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.message)
+
+        vm.useThisPositionFor(daHuWu)
+        advanceUntilIdle()
+        assertEquals(EditorMessage.VenuePositionUpdated, vm.uiState.value.message)
+
+        vm.consumeMessage()
+        assertNull(vm.uiState.value.message)
+    }
+
+    @Test
     fun useThisPositionFor_doesNothingWhenTheRecordHasNoLocation() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(listOf(mealAt(venue = daHuWu, location = null)), listOf(daHuWu))
         val vm = editor.viewModel(eatTimeId = 1)
@@ -328,6 +343,7 @@ class EatTimeEditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals(daHuWu, editor.venues.stored.single())
+        assertNull(vm.uiState.value.message)
     }
 
     @Test

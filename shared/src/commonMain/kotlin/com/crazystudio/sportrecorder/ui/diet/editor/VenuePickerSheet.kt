@@ -20,10 +20,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,11 +46,13 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_more
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_new
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_pick
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_position_updated
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_rename
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_here
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_more_vert_24
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -66,6 +71,7 @@ fun VenuePickerSheet(
     onCreate: (String) -> Unit,
     onRename: (Venue, String) -> Unit,
     onUseThisPosition: (Venue) -> Unit,
+    onConsumeMessage: () -> Unit,
     onConfirmMerge: () -> Unit,
     onCancelMerge: () -> Unit,
     onDismiss: () -> Unit,
@@ -85,6 +91,16 @@ fun VenuePickerSheet(
     fun finish(action: () -> Unit) {
         action()
         scope.launch { sheetState.hide() }.invokeOnCompletion { dismiss() }
+    }
+
+    // The sheet is its own window, so a snackbar hosted behind it would never be seen.
+    val snackbarHostState = remember { SnackbarHostState() }
+    val messageText = state.message?.let { stringResource(messageRes(it)) }
+    LaunchedEffect(state.message) {
+        if (messageText != null) {
+            snackbarHostState.showSnackbar(messageText)
+            onConsumeMessage()
+        }
     }
 
     ModalBottomSheet(onDismissRequest = dismiss, sheetState = sheetState) {
@@ -128,6 +144,7 @@ fun VenuePickerSheet(
                     }
                 }
             }
+            SnackbarHost(hostState = snackbarHostState)
         }
     }
 
@@ -144,6 +161,10 @@ fun VenuePickerSheet(
     state.pendingMerge?.let { pending ->
         MergeDialog(pending = pending, onConfirm = onConfirmMerge, onDismiss = onCancelMerge)
     }
+}
+
+private fun messageRes(message: EditorMessage) = when (message) {
+    EditorMessage.VenuePositionUpdated -> Res.string.editor_venue_position_updated
 }
 
 @Composable
@@ -236,7 +257,14 @@ private fun MergeDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.editor_venue_merge_title, pending.intoName)) },
         text = {
-            Text(stringResource(Res.string.editor_venue_merge_body, pending.movedRecords, pending.intoName))
+            Text(
+                pluralStringResource(
+                    Res.plurals.editor_venue_merge_body,
+                    pending.movedRecords,
+                    pending.movedRecords,
+                    pending.intoName,
+                ),
+            )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text(stringResource(Res.string.editor_venue_merge_confirm)) }

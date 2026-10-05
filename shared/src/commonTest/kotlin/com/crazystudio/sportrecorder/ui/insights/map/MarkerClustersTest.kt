@@ -53,9 +53,40 @@ class MarkerClustersTest {
         assertEquals(listOf<String?>("大戶屋"), clusters.map { it.name })
     }
 
-    @Test fun mergedPlaces_haveNoSingleName() {
+    @Test fun aNamedVenueMergedWithAnonymousPoints_keepsItsName() {
         val clusters = clusterPlaces(
             listOf(LocationCount(25.0340, 121.5645, 3, "大戶屋"), place(25.03401, 121.56451, 1)),
+            viewport, 40f,
+        )
+        assertEquals(1, clusters.size)
+        assertEquals("大戶屋", clusters.single().name)
+    }
+
+    @Test fun anonymousSeed_absorbingANamedVenue_stillKeepsTheName() {
+        val clusters = clusterPlaces(
+            listOf(place(25.0340, 121.5645, 5), LocationCount(25.03401, 121.56451, 1, "大戶屋")),
+            viewport, 40f,
+        )
+        assertEquals(1, clusters.size)
+        assertEquals("大戶屋", clusters.single().name)
+    }
+
+    @Test fun twoDifferentlyNamedVenues_mergedStayNameless() {
+        val clusters = clusterPlaces(
+            listOf(LocationCount(25.0340, 121.5645, 3, "大戶屋"), LocationCount(25.03401, 121.56451, 1, "麥當勞")),
+            viewport, 40f,
+        )
+        assertEquals(1, clusters.size)
+        assertEquals(null, clusters.single().name)
+    }
+
+    @Test fun onceTwoNamesCollide_aThirdNamedPlaceDoesNotBringOneBack() {
+        val clusters = clusterPlaces(
+            listOf(
+                LocationCount(25.0340, 121.5645, 4, "大戶屋"),
+                LocationCount(25.03401, 121.56451, 3, "麥當勞"),
+                LocationCount(25.03402, 121.56452, 1, "吉野家"),
+            ),
             viewport, 40f,
         )
         assertEquals(1, clusters.size)

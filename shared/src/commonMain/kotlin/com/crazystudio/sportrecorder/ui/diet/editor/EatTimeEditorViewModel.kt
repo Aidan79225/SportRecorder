@@ -184,8 +184,13 @@ class EatTimeEditorViewModel constructor(
         val fix = _uiState.value.location ?: return
         viewModelScope.launch {
             venueRepository.setPosition(venue.id, fix.lat, fix.lng)
+            // The write moves a marker the user is not looking at; say so, or it feels like a no-op.
+            _uiState.update { it.copy(message = EditorMessage.VenuePositionUpdated) }
         }
     }
+
+    /** Clear the transient message once the UI has shown it. */
+    fun consumeMessage() = _uiState.update { it.copy(message = null) }
 
     private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
