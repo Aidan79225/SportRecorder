@@ -76,4 +76,17 @@ class VenueRepositoryTest {
         assertEquals(listOf("大戶屋"), repo.observeAll().first().map { it.name })
         assertNull(db.getVenueDao().findById(typo.id))
     }
+
+    @Test fun aSavedRecordComesBackWithItsVenue() = runBlocking {
+        val venue = repo.findOrCreate("大戶屋", lat = 25.0, lng = 121.0, now = 1L)
+        db.getEatTimeDao().insert(
+            EatTime(time = 100L, venueId = venue.id),
+        )
+
+        val loaded = db.getEatTimeDao().flowAllWithPhotos().first().single()
+
+        assertEquals("大戶屋", loaded.venue?.name)
+        // The record's own position is untouched by the venue — two different facts.
+        assertNull(loaded.eatTime.lat)
+    }
 }

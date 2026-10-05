@@ -10,6 +10,8 @@ data class EatRecord(
     val location: GeoPoint?,
     val note: String?,
     val photos: List<EatPhoto>,
+    /** Where the food came from. Null when unknown — it is never required. */
+    val venue: Venue? = null,
 )
 
 data class GeoPoint(val lat: Double, val lng: Double)
