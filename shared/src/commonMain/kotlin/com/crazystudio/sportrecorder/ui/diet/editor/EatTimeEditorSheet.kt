@@ -19,6 +19,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
@@ -44,9 +47,13 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
+import com.crazystudio.sportrecorder.shared.resources.editor_venue
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_clear
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_none
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_access_time_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_date_range_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_delete_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_camera_24
@@ -76,6 +83,8 @@ fun EatTimeEditorSheet(
     onRemoveExistingPhoto: (EatPhoto) -> Unit,
     onRecaptureLocation: () -> Unit,
     onClearLocation: () -> Unit,
+    onOpenVenuePicker: () -> Unit,
+    onClearVenue: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -127,6 +136,32 @@ fun EatTimeEditorSheet(
                 cursorColor = colorScheme.primary,
             ),
         )
+        // VENUE row — the place the food came from; never where the user was (that is LOCATION).
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { onOpenVenuePicker() }.padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.editor_venue),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = state.venue?.name ?: stringResource(Res.string.editor_venue_none),
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (state.venue != null) {
+                IconButton(onClick = onClearVenue) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_baseline_close_24),
+                        contentDescription = stringResource(Res.string.editor_venue_clear),
+                    )
+                }
+            }
+        }
         // LOCATION row — custom Row with two action icons
         val locationText = when (state.locationStatus) {
             EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(Res.string.diet_eat_location_loading)

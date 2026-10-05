@@ -74,6 +74,8 @@ class EatTimeEditorSheetTest {
                     onRemoveExistingPhoto = { removedExisting.add(it) },
                     onRecaptureLocation = { recapture++ },
                     onClearLocation = { clearLocation++ },
+                    onOpenVenuePicker = {},
+                    onClearVenue = {},
                     onConfirm = { confirm++ },
                 )
             }

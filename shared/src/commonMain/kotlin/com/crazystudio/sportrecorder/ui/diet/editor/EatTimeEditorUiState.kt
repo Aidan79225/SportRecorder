@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
+import com.crazystudio.sportrecorder.domain.model.Venue
 
 data class EatTimeEditorUiState(
     val dateMillis: Long = 0L, // the meal's date+time as epoch millis; formatted for display
@@ -10,7 +11,16 @@ data class EatTimeEditorUiState(
     val pendingPhotos: List<String> = emptyList(), // newly captured webp file names
     val location: LatLng? = null,
     val locationStatus: LocationStatus = LocationStatus.IDLE,
+    /** The venue attached to this record, or null — always optional. */
+    val venue: Venue? = null,
+    /** Picker contents, already ordered by [com.crazystudio.sportrecorder.domain.venue.VenuePicker]. */
+    val venueOptions: List<Venue> = emptyList(),
+    /** Set while a rename would merge two venues; the UI must show the count before it happens. */
+    val pendingMerge: PendingMerge? = null,
 ) {
     data class LatLng(val lat: Double, val lng: Double)
     enum class LocationStatus { IDLE, LOADING, AVAILABLE, UNAVAILABLE }
+
+    /** A rename that collides with an existing name: [movedRecords] records would change hands. */
+    data class PendingMerge(val from: Venue, val intoName: String, val movedRecords: Int)
 }

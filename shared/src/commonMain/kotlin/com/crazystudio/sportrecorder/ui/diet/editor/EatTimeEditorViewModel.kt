@@ -8,14 +8,19 @@ import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueName
+import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.platform.PhotoImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -33,6 +38,7 @@ class EatTimeEditorViewModel constructor(
     private val loadEatRecord: LoadEatRecordUseCase,
     private val saveEatRecord: SaveEatRecordUseCase,
     private val locationProvider: LocationProvider,
+    private val venueRepository: VenueRepository,
     private val photoImporter: PhotoImporter,
     private val photoFileStore: PhotoFileStore,
     private val photoImageSource: PhotoImageSource,
@@ -59,7 +65,16 @@ class EatTimeEditorViewModel constructor(
     )
     val uiState: StateFlow<EatTimeEditorUiState> = _uiState.asStateFlow()
 
+    // Every venue, as last emitted; the picker's order is derived from it and the live note.
+    private var allVenues: List<Venue> = emptyList()
+
     init {
+        viewModelScope.launch {
+            venueRepository.observeAll().collect { venues ->
+                allVenues = venues
+                _uiState.update { it.withVenueOptions() }
+            }
+        }
         if (isEditMode) {
             viewModelScope.launch {
                 val record = loadEatRecord(eatTimeId) ?: return@launch
@@ -70,19 +85,105 @@ class EatTimeEditorViewModel constructor(
                         dateMillis = currentMillis,
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
+                        venue = record.venue,
                         location = loc,
                         locationStatus = if (loc != null) {
                             EatTimeEditorUiState.LocationStatus.AVAILABLE
                         } else {
                             EatTimeEditorUiState.LocationStatus.IDLE
                         },
-                    )
+                    ).withVenueOptions()
                 }
             }
         }
     }
 
-    fun setNote(value: String) = _uiState.update { it.copy(note = value) }
+    // The suggestion follows the note as it is typed, so the order is recomputed with it.
+    private fun EatTimeEditorUiState.withVenueOptions() =
+        copy(venueOptions = VenuePicker.order(allVenues, note))
+
+    fun setNote(value: String) = _uiState.update { it.copy(note = value).withVenueOptions() }
+
+    fun selectVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
+
+    fun clearVenue() = _uiState.update { it.copy(venue = null) }
+
+    /**
+     * A name the user typed that is not in the list yet. The venue adopts this record's fix, if any.
+     * A name that is blank once normalized is refused: it would substring-match every note.
+     */
+    fun createVenue(name: String) {
+        if (VenueName.normalize(name).isEmpty()) return
+        viewModelScope.launch {
+            val state = _uiState.value
+            val venue = venueRepository.findOrCreate(
+                name = name,
+                lat = state.location?.lat,
+                lng = state.location?.lng,
+                now = now(),
+            )
+            _uiState.update { it.copy(venue = venue) }
+        }
+    }
+
+    /**
+     * Rename [venue]. When [newName] already belongs to another venue this is a merge, which
+     * rewrites other records — so nothing happens until the user confirms, and the confirmation
+     * carries how many records would move.
+     */
+    fun requestRename(venue: Venue, newName: String) {
+        if (VenueName.normalize(newName).isEmpty()) return
+        viewModelScope.launch {
+            val collides = venueRepository.observeAll().first()
+                .any { it.id != venue.id && VenueName.sameAs(it.name, newName) }
+            if (collides) {
+                val movedRecords = venueRepository.recordCount(venue.id)
+                _uiState.update {
+                    it.copy(
+                        pendingMerge = EatTimeEditorUiState.PendingMerge(
+                            from = venue,
+                            intoName = VenueName.normalize(newName),
+                            movedRecords = movedRecords,
+                        ),
+                    )
+                }
+            } else {
+                val renamed = venueRepository.rename(venue.id, newName, now())
+                _uiState.update { state ->
+                    state.copy(venue = if (state.venue?.id == venue.id) renamed else state.venue)
+                }
+            }
+        }
+    }
+
+    fun confirmRename() {
+        val pending = _uiState.value.pendingMerge ?: return
+        viewModelScope.launch {
+            val survivor = venueRepository.rename(pending.from.id, pending.intoName, now())
+            _uiState.update { state ->
+                state.copy(
+                    pendingMerge = null,
+                    venue = if (state.venue?.id == pending.from.id) survivor else state.venue,
+                )
+            }
+        }
+    }
+
+    fun cancelRename() = _uiState.update { it.copy(pendingMerge = null) }
+
+    /**
+     * Correct where a venue is, using this record's own fix. Because records read through
+     * `venue_id`, this moves the venue's marker for **every past record at once** — the reason a
+     * venue is an entity at all. Offered only when this record actually has a position.
+     */
+    fun useThisPositionFor(venue: Venue) {
+        val fix = _uiState.value.location ?: return
+        viewModelScope.launch {
+            venueRepository.setPosition(venue.id, fix.lat, fix.lng)
+        }
+    }
+
+    private fun now(): Long = Clock.System.now().toEpochMilliseconds()
 
     /** Import a just-captured photo. [sourcePath] is the camera temp file's path. */
     fun addCapturedPhoto(sourcePath: String) {
@@ -146,9 +247,16 @@ class EatTimeEditorViewModel constructor(
             location = state.location?.let { GeoPoint(it.lat, it.lng) },
             note = state.note.ifBlank { null },
             photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
+            // The update path rewrites the whole row, so the venue must travel with the record:
+            // leaving it out here would silently clear it whenever only the note was edited.
+            venue = state.venue,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
-        if (ok) committed = true
+        if (ok) {
+            committed = true
+            // Recency should reflect use, not creation.
+            state.venue?.let { venueRepository.touch(it.id, now()) }
+        }
         return ok
     }
 

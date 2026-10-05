@@ -245,4 +245,15 @@
     <string name="diet_eat_remove_photo">移除照片</string>
     <string name="diet_eat_create">新增</string>
     <string name="diet_eat_save">儲存</string>
+    <string name="editor_venue">店家</string>
+    <string name="editor_venue_none">未設定</string>
+    <string name="editor_venue_pick">選擇店家</string>
+    <string name="editor_venue_new">使用「%1$s」</string>
+    <string name="editor_venue_clear">清除店家</string>
+    <string name="editor_venue_rename">改名</string>
+    <string name="editor_venue_more">更多選項</string>
+    <string name="editor_venue_use_here">用這筆紀錄的位置更新</string>
+    <string name="editor_venue_merge_title">要和「%1$s」合併嗎?</string>
+    <string name="editor_venue_merge_body">有 %1$d 筆紀錄會移到「%2$s」。</string>
+    <string name="editor_venue_merge_confirm">合併</string>
 </resources>

@@ -42,7 +42,9 @@ import com.crazystudio.sportrecorder.ui.diet.DietViewModel
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeScreen
 import com.crazystudio.sportrecorder.ui.diet.create.fasting.CreateFastingTypeViewModel
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorSheet
+import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorUiState
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
+import com.crazystudio.sportrecorder.ui.diet.editor.VenuePickerSheet
 import com.crazystudio.sportrecorder.ui.diet.record.DietRecordViewModel
 import com.crazystudio.sportrecorder.ui.diet.record.FullScreenPhotoViewer
 import com.crazystudio.sportrecorder.ui.diet.record.RecordScreen
@@ -60,6 +62,27 @@ import com.crazystudio.sportrecorder.ui.settings.SettingsRoute
 import com.crazystudio.sportrecorder.util.PhotoStorage
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+
+/** The venue picker, shown over the editor sheet only while [visible]. */
+@Composable
+private fun VenuePickerHost(
+    visible: Boolean,
+    state: EatTimeEditorUiState,
+    vm: EatTimeEditorViewModel,
+    onDismiss: () -> Unit,
+) {
+    if (!visible) return
+    VenuePickerSheet(
+        state = state,
+        onSelect = vm::selectVenue,
+        onCreate = vm::createVenue,
+        onRename = vm::requestRename,
+        onUseThisPosition = vm::useThisPositionFor,
+        onConfirmMerge = vm::confirmRename,
+        onCancelMerge = vm::cancelRename,
+        onDismiss = onDismiss,
+    )
+}
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
@@ -213,6 +236,7 @@ fun AppRoot() {
                 val state by vm.uiState.collectAsStateWithLifecycle()
                 val context = LocalContext.current
                 val scope = rememberCoroutineScope()
+                var showVenuePicker by rememberSaveable { mutableStateOf(false) }
 
                 // Hold the pending capture path across the camera launch. Saveable: the camera
                 // often recreates this activity, and a plain remember would drop the result.
@@ -302,9 +326,17 @@ fun AppRoot() {
                         )
                     },
                     onClearLocation = vm::clearLocation,
+                    onOpenVenuePicker = { showVenuePicker = true },
+                    onClearVenue = vm::clearVenue,
                     onConfirm = {
                         scope.launch { if (vm.save()) navController.popBackStack() }
                     },
+                )
+                VenuePickerHost(
+                    visible = showVenuePicker,
+                    state = state,
+                    vm = vm,
+                    onDismiss = { showVenuePicker = false },
                 )
             }
         }
