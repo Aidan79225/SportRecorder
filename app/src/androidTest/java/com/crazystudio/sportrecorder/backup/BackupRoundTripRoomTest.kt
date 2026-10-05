@@ -123,6 +123,37 @@ class BackupRoundTripRoomTest {
         assertTrue(deletedPhotos.isEmpty())
     }
 
+    // The design rule behind venue backup: a snapshot names a venue, it never carries an id, because
+    // replaceAll deletes everything and Room hands out fresh ones. BackupServiceTest proves the rule
+    // against fakes; this is the same path over SQLite.
+    @Test fun backup_thenRestore_remapsAMealsVenueToTheFreshId() = runBlocking {
+        // A throwaway venue goes first so the venue under test does not hold id 1: a restore that
+        // simply re-inserted from scratch could otherwise "pass" by landing on the same id.
+        val throwaway = venueRepo.findOrCreate("throwaway", null, null, now = 1L)
+        val venue = venueRepo.findOrCreate("大戶屋", 25.03, 121.56, now = 2L)
+        eatRepo.save(EatRecord(0, 1_000L, null, "lunch", emptyList(), venue = venue), emptyList(), emptyList())
+        assertTrue(venue.id != throwaway.id)
+        val info = service().backup()
+
+        eatRepo.replaceAll(emptyList())
+        venueRepo.replaceAll(emptyList())
+        assertTrue(venueRepo.observeAll().first().isEmpty())
+
+        service().restore(info.id)
+
+        val restored = venueRepo.observeAll().first()
+        val restoredVenue = restored.single { it.name == "大戶屋" }
+        assertEquals(25.03, restoredVenue.lat!!, 0.0)
+        assertEquals(121.56, restoredVenue.lng!!, 0.0)
+        assertEquals(setOf("throwaway", "大戶屋"), restored.map { it.name }.toSet())
+        val meal = eatRepo.observeAll().first().single()
+        assertEquals(restoredVenue.id, meal.venue?.id) // points at the venue as it exists NOW
+        assertEquals("大戶屋", meal.venue?.name)
+        // Fresh ids, not the pre-backup ones: AUTOINCREMENT never reuses a deleted id.
+        assertTrue(restoredVenue.id != venue.id)
+        assertTrue(restored.none { it.id == venue.id || it.id == throwaway.id })
+    }
+
     @Test fun restore_ontoDeviceWithData_uploadsSafetySnapshotFirst_withoutPrune() = runBlocking {
         seedTwoMeals()
         val seedJson = BackupJson.encodeToString(
