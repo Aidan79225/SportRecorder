@@ -3,9 +3,11 @@ package com.crazystudio.sportrecorder.ui.insights.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -39,6 +42,12 @@ private val MARKER_GROWTH_PER_MEAL = 1.dp
 private val MARKER_RING = 2.dp
 private const val MARKER_GROWTH_CAP = 8
 private const val ATTRIBUTION_ALPHA = 0.8f
+private val LABEL_GAP = 2.dp
+private val LABEL_MAX_WIDTH = 140.dp
+private val LABEL_CORNER = 4.dp
+private val LABEL_PADDING_H = 4.dp
+private val LABEL_PADDING_V = 1.dp
+private const val LABEL_ALPHA = 0.8f
 
 /** A diameter is two radii: two markers at their largest size touch when their centres are one diameter apart. */
 private const val RADII_PER_DIAMETER = 2
@@ -64,6 +73,8 @@ private const val TILE_URL_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y
 /** On-screen size of one native tile for this screen density. */
 internal fun Density.mapTileSizePx(): Int =
     (OSM_TILE_PX * maxOf(TILE_SCALE_MIN, density / TILE_SCALE_DENSITY_DIVISOR)).roundToInt()
+
+private fun markerRadius(count: Int) = MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * minOf(count, MARKER_GROWTH_CAP)
 
 /** Markers closer than this (the largest marker's diameter) would overlap, so they cluster. */
 internal fun Density.clusterMergeDistancePx(): Float =
@@ -105,7 +116,7 @@ internal fun TileLayer(tiles: List<TilePlacement>, onLoaded: (TileKey) -> Unit =
  */
 @Composable
 internal fun ClusterMarker(viewport: MapViewport, cluster: MapCluster) {
-    val radius = MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * minOf(cluster.count, MARKER_GROWTH_CAP)
+    val radius = markerRadius(cluster.count)
     val radiusPx = with(LocalDensity.current) { radius.toPx() }
     val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
     Box(
@@ -121,6 +132,51 @@ internal fun ClusterMarker(viewport: MapViewport, cluster: MapCluster) {
             text = cluster.count.toString(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onPrimary,
+        )
+    }
+}
+
+/**
+ * Every marker, then the names of the named ones on top, so a label is never hidden under a
+ * neighbouring marker. A marker without a name is drawn exactly as it always was.
+ */
+@Composable
+internal fun ClusterMarkers(viewport: MapViewport, clusters: List<MapCluster>) {
+    clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
+    clusters.forEach { cluster ->
+        if (cluster.name != null) {
+            ClusterLabel(viewport, cluster, cluster.name)
+        }
+    }
+}
+
+/** The venue's name, to the right of its marker and vertically centred on it. */
+@Composable
+private fun ClusterLabel(viewport: MapViewport, cluster: MapCluster, name: String) {
+    val radius = markerRadius(cluster.count)
+    val density = LocalDensity.current
+    val radiusPx = with(density) { radius.toPx() }
+    val gapPx = with(density) { LABEL_GAP.toPx() }
+    val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
+    Box(
+        modifier = Modifier
+            .offset { IntOffset((x + radiusPx + gapPx).roundToInt(), (y - radiusPx).roundToInt()) }
+            .height(radius * 2)
+            .widthIn(max = LABEL_MAX_WIDTH),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .background(
+                    MaterialTheme.colorScheme.surface.copy(alpha = LABEL_ALPHA),
+                    RoundedCornerShape(LABEL_CORNER),
+                )
+                .padding(horizontal = LABEL_PADDING_H, vertical = LABEL_PADDING_V),
         )
     }
 }

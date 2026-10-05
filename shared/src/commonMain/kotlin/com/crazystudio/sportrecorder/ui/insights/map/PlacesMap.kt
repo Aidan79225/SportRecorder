@@ -20,12 +20,29 @@ import com.crazystudio.sportrecorder.domain.insights.LocationCount
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.insights_map_expand_hint
+import com.crazystudio.sportrecorder.shared.resources.insights_map_venues
 import org.jetbrains.compose.resources.stringResource
 
 private val MAP_HEIGHT = 220.dp
 
 /** Joins the summary and the "tap to enlarge" hint; the same separator the summary itself uses. */
 private const val DESCRIPTION_SEPARATOR = " · "
+
+/** Venue names are read out as a plain list; a comma is a pause in both English and Chinese speech. */
+private const val NAME_SEPARATOR = ", "
+
+/**
+ * The map's text equivalent: [summary], plus, when any marker carries a venue's name, those
+ * names (biggest first), so a screen reader hears what a sighted user reads off the map. With no
+ * named venue this is [summary] unchanged.
+ */
+@Composable
+fun placesMapDescription(summary: String, locations: List<LocationCount>): String {
+    val names = locations.mapNotNull { it.name }
+    if (names.isEmpty()) return summary
+    return summary + DESCRIPTION_SEPARATOR +
+        stringResource(Res.string.insights_map_venues, names.joinToString(NAME_SEPARATOR))
+}
 
 /**
  * A still map of where the period's meals were: raster tiles fitted around the places, and one
@@ -79,7 +96,7 @@ fun PlacesMap(
                 clusterPlaces(locations, viewport, mergeDistancePx)
             }
             TileLayer(remember(viewport) { viewport.tiles() })
-            clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
+            ClusterMarkers(viewport, clusters)
         }
         MapAttribution(Modifier.align(Alignment.BottomEnd))
     }

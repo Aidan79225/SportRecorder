@@ -43,6 +43,7 @@
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
+    <string name="insights_map_venues">Venues: %1$s</string>
     <string name="insights_map_expand_hint">Tap to enlarge</string>
     <string name="insights_map_close">Close map</string>
     <string-array name="insights_weekday_initials">

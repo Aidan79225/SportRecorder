@@ -47,4 +47,22 @@ class MarkerClustersTest {
     }
 
     @Test fun empty_isEmpty() = assertEquals(emptyList(), clusterPlaces(emptyList(), viewport, 40f))
+
+    @Test fun aSingleNamedVenue_keepsItsName() {
+        val clusters = clusterPlaces(listOf(LocationCount(25.0340, 121.5645, 2, "大戶屋")), viewport, 40f)
+        assertEquals(listOf<String?>("大戶屋"), clusters.map { it.name })
+    }
+
+    @Test fun mergedPlaces_haveNoSingleName() {
+        val clusters = clusterPlaces(
+            listOf(LocationCount(25.0340, 121.5645, 3, "大戶屋"), place(25.03401, 121.56451, 1)),
+            viewport, 40f,
+        )
+        assertEquals(1, clusters.size)
+        assertEquals(null, clusters.single().name)
+    }
+
+    @Test fun anonymousPoints_stayNameless() {
+        assertEquals(listOf<String?>(null), clusterPlaces(listOf(place(25.0340, 121.5645, 2)), viewport, 40f).map { it.name })
+    }
 }

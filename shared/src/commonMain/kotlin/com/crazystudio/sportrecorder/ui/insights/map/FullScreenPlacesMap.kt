@@ -171,7 +171,7 @@ private fun ZoomableMap(
                 tiles = layeredTiles(camera, widthPx, heightPx, tileSizePx, settledLevel, loaded),
                 onLoaded = ::onTileLoaded,
             )
-            clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
+            ClusterMarkers(viewport, clusters)
         }
     }
 }

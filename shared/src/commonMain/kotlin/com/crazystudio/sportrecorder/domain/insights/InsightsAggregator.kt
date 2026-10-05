@@ -140,7 +140,19 @@ object InsightsAggregator {
             .sortedByDescending { it.time }
             .flatMap { record -> record.photos.map { it.fileName } }
 
-        val locations = meals
+        // A record whose venue knows where it is becomes (part of) a named marker at the VENUE's
+        // position. Every other record — no venue, or a venue with no position yet — stays the
+        // anonymous point at its own coordinates it has always been: nothing leaves the map.
+        val (atVenues, elsewhere) = meals.partition { it.venue?.lat != null && it.venue.lng != null }
+
+        val venueLocations = atVenues
+            .groupBy { it.venue!!.id }
+            .map { (_, visits) ->
+                val venue = visits.first().venue!!
+                LocationCount(lat = venue.lat!!, lng = venue.lng!!, count = visits.size, name = venue.name)
+            }
+
+        val pointLocations = elsewhere
             .mapNotNull { it.location }
             .groupBy { (it.lat * LOCATION_ROUNDING).roundToLong() to (it.lng * LOCATION_ROUNDING).roundToLong() }
             .map { (key, points) ->
@@ -150,7 +162,8 @@ object InsightsAggregator {
                     count = points.size,
                 )
             }
-            .sortedByDescending { it.count }
+
+        val locations = (venueLocations + pointLocations).sortedByDescending { it.count }
 
         val calendarDays = dayCells(range, byDay, settings.eatingHours, now, timeZone)
 

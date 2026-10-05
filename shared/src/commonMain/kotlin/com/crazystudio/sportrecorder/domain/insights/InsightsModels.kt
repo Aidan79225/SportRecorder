@@ -73,8 +73,12 @@ data class InsightsStats(
     }
 }
 
-/** A place the user ate, grouped by rounded coordinates, with how many times. */
-data class LocationCount(val lat: Double, val lng: Double, val count: Int)
+/**
+ * A place the user ate, with how many times. [name] is the venue's name when the record named one
+ * **and** that venue knows where it is; null means an anonymous point at the record's own
+ * coordinates — which is what every record was before venues existed.
+ */
+data class LocationCount(val lat: Double, val lng: Double, val count: Int, val name: String? = null)
 
 /**
  * Neutral summary of the period the calendar is showing: how many days hold a record, and how

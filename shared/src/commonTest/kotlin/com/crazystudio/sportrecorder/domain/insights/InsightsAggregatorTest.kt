@@ -4,6 +4,7 @@ import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.Venue
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -27,8 +28,14 @@ class InsightsAggregatorTest {
     private fun at(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0): Long =
         LocalDateTime(year, month, day, hour, minute).toInstant(zone).toEpochMilliseconds()
 
-    private fun rec(time: Long) =
-        EatRecord(id = 0, time = time, location = null, note = null, photos = emptyList())
+    private fun rec(time: Long, lat: Double? = null, lng: Double? = null) =
+        EatRecord(
+            id = 0,
+            time = time,
+            location = if (lat != null && lng != null) GeoPoint(lat, lng) else null,
+            note = null,
+            photos = emptyList(),
+        )
 
     private fun recFull(time: Long, photos: List<String>, lat: Double?, lng: Double?) =
         EatRecord(
@@ -306,6 +313,96 @@ class InsightsAggregatorTest {
         assertTrue(result.photoFileNames.isEmpty())
         assertTrue(result.locations.isEmpty())
         assertEquals(PeriodSummary.EMPTY, result.summary)
+    }
+
+    // ---- the map prefers venues, but never at the cost of a record ----
+
+    @Test fun locations_namesVenuesAndKeepsVenuelessRecordsAsPoints() {
+        val now = at(2026, 3, 15, 12)
+        val venue = Venue(id = 1, name = "大戶屋", lat = 25.05, lng = 121.55, lastUsedAt = 1L)
+        val days = byDay(
+            rec(at(2026, 3, 10, 12), lat = 25.0, lng = 121.0).copy(venue = venue),
+            rec(at(2026, 3, 11, 12), lat = 24.0, lng = 120.0), // no venue
+        )
+        val result = InsightsAggregator.compute(days.values.flatten(), settings, now, Period.MONTH, now, zone)
+
+        val named = result.locations.single { it.name != null }
+        assertEquals("大戶屋", named.name)
+        // The marker sits at the VENUE's position, not at the record's.
+        assertEquals(25.05, named.lat, 0.0001)
+        assertEquals(121.55, named.lng, 0.0001)
+        // The venue-less record is still on the map, as a plain point.
+        assertEquals(1, result.locations.count { it.name == null })
+    }
+
+    @Test fun locations_groupOneVenueAcrossManyVisits() {
+        val now = at(2026, 3, 15, 12)
+        val venue = Venue(id = 1, name = "大戶屋", lat = 25.05, lng = 121.55, lastUsedAt = 1L)
+        val days = byDay(
+            rec(at(2026, 3, 10, 12), lat = 25.0, lng = 121.0).copy(venue = venue),
+            rec(at(2026, 3, 12, 12), lat = 1.0, lng = 1.0).copy(venue = venue),
+        )
+        val result = InsightsAggregator.compute(days.values.flatten(), settings, now, Period.MONTH, now, zone)
+
+        // One marker, counted twice — even though the two visits were recorded miles apart.
+        assertEquals(1, result.locations.size)
+        assertEquals(2, result.locations.single().count)
+    }
+
+    /** A venue that has never learned where it is cannot be drawn; the record's own point is used. */
+    @Test fun locations_fallBackWhenTheVenueHasNoPosition() {
+        val now = at(2026, 3, 15, 12)
+        val venue = Venue(id = 1, name = "路邊攤", lat = null, lng = null, lastUsedAt = 1L)
+        val days = byDay(rec(at(2026, 3, 10, 12), lat = 25.0, lng = 121.0).copy(venue = venue))
+        val result = InsightsAggregator.compute(days.values.flatten(), settings, now, Period.MONTH, now, zone)
+
+        assertEquals(1, result.locations.size)
+        assertEquals(null, result.locations.single().name)
+        assertEquals(25.0, result.locations.single().lat, 0.0001)
+    }
+
+    /** Someone who never names a venue sees exactly the map they always had: rounded, anonymous, nothing missing. */
+    @Test fun locations_withoutAnyVenueAreUnchanged() {
+        val now = at(2026, 3, 15, 12)
+        val result = InsightsAggregator.compute(
+            listOf(
+                rec(at(2026, 3, 10, 12), lat = 25.0330, lng = 121.5654),
+                rec(at(2026, 3, 11, 12), lat = 25.0331, lng = 121.5654), // same ~100 m cell
+                rec(at(2026, 3, 12, 12), lat = 24.1477, lng = 120.6736),
+                rec(at(2026, 3, 13, 12)), // no location at all: not drawable, as before
+            ),
+            settings, now, Period.MONTH, now, zone,
+        )
+
+        assertTrue(result.locations.all { it.name == null })
+        assertEquals(listOf(2, 1), result.locations.map { it.count })
+        assertEquals(25.033, result.locations.first().lat, 0.0001)
+        assertEquals(121.565, result.locations.first().lng, 0.0001)
+    }
+
+    /** A venue that knows where it is is drawn even if the record itself carries no coordinates. */
+    @Test fun locations_aVenueWithAPositionNeedsNoRecordCoordinates() {
+        val now = at(2026, 3, 15, 12)
+        val venue = Venue(id = 1, name = "大戶屋", lat = 25.05, lng = 121.55, lastUsedAt = 1L)
+        val result = InsightsAggregator.compute(
+            listOf(rec(at(2026, 3, 10, 12)).copy(venue = venue)),
+            settings, now, Period.MONTH, now, zone,
+        )
+
+        assertEquals(listOf(LocationCount(25.05, 121.55, 1, "大戶屋")), result.locations)
+    }
+
+    /** Two different venues never merge into one marker, however close they are. */
+    @Test fun locations_differentVenuesStaySeparate() {
+        val now = at(2026, 3, 15, 12)
+        val a = Venue(id = 1, name = "A", lat = 25.05, lng = 121.55, lastUsedAt = 1L)
+        val b = Venue(id = 2, name = "B", lat = 25.05, lng = 121.55, lastUsedAt = 1L)
+        val result = InsightsAggregator.compute(
+            listOf(rec(at(2026, 3, 10, 12)).copy(venue = a), rec(at(2026, 3, 11, 12)).copy(venue = b)),
+            settings, now, Period.MONTH, now, zone,
+        )
+
+        assertEquals(setOf("A", "B"), result.locations.map { it.name }.toSet())
     }
 
     @Test fun compute_lateNightMealIsOneDayEverywhere() {

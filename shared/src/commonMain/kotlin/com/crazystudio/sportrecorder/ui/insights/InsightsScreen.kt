@@ -92,6 +92,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
 import com.crazystudio.sportrecorder.ui.insights.map.FullScreenPlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
+import com.crazystudio.sportrecorder.ui.insights.map.placesMapDescription
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -627,9 +628,15 @@ private fun LocationsCard(locations: List<LocationCount>) {
         // The card stays a still picture; a tap opens the closer, zoomable look (kept open across
         // rotation and other recreation).
         var expanded by rememberSaveable { mutableStateOf(false) }
-        PlacesMap(locations = locations, contentDescription = summary, onClick = { expanded = true })
+        // The summary line stays as it is; the map's own node also names the venues it draws.
+        val mapDescription = placesMapDescription(summary, locations)
+        PlacesMap(locations = locations, contentDescription = mapDescription, onClick = { expanded = true })
         if (expanded) {
-            FullScreenPlacesMap(locations = locations, contentDescription = summary, onDismiss = { expanded = false })
+            FullScreenPlacesMap(
+                locations = locations,
+                contentDescription = mapDescription,
+                onDismiss = { expanded = false },
+            )
         }
         Text(
             text = summary,
