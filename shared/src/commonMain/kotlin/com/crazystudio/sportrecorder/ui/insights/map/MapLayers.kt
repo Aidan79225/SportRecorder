@@ -3,11 +3,10 @@ package com.crazystudio.sportrecorder.ui.insights.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -18,8 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -44,6 +45,9 @@ private const val MARKER_GROWTH_CAP = 8
 private const val ATTRIBUTION_ALPHA = 0.8f
 private val LABEL_GAP = 2.dp
 private val LABEL_MAX_WIDTH = 140.dp
+
+/** Narrower than this a name is a sliver that says nothing, so it is left off the map. */
+private val LABEL_MIN_WIDTH = 32.dp
 private val LABEL_CORNER = 4.dp
 private val LABEL_PADDING_H = 4.dp
 private val LABEL_PADDING_V = 1.dp
@@ -143,42 +147,68 @@ internal fun ClusterMarker(viewport: MapViewport, cluster: MapCluster) {
 @Composable
 internal fun ClusterMarkers(viewport: MapViewport, clusters: List<MapCluster>) {
     clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
-    clusters.forEach { cluster ->
-        if (cluster.name != null) {
-            ClusterLabel(viewport, cluster, cluster.name)
+    ClusterLabels(viewport, clusters)
+}
+
+/**
+ * The venues' names, one pill each, laid out over the whole canvas so a pill can see where the
+ * edges and the other markers are: it sits to the right of its marker, flips to the left when the
+ * right would run off the canvas or onto another marker's circle, and is narrowed (ellipsized)
+ * when neither side has room for the whole name (see [placeLabel]).
+ */
+@Composable
+private fun ClusterLabels(viewport: MapViewport, clusters: List<MapCluster>) {
+    val namedAt = clusters.indices.filter { clusters[it].name != null }
+    if (namedAt.isEmpty()) return
+    Layout(
+        content = { namedAt.forEach { LabelPill(checkNotNull(clusters[it].name)) } },
+        modifier = Modifier.fillMaxSize(),
+    ) { pills, constraints ->
+        val circles = clusters.map { cluster ->
+            val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
+            MarkerCircle(x, y, markerRadius(cluster.count).toPx())
+        }
+        val gap = LABEL_GAP.toPx()
+        val maxWidth = LABEL_MAX_WIDTH.toPx()
+        val minWidth = LABEL_MIN_WIDTH.toPx()
+        val placed = pills.mapIndexedNotNull { i, pill ->
+            val marker = circles[namedAt[i]]
+            val natural = minOf(pill.maxIntrinsicWidth(Constraints.Infinity).toFloat(), maxWidth)
+            val height = pill.minIntrinsicHeight(natural.roundToInt()).toFloat()
+            val slot = placeLabel(
+                marker = marker,
+                others = circles.filter { it !== marker },
+                naturalWidth = natural,
+                height = height,
+                canvasWidth = constraints.maxWidth.toFloat(),
+                gap = gap,
+                minWidth = minWidth,
+            )
+            slot?.let { Triple(pill.measure(Constraints(maxWidth = it.width.toInt())), it, marker) }
+        }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placed.forEach { (pill, slot, marker) ->
+                pill.place(slot.left.roundToInt(), (marker.y - pill.height / 2f).roundToInt())
+            }
         }
     }
 }
 
-/** The venue's name, to the right of its marker and vertically centred on it. */
 @Composable
-private fun ClusterLabel(viewport: MapViewport, cluster: MapCluster, name: String) {
-    val radius = markerRadius(cluster.count)
-    val density = LocalDensity.current
-    val radiusPx = with(density) { radius.toPx() }
-    val gapPx = with(density) { LABEL_GAP.toPx() }
-    val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
-    Box(
+private fun LabelPill(name: String) {
+    Text(
+        text = name,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier
-            .offset { IntOffset((x + radiusPx + gapPx).roundToInt(), (y - radiusPx).roundToInt()) }
-            .height(radius * 2)
-            .widthIn(max = LABEL_MAX_WIDTH),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Text(
-            text = name,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .background(
-                    MaterialTheme.colorScheme.surface.copy(alpha = LABEL_ALPHA),
-                    RoundedCornerShape(LABEL_CORNER),
-                )
-                .padding(horizontal = LABEL_PADDING_H, vertical = LABEL_PADDING_V),
-        )
-    }
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = LABEL_ALPHA),
+                RoundedCornerShape(LABEL_CORNER),
+            )
+            .padding(horizontal = LABEL_PADDING_H, vertical = LABEL_PADDING_V),
+    )
 }
 
 /** OSM's required credit line; place it in a corner with [modifier]. */

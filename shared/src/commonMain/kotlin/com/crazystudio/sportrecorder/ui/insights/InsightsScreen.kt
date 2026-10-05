@@ -619,7 +619,8 @@ private fun LocationsCard(locations: List<LocationCount>) {
             Text(stringResource(Res.string.insights_empty_locations), style = MaterialTheme.typography.bodyMedium)
             return@SectionCard
         }
-        // The map is one picture; the line under it is its text equivalent for screen readers.
+        // The map is one picture; its text equivalent is the map node's own description (this summary,
+        // plus the venue names it draws), while the visible line below stays just the summary.
         val summary = stringResource(
             Res.string.insights_map_summary,
             locations.size,
