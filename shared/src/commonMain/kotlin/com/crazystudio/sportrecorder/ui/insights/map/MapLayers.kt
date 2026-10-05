@@ -171,20 +171,30 @@ private fun ClusterLabels(viewport: MapViewport, clusters: List<MapCluster>) {
         val gap = LABEL_GAP.toPx()
         val maxWidth = LABEL_MAX_WIDTH.toPx()
         val minWidth = LABEL_MIN_WIDTH.toPx()
+        // Largest places first (the order of [clusters]); each placed label is an obstacle for the next,
+        // so two names never sit on top of each other.
+        val taken = mutableListOf<Block>()
         val placed = pills.mapIndexedNotNull { i, pill ->
             val marker = circles[namedAt[i]]
+            // A marker panned off the canvas is simply not seen; its label must not float on alone.
+            if (!marker.intersectsCanvas(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())) {
+                return@mapIndexedNotNull null
+            }
             val natural = minOf(pill.maxIntrinsicWidth(Constraints.Infinity).toFloat(), maxWidth)
             val height = pill.minIntrinsicHeight(natural.roundToInt()).toFloat()
             val slot = placeLabel(
                 marker = marker,
-                others = circles.filter { it !== marker },
+                others = circles.filter { it !== marker }.map { it.asBlock() } + taken,
                 naturalWidth = natural,
                 height = height,
                 canvasWidth = constraints.maxWidth.toFloat(),
                 gap = gap,
                 minWidth = minWidth,
             )
-            slot?.let { Triple(pill.measure(Constraints(maxWidth = it.width.toInt())), it, marker) }
+            slot?.let {
+                taken += it.asBlock(marker.y, height)
+                Triple(pill.measure(Constraints(maxWidth = it.width.toInt())), it, marker)
+            }
         }
         layout(constraints.maxWidth, constraints.maxHeight) {
             placed.forEach { (pill, slot, marker) ->

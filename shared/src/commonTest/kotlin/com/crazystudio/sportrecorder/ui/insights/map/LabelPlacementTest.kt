@@ -12,7 +12,10 @@ class LabelPlacementTest {
     private fun circle(x: Float, y: Float = 100f) = MarkerCircle(x, y, r)
 
     private fun place(marker: MarkerCircle, others: List<MarkerCircle> = emptyList(), width: Float = 200f) =
-        placeLabel(marker, others, naturalWidth = width, height = 20f, canvasWidth = canvas, gap = 2f, minWidth = 30f)
+        placeLabel(
+            marker, others.map { it.asBlock() },
+            naturalWidth = width, height = 20f, canvasWidth = canvas, gap = 2f, minWidth = 30f,
+        )
 
     @Test fun roomOnTheRight_putsTheLabelRightOfTheMarker() {
         assertEquals(LabelSlot(left = 400f + r + 2f, width = 200f), place(circle(400f)))
@@ -31,7 +34,9 @@ class LabelPlacementTest {
     }
 
     @Test fun markersAboveOrBelowTheLabelBandAreNoObstacle() {
-        assertEquals(402f + 400f - 400f + r, place(circle(400f), listOf(circle(460f, y = 300f)))!!.left)
+        // Marker at x=400, radius 20, gap 2: the label starts at 422 and keeps its whole width.
+        val slot = place(circle(400f), listOf(circle(460f, y = 300f)))!!
+        assertEquals(LabelSlot(left = 422f, width = 200f), slot)
     }
 
     @Test fun noRoomForTheWholeName_narrowsOnTheRoomierSide() {
@@ -47,8 +52,38 @@ class LabelPlacementTest {
     }
 
     @Test fun theLeftEdgeIsRespected() {
-        val slot = placeLabel(circle(30f), listOf(circle(100f)), 200f, 20f, 100f, 2f, 30f)
-        assertNull(slot)
+        // Marker at x=300 with a blocker at x=380: the right has 38 px, the left is open down to x=0
+        // but only 278 px wide, so a 400 px name goes left, narrowed to what is there, never below 0.
+        val slot = place(circle(300f), listOf(circle(380f)), width = 400f)!!
+        assertTrue(slot.left >= 0f)
+        assertTrue(slot.left + slot.width <= 300f - r)
+        assertEquals(278f, slot.width, 0.001f)
+    }
+
+    @Test fun aShortNameThatFitsWholeIsDrawnEvenUnderTheMinimumWidth() {
+        // "全家" is ~30 px wide, below the 30 px floor used here with room to spare: it still gets a slot.
+        val slot = placeLabel(circle(400f), emptyList(), 24f, 20f, canvas, 2f, 30f)
+        assertEquals(LabelSlot(left = 422f, width = 24f), slot)
+    }
+
+    @Test fun aLabelAlreadyPlaced_isKeptClearOf() {
+        // First label occupies 122..422. On an 800 px canvas the second marker (x=600) has 178 px to its
+        // right and, with the first label in the way, only 154 px to its left: it narrows on the right.
+        // Without the placed-label obstacle it would flip left, onto the first label.
+        val first = place(circle(100f), width = 300f)!!
+        val second = placeLabel(
+            circle(600f), listOf(first.asBlock(centreY = 100f, height = 20f)),
+            naturalWidth = 300f, height = 20f, canvasWidth = 800f, gap = 2f, minWidth = 30f,
+        )!!
+        assertEquals(LabelSlot(left = 622f, width = 178f), second)
+        assertTrue(second.left >= first.left + first.width)
+    }
+
+    @Test fun aMarkerOffTheCanvasHasNoLabelToDraw() {
+        assertTrue(circle(500f).intersectsCanvas(canvas, 300f))
+        assertTrue(!circle(canvas + r + 10f).intersectsCanvas(canvas, 300f))
+        assertTrue(!circle(500f, y = -50f).intersectsCanvas(canvas, 300f))
+        assertTrue(circle(canvas + r + 10f).intersectsCanvas(canvas + 100f, 300f))
     }
 
     @Test fun describedVenueNames_capsAtFiveAndCountsTheRest() {
