@@ -1,7 +1,7 @@
 # 店家 · Venue on a record design
 
 - **Date:** 2026-10-05
-- **Status:** Designed, not implemented. Issue [#83](https://github.com/Aidan79225/SportRecorder/issues/83).
+- **Status:** Implemented on `claude/venue-83`. Issue [#83](https://github.com/Aidan79225/SportRecorder/issues/83).
 - **Related:** [#84](https://github.com/Aidan79225/SportRecorder/issues/84) (paste a Google Maps URL
   → fill the venue and its coordinates) builds on this. [#85](https://github.com/Aidan79225/SportRecorder/issues/85)
   (food tags) is independent — see *Schema versioning* for why the two no longer need to ship together.
