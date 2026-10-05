@@ -354,4 +354,19 @@ class BackupServiceTest {
         assertEquals("old", eat.state.value.single().note)
         assertNull(eat.state.value.single().venue)
     }
+
+    /** Venues are backup data now: a device with places but no meals must still get a safety snapshot. */
+    @Test fun restore_backsUpFirst_whenDeviceHasVenuesButNoMeals() = runTest {
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("target", 1L, "0.6.2", 1L), emptyDocJson())
+        val venueRepo = FakeVenueRepository()
+        venueRepo.findOrCreate("My place", lat = 1.0, lng = 2.0, now = 3L)
+
+        service(FakeEatRecordRepository(), store, venueRepo).restore("target")
+
+        val safety = store.uploads.single()
+        val safetyDoc = BackupJson.decodeFromString(BackupDocument.serializer(), safety.manifestJson)
+        assertEquals(listOf("My place"), safetyDoc.venues.map { it.name })
+        assertEquals(emptyList(), venueRepo.stored) // and the restore still applied
+    }
 }

@@ -88,7 +88,10 @@ class BackupService(
         // snapshot we are about to restore. The next regular backup prunes as usual.
         // If the safety net cannot be made, stop here with a distinct error: nothing has been
         // downloaded or applied yet, so the device's data is exactly as it was.
-        if (eatRepo.observeAll().first().isNotEmpty()) {
+        // Venues are backup data too, and restore wipes them: a device with places but no meals
+        // still has something worth keeping.
+        val hasLocalData = eatRepo.observeAll().first().isNotEmpty() || venueRepo.observeAll().first().isNotEmpty()
+        if (hasLocalData) {
             runCatching {
                 backupInternal(prune = false) { _, done, total ->
                     progress.report(BackupStep.SafetyBackup, done, total)
