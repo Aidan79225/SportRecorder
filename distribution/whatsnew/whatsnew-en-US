@@ -1,6 +1,5 @@
-New in 0.11.0
-• Automatic backup: turn it on in Backup & restore, and your records back up daily while charging on Wi-Fi.
-• Log a meal in one tap: add the "Log a meal" tile to your quick settings and record the moment without opening the app.
-• The month view in Insights now has the rhythm chart too — a whole month's shape at a glance.
-• A year ago today: if that day last year holds records, Insights quietly brings it back.
-• The photo wall now opens to the whole period, not just 12.
+New in 0.12.0
+• A record can now name the place its food came from — pick one you have used before instead of typing it again.
+• Rename a place, or fix where it is, and every past record follows.
+• The Insights map shows place names instead of plain dots. Records without a place still appear, just as before.
+• Places are included in your Google Drive backup.
