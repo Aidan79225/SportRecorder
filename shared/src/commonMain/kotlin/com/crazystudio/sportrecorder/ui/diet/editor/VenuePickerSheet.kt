@@ -81,9 +81,11 @@ fun VenuePickerSheet(
     var query by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Venue?>(null) }
 
-    // A merge left pending must not outlive the sheet and reappear the next time it opens.
+    // A merge left pending, or a snackbar message cut off by closing the sheet (showSnackbar is
+    // cancelled before it can consume), must not outlive the sheet and reappear the next time.
     val dismiss = {
         onCancelMerge()
+        onConsumeMessage()
         onDismiss()
     }
 
