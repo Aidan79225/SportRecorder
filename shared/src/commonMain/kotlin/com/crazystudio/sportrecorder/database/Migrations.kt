@@ -4,6 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import com.crazystudio.sportrecorder.entity.FastingType
+import com.crazystudio.sportrecorder.entity.VenueEntity
 
 private const val VERSION_1 = 1
 private const val VERSION_2 = 2
@@ -12,6 +13,7 @@ private const val VERSION_4 = 4
 private const val VERSION_5 = 5
 private const val VERSION_6 = 6
 private const val VERSION_7 = 7
+private const val VERSION_8 = 8
 
 // SQL is unchanged from the Android version — only the API moves from SupportSQLiteDatabase to the
 // multiplatform SQLiteConnection. Room runs each migrate() inside its own transaction.
@@ -66,6 +68,21 @@ object Migrations {
             object : Migration(VERSION_6, VERSION_7) {
                 override fun migrate(connection: SQLiteConnection) {
                     connection.execSQL("ALTER TABLE `${FastingType.tableName}` ADD COLUMN `name` TEXT")
+                }
+            },
+            object : Migration(VERSION_7, VERSION_8) {
+                override fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `${VenueEntity.tableName}` " +
+                            "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`name` TEXT NOT NULL, `lat` REAL, `lng` REAL, " +
+                            "`last_used_at` INTEGER NOT NULL DEFAULT 0)"
+                    )
+                    connection.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                            "`index_${VenueEntity.tableName}_name` ON `${VenueEntity.tableName}` (`name`)"
+                    )
+                    connection.execSQL("ALTER TABLE `eat_time` ADD COLUMN `venue_id` INTEGER")
                 }
             }
         )

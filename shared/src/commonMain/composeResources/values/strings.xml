@@ -43,6 +43,8 @@
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
+    <string name="insights_map_venues">Venues: %1$s</string>
+    <string name="insights_map_venues_more">Venues: %1$s and %2$d more</string>
     <string name="insights_map_expand_hint">Tap to enlarge</string>
     <string name="insights_map_close">Close map</string>
     <string-array name="insights_weekday_initials">
@@ -245,4 +247,19 @@
     <string name="diet_eat_remove_photo">Remove photo</string>
     <string name="diet_eat_create">CREATE</string>
     <string name="diet_eat_save">SAVE</string>
+    <string name="editor_venue">Place</string>
+    <string name="editor_venue_none">Not set</string>
+    <string name="editor_venue_pick">Choose a place</string>
+    <string name="editor_venue_new">Use "%1$s"</string>
+    <string name="editor_venue_clear">Clear place</string>
+    <string name="editor_venue_rename">Rename</string>
+    <string name="editor_venue_more">More options</string>
+    <string name="editor_venue_use_here">Set its position from this record</string>
+    <string name="editor_venue_merge_title">Merge with "%1$s"?</string>
+    <plurals name="editor_venue_merge_body">
+        <item quantity="one">%1$d record will move to "%2$s".</item>
+        <item quantity="other">%1$d records will move to "%2$s".</item>
+    </plurals>
+    <string name="editor_venue_position_updated">Place position updated</string>
+    <string name="editor_venue_merge_confirm">Merge</string>
 </resources>

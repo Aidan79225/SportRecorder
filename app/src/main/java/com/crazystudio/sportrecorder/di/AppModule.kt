@@ -26,6 +26,7 @@ import com.crazystudio.sportrecorder.data.repository.DietSettingsRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.EatRecordRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.FastingTypeRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.ReminderPreferencesRepositoryImpl
+import com.crazystudio.sportrecorder.data.repository.VenueRepositoryImpl
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.database.Migrations
 import com.crazystudio.sportrecorder.domain.reminder.ReminderScheduler
@@ -35,6 +36,7 @@ import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
+import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.CreateCustomFastingTypeUseCase
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
@@ -84,6 +86,7 @@ val appModule = module {
     single { get<AppDatabase>().getEatTimeDao() }
     single { get<AppDatabase>().getFastingTypeDao() }
     single { get<AppDatabase>().getPhotoDao() }
+    single { get<AppDatabase>().getVenueDao() }
 
     // Repositories
     single<PhotoFileStore> { AndroidPhotoFileStore(androidContext()) }
@@ -95,6 +98,7 @@ val appModule = module {
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
     single<ReminderPreferencesRepository> { ReminderPreferencesRepositoryImpl(get()) }
     single<AutoBackupPreferencesRepository> { AutoBackupPreferencesRepositoryImpl(get()) }
+    single<VenueRepository> { VenueRepositoryImpl(get(), get()) }
     single<AutoBackupScheduler> { WorkManagerAutoBackupScheduler(androidContext()) }
 
     // Backup
@@ -105,7 +109,7 @@ val appModule = module {
         GoogleDriveBackupStore(get<GoogleBackupAuth>(), { name -> PhotoStorage.fileFor(context, name) })
     }
     single {
-        BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
+        BackupService(get(), get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }
     single<BackupJobHost> { AndroidBackupJobHost(androidContext()) }
     single { BackupJobRunner(get(), get()) }
@@ -134,6 +138,6 @@ val appModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
-    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { BackupViewModel(get(), get(), get(), get(), get(), get()) }
 }

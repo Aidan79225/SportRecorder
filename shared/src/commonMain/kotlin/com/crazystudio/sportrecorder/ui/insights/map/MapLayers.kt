@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.ui.insights.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,7 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -39,6 +43,15 @@ private val MARKER_GROWTH_PER_MEAL = 1.dp
 private val MARKER_RING = 2.dp
 private const val MARKER_GROWTH_CAP = 8
 private const val ATTRIBUTION_ALPHA = 0.8f
+private val LABEL_GAP = 2.dp
+private val LABEL_MAX_WIDTH = 140.dp
+
+/** Narrower than this a name is a sliver that says nothing, so it is left off the map. */
+private val LABEL_MIN_WIDTH = 32.dp
+private val LABEL_CORNER = 4.dp
+private val LABEL_PADDING_H = 4.dp
+private val LABEL_PADDING_V = 1.dp
+private const val LABEL_ALPHA = 0.8f
 
 /** A diameter is two radii: two markers at their largest size touch when their centres are one diameter apart. */
 private const val RADII_PER_DIAMETER = 2
@@ -64,6 +77,8 @@ private const val TILE_URL_TEMPLATE = "https://tile.openstreetmap.org/{z}/{x}/{y
 /** On-screen size of one native tile for this screen density. */
 internal fun Density.mapTileSizePx(): Int =
     (OSM_TILE_PX * maxOf(TILE_SCALE_MIN, density / TILE_SCALE_DENSITY_DIVISOR)).roundToInt()
+
+private fun markerRadius(count: Int) = MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * minOf(count, MARKER_GROWTH_CAP)
 
 /** Markers closer than this (the largest marker's diameter) would overlap, so they cluster. */
 internal fun Density.clusterMergeDistancePx(): Float =
@@ -105,7 +120,7 @@ internal fun TileLayer(tiles: List<TilePlacement>, onLoaded: (TileKey) -> Unit =
  */
 @Composable
 internal fun ClusterMarker(viewport: MapViewport, cluster: MapCluster) {
-    val radius = MARKER_RADIUS + MARKER_GROWTH_PER_MEAL * minOf(cluster.count, MARKER_GROWTH_CAP)
+    val radius = markerRadius(cluster.count)
     val radiusPx = with(LocalDensity.current) { radius.toPx() }
     val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
     Box(
@@ -123,6 +138,87 @@ internal fun ClusterMarker(viewport: MapViewport, cluster: MapCluster) {
             color = MaterialTheme.colorScheme.onPrimary,
         )
     }
+}
+
+/**
+ * Every marker, then the names of the named ones on top, so a label is never hidden under a
+ * neighbouring marker. A marker without a name is drawn exactly as it always was.
+ */
+@Composable
+internal fun ClusterMarkers(viewport: MapViewport, clusters: List<MapCluster>) {
+    clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
+    ClusterLabels(viewport, clusters)
+}
+
+/**
+ * The venues' names, one pill each, laid out over the whole canvas so a pill can see where the
+ * edges and the other markers are: it sits to the right of its marker, flips to the left when the
+ * right would run off the canvas or onto another marker's circle, and is narrowed (ellipsized)
+ * when neither side has room for the whole name (see [placeLabel]).
+ */
+@Composable
+private fun ClusterLabels(viewport: MapViewport, clusters: List<MapCluster>) {
+    val namedAt = clusters.indices.filter { clusters[it].name != null }
+    if (namedAt.isEmpty()) return
+    Layout(
+        content = { namedAt.forEach { LabelPill(checkNotNull(clusters[it].name)) } },
+        modifier = Modifier.fillMaxSize(),
+    ) { pills, constraints ->
+        val circles = clusters.map { cluster ->
+            val (x, y) = viewport.pixelFor(cluster.lat, cluster.lng)
+            MarkerCircle(x, y, markerRadius(cluster.count).toPx())
+        }
+        val gap = LABEL_GAP.toPx()
+        val maxWidth = LABEL_MAX_WIDTH.toPx()
+        val minWidth = LABEL_MIN_WIDTH.toPx()
+        // Largest places first (the order of [clusters]); each placed label is an obstacle for the next,
+        // so two names never sit on top of each other.
+        val taken = mutableListOf<Block>()
+        val placed = pills.mapIndexedNotNull { i, pill ->
+            val marker = circles[namedAt[i]]
+            // A marker panned off the canvas is simply not seen; its label must not float on alone.
+            if (!marker.intersectsCanvas(constraints.maxWidth.toFloat(), constraints.maxHeight.toFloat())) {
+                return@mapIndexedNotNull null
+            }
+            val natural = minOf(pill.maxIntrinsicWidth(Constraints.Infinity).toFloat(), maxWidth)
+            val height = pill.minIntrinsicHeight(natural.roundToInt()).toFloat()
+            val slot = placeLabel(
+                marker = marker,
+                others = circles.filter { it !== marker }.map { it.asBlock() } + taken,
+                naturalWidth = natural,
+                height = height,
+                canvasWidth = constraints.maxWidth.toFloat(),
+                gap = gap,
+                minWidth = minWidth,
+            )
+            slot?.let {
+                taken += it.asBlock(marker.y, height)
+                Triple(pill.measure(Constraints(maxWidth = it.width.toInt())), it, marker)
+            }
+        }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placed.forEach { (pill, slot, marker) ->
+                pill.place(slot.left.roundToInt(), (marker.y - pill.height / 2f).roundToInt())
+            }
+        }
+    }
+}
+
+@Composable
+private fun LabelPill(name: String) {
+    Text(
+        text = name,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = LABEL_ALPHA),
+                RoundedCornerShape(LABEL_CORNER),
+            )
+            .padding(horizontal = LABEL_PADDING_H, vertical = LABEL_PADDING_V),
+    )
 }
 
 /** OSM's required credit line; place it in a corner with [modifier]. */

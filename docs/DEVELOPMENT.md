@@ -1,6 +1,7 @@
 # 開發現況總覽 · Development status
 
-> 最後整理:2026-09-21(對應 `master` @ `360ca2a`,PR #57 合併後)
+> 最後整理:2026-10-05(僅更新「專案快照」的版本、程式碼分層與店家功能的文件索引,對應分支 `claude/venue-83`;
+> 第 3–5 節其餘內容仍停在 2026-09-21 的 `master` @ `360ca2a`,尚未重整)
 >
 > 這份文件是**目前開發資訊的索引**:專案長什麼樣、做到哪裡、下一步是什麼、怎麼建置與發布。
 > 設計文件(spec)與實作計畫(plan)仍住在 `docs/superpowers/`;初衷與設計原則見 `README.md` 與 `CLAUDE.md`。
@@ -10,7 +11,7 @@
 | 項目 | 現況 |
 | --- | --- |
 | App | SportRecorder(`com.crazystudio.sportrecorder`)— 從斷食出發的飲食紀錄 app |
-| 版本 | `versionName 0.6.2` / `versionCode 20`(最新 release tag:`0.6.2`) |
+| 版本 | `versionName 0.11.0` / `versionCode 26`(最新 release tag:`0.11.0`) |
 | 平台 | Android 出貨中;iOS 尚未建立 host app(`:shared` 已可編到 iOS) |
 | Modules | `:app`(Android host + platform actuals)、`:shared`(KMP:domain / data / UI / VM) |
 | SDK | `minSdk 24`、`targetSdk 36`、`compileSdk 36`、Java 21 |
@@ -24,13 +25,17 @@
 
 **`:shared/commonMain`(平台無關,絕大多數程式碼在這裡)**
 
-- `domain/` — 純邏輯:`diet/DietWindow`、`insights/InsightsAggregator`、`reminder/ReminderPlanner`
-  + `model/`、`repository/`(介面)、`usecase/`(9 個)
-- `data/` — `repository/`(Room + DataStore 實作)、`mapper/`;`dao/`、`entity/`、`database/`
+- `domain/` — 純邏輯:`diet/DietWindow`、`insights/InsightsAggregator`、`reminder/ReminderPlanner`、
+  `venue/VenuePicker`(店家選單的排序與建議)
+  + `model/`(含 `Venue`、`VenueName` 名稱正規化)、`repository/`(介面,含 `VenueRepository`)、`usecase/`(9 個)
+- `data/` — `repository/`(Room + DataStore 實作,含 `VenueRepositoryImpl`)、`mapper/`;`dao/`、`entity/`、`database/`
+  (店家是獨立的 `venue` 資料表:`VenueEntity` + `VenueDao`,餐點以 `eat_time.venue_id` 指向它,Room schema 7 → 8)
 - `backup/` — `BackupService`、`BackupDocument`(含 `SCHEMA_VERSION`)、`BackupMappers`、
-  `BackupStore`/`BackupAuth` 介面、`BackupJobRunner`、`BackupProgress`
+  `BackupStore`/`BackupAuth` 介面、`BackupJobRunner`、`BackupProgress`;
+  快照裡餐點以**店家名稱**(不是 id)引用店家,因為還原時 id 會重新配發
 - `ui/` — Compose Multiplatform 畫面:`diet/`(home、record、editor、select、create/fasting)、
-  `insights/`、`settings/`、`theme/`、`component/`;**7 個 ViewModel 全部在 commonMain**
+  `insights/`、`settings/`、`theme/`、`component/`;**7 個 ViewModel 全部在 commonMain**;
+  餐點編輯器的店家選擇器在 `ui/diet/editor/VenuePickerSheet`
 - `platform/` — `expect`/介面形式的平台抽象(`LocationProvider`、`PhotoImporter`;照片檔案存取的介面在 `data/`)
 
 **`:app`(Android 專屬,只剩薄薄一層)**
@@ -90,7 +95,7 @@
   備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`;
   instrumented tests 現在也涵蓋 Room migration 與 repository 契約、餐點編輯器 UI、照片管線、
   提醒(AlarmManager slot 與 receiver)。
-- `AppDatabase` 已開啟 `exportSchema`,`shared/schemas/` 下的 JSON 必須隨每次 schema 變更一起
+- `AppDatabase` 已開啟 `exportSchema`(目前 schema 版本 8,`7 → 8` 加入店家),`shared/schemas/` 下的 JSON 必須隨每次 schema 變更一起
   commit;migration 測試在 `app/src/androidTest/.../database/`。
 - **Instrumented tests(本機、不進 CI)**:`app/src/androidTest/.../backup/` 用真的 Room、真的
   `BackupForegroundService` 與通知、真的 `BackupScreen`,只假造雲端。跑法:先開一台模擬器,然後
@@ -107,7 +112,7 @@
   簽章金鑰與 Play service account 走 repo secrets,repo 內不放 keystore(`debug.keystore` 除外)。
 
 > 註:tag `0.12.0` 是早期(2026-06-10)版號規則不同時留下的孤兒 tag,指向舊 commit;
-> 目前的版號線是 `0.0.x → 0.6.2`。
+> 目前的版號線是 `0.0.x → 0.11.0`。
 
 ## 6. 文件索引(`docs/superpowers/`)
 
@@ -148,6 +153,7 @@
 | 09-28 | Material 3 bottom-sheet navigator(移除 M2 依賴) | ✓ | ✓ | 已完成(PR #69) |
 | 09-28 | 回顧地圖:marker 合併 + 全螢幕縮放 | ✓ | ✓ | PR #70 |
 | 09-29 | Home 動態標語(依時段 / 進度輪替) | ✓ | — | 實作中(`claude/busy-mccarthy-t7xloj`) |
+| 10-05 | 店家(餐點可記錄店家、從用過的店家選、改名合併、備份帶店家、回顧地圖優先用店家) | ✓ | ✓ | 已實作(`claude/venue-83`,issue #83) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

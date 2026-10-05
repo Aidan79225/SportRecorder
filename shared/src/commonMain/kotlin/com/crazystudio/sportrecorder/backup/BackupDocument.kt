@@ -14,6 +14,12 @@ data class BackupDocument(
     val fastingTypes: List<BackupFastingType>,
     val dietSettings: BackupDietSettings,
     val reminderPrefs: BackupReminderPrefs,
+    /**
+     * Added without a [SCHEMA_VERSION] bump: the default lets a snapshot written before venues
+     * existed decode, and `ignoreUnknownKeys` lets an older app restore a newer snapshot minus
+     * its venues. Bumping would make that older app refuse the whole snapshot.
+     */
+    val venues: List<BackupVenue> = emptyList(),
 ) {
     companion object { const val SCHEMA_VERSION = 1 }
 }
@@ -25,6 +31,20 @@ data class BackupMeal(
     val note: String?,
     val location: BackupGeoPoint?,
     val photos: List<BackupPhoto>,
+    /**
+     * The venue's NAME, never its id: a restore does not preserve ids (Room assigns fresh ones),
+     * so the name is the only key that is stable across installs. Null for no venue, and the
+     * default keeps pre-venue snapshots decodable.
+     */
+    val venueName: String? = null,
+)
+
+@Serializable
+data class BackupVenue(
+    val name: String,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val lastUsedAt: Long = 0L,
 )
 
 @Serializable data class BackupGeoPoint(val lat: Double, val lng: Double)

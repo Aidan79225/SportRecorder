@@ -20,12 +20,47 @@ import com.crazystudio.sportrecorder.domain.insights.LocationCount
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.insights_map_expand_hint
+import com.crazystudio.sportrecorder.shared.resources.insights_map_venues
+import com.crazystudio.sportrecorder.shared.resources.insights_map_venues_more
 import org.jetbrains.compose.resources.stringResource
 
 private val MAP_HEIGHT = 220.dp
 
 /** Joins the summary and the "tap to enlarge" hint; the same separator the summary itself uses. */
 private const val DESCRIPTION_SEPARATOR = " · "
+
+/** Venue names are read out as a plain list; a comma is a pause in both English and Chinese speech. */
+private const val NAME_SEPARATOR = ", "
+
+/** A screen reader hears this many venue names on every focus; the rest are summarised as a count. */
+internal const val DESCRIBED_VENUE_NAMES = 5
+
+/** The venue names a description reads out (biggest first, at most [limit]) and how many more there are. */
+internal fun describedVenueNames(
+    locations: List<LocationCount>,
+    limit: Int = DESCRIBED_VENUE_NAMES,
+): Pair<List<String>, Int> {
+    val names = locations.mapNotNull { it.name }
+    return names.take(limit) to (names.size - limit).coerceAtLeast(0)
+}
+
+/**
+ * The map's text equivalent: [summary], plus, when any marker carries a venue's name, the
+ * biggest few names (and how many more), so a screen reader hears what a sighted user reads off
+ * the map without a long list on every focus. With no named venue this is [summary] unchanged.
+ */
+@Composable
+internal fun placesMapDescription(summary: String, locations: List<LocationCount>): String {
+    val (names, more) = describedVenueNames(locations)
+    if (names.isEmpty()) return summary
+    val joined = names.joinToString(NAME_SEPARATOR)
+    val venues = if (more == 0) {
+        stringResource(Res.string.insights_map_venues, joined)
+    } else {
+        stringResource(Res.string.insights_map_venues_more, joined, more)
+    }
+    return summary + DESCRIPTION_SEPARATOR + venues
+}
 
 /**
  * A still map of where the period's meals were: raster tiles fitted around the places, and one
@@ -79,7 +114,7 @@ fun PlacesMap(
                 clusterPlaces(locations, viewport, mergeDistancePx)
             }
             TileLayer(remember(viewport) { viewport.tiles() })
-            clusters.forEach { cluster -> ClusterMarker(viewport, cluster) }
+            ClusterMarkers(viewport, clusters)
         }
         MapAttribution(Modifier.align(Alignment.BottomEnd))
     }

@@ -1,11 +1,14 @@
 package com.crazystudio.sportrecorder.backup
 
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
+import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.repository.FastingTypeRepository
 import com.crazystudio.sportrecorder.domain.repository.ReminderPreferencesRepository
+import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
@@ -19,6 +22,7 @@ import kotlin.time.Clock
  */
 class BackupService(
     private val eatRepo: EatRecordRepository,
+    private val venueRepo: VenueRepository,
     private val fastingRepo: FastingTypeRepository,
     private val settingsRepo: DietSettingsRepository,
     private val prefsRepo: ReminderPreferencesRepository,
@@ -34,6 +38,7 @@ class BackupService(
     private suspend fun backupInternal(prune: Boolean, progress: BackupProgress): SnapshotInfo {
         progress.report(BackupStep.Preparing, 0, 0)
         val meals = eatRepo.observeAll().first()
+        val venues = venueRepo.observeAll().first()
         val fastingTypes = fastingRepo.observeRecentCustomTypes().first()
         val settings = settingsRepo.settings.first()
         val prefs = prefsRepo.prefs.first()
@@ -46,6 +51,7 @@ class BackupService(
             fastingTypes = fastingTypes.map { it.toBackup() },
             dietSettings = settings.toBackup(),
             reminderPrefs = prefs.toBackup(),
+            venues = venues.map { it.toBackup() },
         )
         val json = BackupJson.encodeToString(BackupDocument.serializer(), doc)
         val photoNames = meals.flatMap { meal -> meal.photos.map { it.fileName } }.distinct()
@@ -82,7 +88,10 @@ class BackupService(
         // snapshot we are about to restore. The next regular backup prunes as usual.
         // If the safety net cannot be made, stop here with a distinct error: nothing has been
         // downloaded or applied yet, so the device's data is exactly as it was.
-        if (eatRepo.observeAll().first().isNotEmpty()) {
+        // Venues are backup data too, and restore wipes them: a device with places but no meals
+        // still has something worth keeping.
+        val hasLocalData = eatRepo.observeAll().first().isNotEmpty() || venueRepo.observeAll().first().isNotEmpty()
+        if (hasLocalData) {
             runCatching {
                 backupInternal(prune = false) { _, done, total ->
                     progress.report(BackupStep.SafetyBackup, done, total)
@@ -105,7 +114,19 @@ class BackupService(
     }
 
     private suspend fun apply(doc: BackupDocument) {
-        eatRepo.replaceAll(doc.meals.map { it.toDomain() })
+        // Venues first. Meals reference their venue by NAME because a restore does not preserve
+        // ids: Room hands out fresh ones. So insert the venues, read them back to learn the ids
+        // they have on THIS device, and attach those objects to the meals before they are written
+        // — the venueId stored on each meal then always points at a venue that exists here.
+        venueRepo.replaceAll(doc.venues.map { Venue(0, it.name, it.lat, it.lng, it.lastUsedAt) })
+        val local = venueRepo.observeAll().first()
+        eatRepo.replaceAll(
+            doc.meals.map { meal ->
+                // A name the snapshot's venues do not list yields no venue, never a dangling id.
+                val venue = meal.venueName?.let { name -> local.firstOrNull { VenueName.sameAs(it.name, name) } }
+                meal.toDomain().copy(venue = venue)
+            },
+        )
         fastingRepo.replaceAllCustom(doc.fastingTypes.map { it.toDomain() })
         settingsRepo.setSelection(
             FastingWindow(doc.dietSettings.fastingHours, doc.dietSettings.eatingHours),

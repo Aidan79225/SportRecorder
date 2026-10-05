@@ -5,12 +5,20 @@ import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 
 fun EatRecord.toBackup() = BackupMeal(id, time, note,
     location?.let { BackupGeoPoint(it.lat, it.lng) },
-    photos.map { BackupPhoto(it.id, it.fileName, it.createdAt) })
+    photos.map { BackupPhoto(it.id, it.fileName, it.createdAt) },
+    venueName = venue?.name)
 
+fun Venue.toBackup() = BackupVenue(name, lat, lng, lastUsedAt)
+
+/**
+ * Always comes back without a venue: only [BackupService] knows the venues' local ids, and it
+ * re-attaches them by [BackupMeal.venueName] once they exist.
+ */
 fun BackupMeal.toDomain() = EatRecord(id, time,
     location?.let { GeoPoint(it.lat, it.lng) }, note,
     photos.map { EatPhoto(it.id, it.fileName, it.createdAt) })

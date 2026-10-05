@@ -84,7 +84,7 @@ class RoomMigrationTest {
         assertNull(records[0].eatTime.note)
         assertTrue(records[0].photos.isEmpty())
         assertTrue(migrated.getFastingTypeDao().flowLast(10).first().isEmpty())
-        assertEquals(7, migrated.userVersion())
+        assertEquals(8, migrated.userVersion())
     }
 
     @Test fun v3_toCurrent_dropsFoodRecord_andAddsFastingTypeName() = runBlocking {
@@ -117,7 +117,7 @@ class RoomMigrationTest {
         assertEquals(18L, types[0].fastingHours)
         assertNull(types[0].name)
         assertEquals(2000L, migrated.getEatTimeDao().flowAll().first().single().time)
-        assertEquals(7, migrated.userVersion())
+        assertEquals(8, migrated.userVersion())
     }
 
     @Test fun v4_toCurrent_keepsPhotoRelation() = runBlocking {
@@ -152,6 +152,34 @@ class RoomMigrationTest {
         assertNull(record.eatTime.note)
         assertEquals(listOf("a.webp"), record.photos.map { it.fileName })
         assertEquals(7L, record.photos.single().createdAt)
-        assertEquals(7, migrated.userVersion())
+        assertEquals(8, migrated.userVersion())
+    }
+
+    @Test fun migrates7to8_keepsRowsAndAcceptsTheNewSchema() = runBlocking {
+        createLegacy(
+            version = 7,
+            ddl = listOf(
+                "CREATE TABLE IF NOT EXISTS `eat_time` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`time` INTEGER NOT NULL, `lat` REAL, `lng` REAL, `note` TEXT)",
+                "CREATE TABLE IF NOT EXISTS `fasting_type` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`fasting_hours` INTEGER NOT NULL DEFAULT 0, `eating_hours` INTEGER NOT NULL DEFAULT 0, " +
+                    "`timestamp` INTEGER NOT NULL DEFAULT 0, `name` TEXT)",
+                "CREATE TABLE IF NOT EXISTS `photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`eat_time_id` INTEGER NOT NULL, `file_name` TEXT NOT NULL, " +
+                    "`created_at` INTEGER NOT NULL DEFAULT 0)",
+            ),
+            seed = listOf("INSERT INTO `eat_time` (`time`, `note`) VALUES (111, 'before venues')"),
+        )
+
+        val opened = openMigrated()
+
+        val records = opened.getEatTimeDao().flowAll().first()
+        assertEquals(1, records.size)
+        assertEquals("before venues", records.single().note)
+        // The pre-venue row survives with no venue attached.
+        assertNull(records.single().venueId)
+        // And the new table is there and usable.
+        assertTrue(opened.getVenueDao().flowAll().first().isEmpty())
+        assertEquals(8, opened.userVersion())
     }
 }

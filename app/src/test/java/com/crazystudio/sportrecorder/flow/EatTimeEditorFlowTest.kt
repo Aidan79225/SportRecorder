@@ -12,6 +12,7 @@ import com.crazystudio.sportrecorder.fake.FakePhotoFileStore
 import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.fake.FakePhotoImporter
 import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
+import com.crazystudio.sportrecorder.fake.FakeVenueRepository
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorUiState
 import com.crazystudio.sportrecorder.ui.diet.editor.EatTimeEditorViewModel
@@ -69,11 +70,13 @@ class EatTimeEditorFlowTest {
         val locationProvider = FakeLocationProvider()
         val photoImporter = FakePhotoImporter()
         val photoFileStore = FakePhotoFileStore()
+        val venues = FakeVenueRepository()
 
         fun viewModel(eatTimeId: Int? = null) = EatTimeEditorViewModel(
             loadEatRecord = LoadEatRecordUseCase(repo),
             saveEatRecord = SaveEatRecordUseCase(repo, rescheduler),
             locationProvider = locationProvider,
+            venueRepository = venues,
             photoImporter = photoImporter,
             photoFileStore = photoFileStore,
             photoImageSource = FakePhotoImageSource(),
