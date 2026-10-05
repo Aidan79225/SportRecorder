@@ -12,6 +12,7 @@ import com.crazystudio.sportrecorder.data.repository.DietSettingsRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.EatRecordRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.FastingTypeRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.ReminderPreferencesRepositoryImpl
+import com.crazystudio.sportrecorder.data.repository.VenueRepositoryImpl
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.DietSettings
@@ -47,6 +48,7 @@ class BackupRoundTripRoomTest {
     private lateinit var dataStoreScope: CoroutineScope
     private lateinit var dataStore: DataStore<Preferences>
     private lateinit var eatRepo: EatRecordRepositoryImpl
+    private lateinit var venueRepo: VenueRepositoryImpl
     private lateinit var fastingRepo: FastingTypeRepositoryImpl
     private lateinit var settingsRepo: DietSettingsRepositoryImpl
     private lateinit var prefsRepo: ReminderPreferencesRepositoryImpl
@@ -66,6 +68,7 @@ class BackupRoundTripRoomTest {
             }
         }
         eatRepo = EatRecordRepositoryImpl(db, db.getEatTimeDao(), db.getPhotoDao(), photoFiles)
+        venueRepo = VenueRepositoryImpl(db, db.getVenueDao())
         fastingRepo = FastingTypeRepositoryImpl(db, db.getFastingTypeDao())
         settingsRepo = DietSettingsRepositoryImpl(dataStore)
         prefsRepo = ReminderPreferencesRepositoryImpl(dataStore)
@@ -77,7 +80,7 @@ class BackupRoundTripRoomTest {
     }
 
     private fun service() = BackupService(
-        eatRepo, fastingRepo, settingsRepo, prefsRepo, store,
+        eatRepo, venueRepo, fastingRepo, settingsRepo, prefsRepo, store,
         object : RemindersRescheduler {
             override suspend fun reschedule() {
                 rescheduleCount++

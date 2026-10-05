@@ -13,6 +13,7 @@ import com.crazystudio.sportrecorder.backup.fakes.FakeEatRecordRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeFastingTypeRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeReminderPreferencesRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeRemindersRescheduler
+import com.crazystudio.sportrecorder.backup.fakes.FakeVenueRepository
 import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
@@ -45,12 +46,14 @@ class BackupRestoreFlowTest {
         prefs: ReminderPrefs = ReminderPrefs(),
     ) {
         val eatRepo = FakeEatRecordRepository(meals)
+        val venueRepo = FakeVenueRepository()
         val typeRepo = FakeFastingTypeRepository(types)
         val settingsRepo = FakeDietSettingsRepository(settings)
         val prefsRepo = FakeReminderPreferencesRepository(prefs)
         val rescheduler = FakeRemindersRescheduler()
         val service = BackupService(
             eatRepo,
+            venueRepo,
             typeRepo,
             settingsRepo,
             prefsRepo,

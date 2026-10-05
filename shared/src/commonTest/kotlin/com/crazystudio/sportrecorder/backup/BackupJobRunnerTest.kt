@@ -7,6 +7,7 @@ import com.crazystudio.sportrecorder.backup.fakes.FakeEatRecordRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeFastingTypeRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeReminderPreferencesRepository
 import com.crazystudio.sportrecorder.backup.fakes.FakeRemindersRescheduler
+import com.crazystudio.sportrecorder.backup.fakes.FakeVenueRepository
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import kotlinx.coroutines.CompletableDeferred
@@ -28,7 +29,7 @@ class BackupJobRunnerTest {
 
     private fun service(store: FakeBackupStore, eat: FakeEatRecordRepository = FakeEatRecordRepository()) =
         BackupService(
-            eat, FakeFastingTypeRepository(), FakeDietSettingsRepository(),
+            eat, FakeVenueRepository(), FakeFastingTypeRepository(), FakeDietSettingsRepository(),
             FakeReminderPreferencesRepository(), store, FakeRemindersRescheduler(), "0.7.1",
         ) { 1L }
 

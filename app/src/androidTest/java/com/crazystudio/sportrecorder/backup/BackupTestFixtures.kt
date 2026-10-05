@@ -115,7 +115,7 @@ fun loadBackupTestModule(store: BackupStore): BackupJobRunner {
             // Defensive override: nothing in AppModule currently binds or resolves
             // AccessTokenProvider, so this is currently unused.
             single<AccessTokenProvider> { AccessTokenProvider { "test-token" } }
-            single { BackupService(get(), get(), get(), get(), get(), get(), appVersionName = "test") }
+            single { BackupService(get(), get(), get(), get(), get(), get(), get(), appVersionName = "test") }
             single { BackupJobRunner(get(), get()) }
         },
     )

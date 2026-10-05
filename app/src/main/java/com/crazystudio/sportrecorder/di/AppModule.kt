@@ -109,7 +109,7 @@ val appModule = module {
         GoogleDriveBackupStore(get<GoogleBackupAuth>(), { name -> PhotoStorage.fileFor(context, name) })
     }
     single {
-        BackupService(get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
+        BackupService(get(), get(), get(), get(), get(), get(), get(), appVersionName = BuildConfig.VERSION_NAME)
     }
     single<BackupJobHost> { AndroidBackupJobHost(androidContext()) }
     single { BackupJobRunner(get(), get()) }
