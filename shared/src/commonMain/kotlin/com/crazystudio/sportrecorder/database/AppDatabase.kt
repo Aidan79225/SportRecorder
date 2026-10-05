@@ -7,16 +7,23 @@ import androidx.room.RoomDatabaseConstructor
 import com.crazystudio.sportrecorder.dao.EatTimeDao
 import com.crazystudio.sportrecorder.dao.FastingTypeDao
 import com.crazystudio.sportrecorder.dao.PhotoDao
+import com.crazystudio.sportrecorder.dao.VenueDao
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.FastingType
 import com.crazystudio.sportrecorder.entity.Photo
+import com.crazystudio.sportrecorder.entity.VenueEntity
 
-@Database(entities = [EatTime::class, FastingType::class, Photo::class], version = 7, exportSchema = true)
+@Database(
+    entities = [EatTime::class, FastingType::class, Photo::class, VenueEntity::class],
+    version = 8,
+    exportSchema = true,
+)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getEatTimeDao(): EatTimeDao
     abstract fun getFastingTypeDao(): FastingTypeDao
     abstract fun getPhotoDao(): PhotoDao
+    abstract fun getVenueDao(): VenueDao
 }
 
 // Room's KSP generates the per-platform actual.
