@@ -17,12 +17,29 @@ data class Venue(
 
 /** How two venue names are compared and stored. Pure, so it is identical on every platform. */
 object VenueName {
-    /** Trimmed, with runs of whitespace collapsed. Case is the user's and is left alone. */
-    fun normalize(raw: String): String = raw.trim().replace(WHITESPACE_RUN, " ")
+    /**
+     * Trimmed, with runs of whitespace (including Unicode whitespace like U+3000) collapsed
+     * to single ASCII spaces. Case is the user's and is left alone.
+     */
+    fun normalize(raw: String): String {
+        val trimmed = raw.trim()
+        val result = StringBuilder()
+        var lastWasWhitespace = false
+        for (c in trimmed) {
+            if (c.isWhitespace()) {
+                if (!lastWasWhitespace) {
+                    result.append(' ')
+                    lastWasWhitespace = true
+                }
+            } else {
+                result.append(c)
+                lastWasWhitespace = false
+            }
+        }
+        return result.toString()
+    }
 
     /** Uniqueness is case-insensitive: `Starbucks` and `starbucks` are one venue. */
     fun sameAs(a: String, b: String): Boolean =
         normalize(a).equals(normalize(b), ignoreCase = true)
-
-    private val WHITESPACE_RUN = Regex("\\s+")
 }

@@ -34,4 +34,10 @@ class VenueNameTest {
     @Test fun blankIsNotAName() {
         assertEquals("", VenueName.normalize("   "))
     }
+
+    @Test fun collapsesFullWidthWhitespace() {
+        // U+3000 is ideographic space, common in Traditional Chinese IME output
+        assertEquals("大戶屋 新店", VenueName.normalize("大戶屋　新店"))
+        assertTrue(VenueName.sameAs("大戶屋　新店", "大戶屋 新店"))
+    }
 }
