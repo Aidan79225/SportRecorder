@@ -37,8 +37,9 @@ What this settled:
    still handled (see *Failure*) because it may occur elsewhere.
 3. **`@<lat>,<lng>` is the camera, not the pin.** They coincide only when the map is centred on the
    place; after any pan they differ. The pin (`!3d!4d`) is authoritative; `@` is a fallback.
-4. **The name does not depend on the share text's format** — the URL carries it. The Android share
-   text is a fallback only, which removes a dependency on how the Maps app formats its share.
+4. **The name does not depend on the share text's format** — the URL carries it. The rest of the
+   share text (the address, any name the Maps app adds) is **not used**, which removes any
+   dependency on how the Maps app formats its share.
 
 ## Decisions taken with the owner
 
