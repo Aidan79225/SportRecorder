@@ -1,7 +1,7 @@
 # 從 Google 地圖分享進來 · Share a place from Google Maps design
 
 - **Date:** 2026-10-10
-- **Status:** Designed, not implemented. Issue [#84](https://github.com/Aidan79225/SportRecorder/issues/84).
+- **Status:** Implemented on `claude/maps-share-84` (PR pending). Issue [#84](https://github.com/Aidan79225/SportRecorder/issues/84).
 - **Builds on:** `2026-10-05-venue-design.md` (#83) — the `Venue` entity, `VenueRepository`, and the
   editor's venue row all exist; this design only adds a way in.
 
@@ -47,7 +47,7 @@ What this settled:
 |---|---|
 | Entry point | **Android share sheet** (`ACTION_SEND`, `text/plain`). Not a paste field. |
 | What a share opens | **A new meal record**, time = now (editable), venue already filled in. |
-| Maps position differs from an existing venue's | **Maps wins, after asking**: "Update 〈name〉's position to Google Maps? N past records will move." |
+| Maps position differs from an existing venue's | **Maps wins, after asking**: "Update 〈name〉's position to Google Maps? N past records will move." Asked only when N > 0 — a venue no record uses yet just takes the Maps position. |
 
 ## Architecture
 
@@ -76,6 +76,10 @@ before the editor (an extra step, against the whole point of the feature).
 - `https://www.google.com/maps/…` or `https://maps.google.com/…` — full; parse directly
 
 Anything else — no link, or a link to any other host — is "not a Maps link".
+
+A link ends at whitespace or at the first character a URL cannot contain (CJK text, `。`), and
+trailing sentence punctuation (`.,;:!?)'`) is dropped, so "(https://maps.app.goo.gl/abc)。" yields
+`https://maps.app.goo.gl/abc`.
 
 **Extracting from a full URL.**
 - **Name:** the path segment after `/place/`, percent-decoded with `+` read as a space, then passed
@@ -113,6 +117,8 @@ Using `VenueRepository` from #83:
    position, stating how many past records will move. The question is asked **once, in the editor,
    as soon as the link resolves** — not at save time, so it is never mixed up with saving the meal.
    Yes → `setPosition`. No, or dismissing it → keep. Either way the meal is attached to the venue.
+   **If no record is at the venue yet**, nothing in the past would move, so there is nothing to ask:
+   it takes the Maps position directly and is selected.
 
 **Why 50 m.** Ordinary GPS error sits inside it; a difference big enough to put the marker on a
 different storefront sits outside it. Asking for every few metres of jitter would make the share
@@ -123,14 +129,16 @@ never derived from the venue — #83's two-facts rule is unchanged.
 
 ## Failure — a share never blocks a meal
 
-Every failure opens the editor anyway, time = now, so the meal can still be saved:
+Every failure opens the editor anyway, time = now, so the meal can still be saved. The reason is a
+small supporting line directly under the venue row — not a snackbar that times out — and it stays
+until the user selects, creates or clears a venue themselves:
 
 | What happened | Result |
 |---|---|
 | No network / timeout / non-3xx / bad `Location` | Editor opens without a venue; gentle line: "Couldn't read this map link — you can choose a place." |
 | Link resolved but carries no name | Same as above. Coordinates alone are discarded: a venue without a name is not a venue. |
 | Link resolved with a name but no coordinates | Venue matched/created by name only; no position written. |
-| Shared text holds no Maps link (e.g. a news article) | Editor opens without a venue; "This doesn't look like a Google Maps link." |
+| Shared text holds no Maps link (e.g. a news article), or no text at all | Editor opens without a venue; "This doesn't look like a Google Maps link." |
 
 ## Task lifecycle
 
@@ -138,7 +146,12 @@ Every failure opens the editor anyway, time = now, so the meal can still be save
 task** — standard Android share-target behaviour; Back returns to Maps. **Only when the activity was
 launched by a share**, saving the meal or dismissing the editor finishes it, and the user lands back
 in Maps, where they were. Every other way of opening the editor behaves exactly as today. The share
-was a side trip, not a change of app.
+was a side trip, not a change of app. A share reopened from Recents (the same `SEND` re-delivered
+with `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`) is an ordinary launch: no editor, no finish.
+
+The shared text travels in the editor's route and saved state, so it is read as a `CharSequence`
+(a styled share is not a `String`) and capped at 4,096 characters — far beyond any Maps share, far
+below the Binder transaction limit.
 
 ## A known platform cost
 
