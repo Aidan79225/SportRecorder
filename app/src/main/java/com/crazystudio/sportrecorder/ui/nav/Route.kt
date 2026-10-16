@@ -17,7 +17,8 @@ sealed interface Route {
 
     @Serializable data object CreateFastingType : Route
 
-    @Serializable data class EatTimeEditor(val eatTimeId: Int = 0) : Route
+    /** [sharedText]: what another app (Google Maps) shared into a new meal (#84); null otherwise. */
+    @Serializable data class EatTimeEditor(val eatTimeId: Int = 0, val sharedText: String? = null) : Route
 
     /** One eating day's meals, read-only, as a sheet over Insights. [dayStart] is local midnight millis. */
     @Serializable data class DayRecords(val dayStart: Long) : Route
