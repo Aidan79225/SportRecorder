@@ -22,8 +22,7 @@ sealed interface MapsLink {
             var from = text.indexOf(HTTPS)
             var found: MapsLink? = null
             while (found == null && from >= 0) {
-                val token = text.substring(from).takeWhile { !it.isWhitespace() }
-                found = classify(token)
+                found = classify(urlAt(text, from))
                 from = text.indexOf(HTTPS, from + HTTPS.length)
             }
             return found
@@ -47,8 +46,27 @@ private const val SHORT_HOST = "maps.app.goo.gl"
 private const val LEGACY_SHORT_HOST = "goo.gl"
 private val FULL_HOSTS = setOf("www.google.com", "maps.google.com")
 
+// Characters a URL may contain (RFC 3986 unreserved + reserved + `%`); anything else ends it.
+private const val URL_SYMBOLS = "-._~:/?#[]@!\$&'()*+,;=%"
+
+// Punctuation that, at the very end, belongs to the sentence around the link, not to the link.
+private const val TRAILING_PUNCTUATION = ".,;:!?)'"
+
 private val PIN = Regex("""!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)""")
 private val CAMERA = Regex("""@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)""")
+
+/**
+ * The URL starting at [start]: it runs until whitespace or any non-URL character (CJK text, `。`),
+ * then sheds trailing sentence punctuation, so "(https://…/abc)." gives ".../abc".
+ */
+private fun urlAt(text: String, start: Int): String {
+    var end = start
+    while (end < text.length && text[end].isUrlChar()) end++
+    while (end > start && text[end - 1] in TRAILING_PUNCTUATION) end--
+    return text.substring(start, end)
+}
+
+private fun Char.isUrlChar() = this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9' || this in URL_SYMBOLS
 
 /** Exact scheme + host + path match; never `contains`/`endsWith`, so lookalike hosts fall out. */
 private fun classify(candidate: String): MapsLink? {

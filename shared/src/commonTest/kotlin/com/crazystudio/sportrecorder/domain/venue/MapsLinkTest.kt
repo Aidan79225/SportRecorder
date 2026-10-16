@@ -80,6 +80,19 @@ class MapsLinkTest {
         assertEquals("https://maps.app.goo.gl/abc", MapsLink.find(text)!!.url)
     }
 
+    @Test fun theLinkEndsAtCjkTextOrPunctuation() {
+        assertEquals("https://maps.app.goo.gl/abc", MapsLink.find("https://maps.app.goo.gl/abc。")!!.url)
+        assertEquals("https://maps.app.goo.gl/abc", MapsLink.find("https://maps.app.goo.gl/abc好吃")!!.url)
+        assertEquals("https://maps.app.goo.gl/abc", MapsLink.find("(https://maps.app.goo.gl/abc)")!!.url)
+        assertEquals("https://maps.app.goo.gl/abc", MapsLink.find("去:https://maps.app.goo.gl/abc, 好!")!!.url)
+    }
+
+    @Test fun aFullLinkKeepsItsPinAndQuery() {
+        val link = MapsLink.find("看這間 $REAL 好吃")
+        assertEquals(REAL, link!!.url)
+        assertEquals(25.0335035, MapsLink.parse(link.url)!!.lat)
+    }
+
     @Test fun rejectsOtherHosts() {
         assertNull(MapsLink.find("see https://evil.example/maps/place/X/@1,2"))
         assertNull(MapsLink.find("https://maps.app.goo.gl.evil.example/abc"))
