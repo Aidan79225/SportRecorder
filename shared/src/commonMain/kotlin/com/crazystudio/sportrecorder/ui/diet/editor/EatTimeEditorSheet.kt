@@ -18,14 +18,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,10 +54,17 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
+import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
+import com.crazystudio.sportrecorder.shared.resources.editor_move_body
+import com.crazystudio.sportrecorder.shared.resources.editor_move_confirm
+import com.crazystudio.sportrecorder.shared.resources.editor_move_keep
+import com.crazystudio.sportrecorder.shared.resources.editor_move_title
+import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_venue
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_clear
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_none
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_pick
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_resolving
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_access_time_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
@@ -65,7 +78,9 @@ import com.crazystudio.sportrecorder.shared.resources.photo_select
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToLong
@@ -87,6 +102,9 @@ fun EatTimeEditorSheet(
     onClearLocation: () -> Unit,
     onOpenVenuePicker: () -> Unit,
     onClearVenue: () -> Unit,
+    onConsumeMessage: () -> Unit,
+    onConfirmMove: () -> Unit,
+    onCancelMove: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -155,7 +173,12 @@ fun EatTimeEditorSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = state.venue?.name ?: stringResource(Res.string.editor_venue_none),
+                // A shared place is being read: say so rather than show "Not set" for a beat.
+                text = if (state.resolvingLink) {
+                    stringResource(Res.string.editor_venue_resolving)
+                } else {
+                    state.venue?.name ?: stringResource(Res.string.editor_venue_none)
+                },
                 modifier = Modifier.weight(1f).padding(start = 12.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
@@ -287,7 +310,53 @@ fun EatTimeEditorSheet(
                 color = MaterialTheme.colorScheme.onPrimary,
             )
         }
+        ShareMessageSnackbar(message = state.message, onConsume = onConsumeMessage)
     }
+    state.pendingMove?.let { pending ->
+        MoveDialog(pending = pending, onConfirm = onConfirmMove, onDismiss = onCancelMove)
+    }
+}
+
+/** Only the messages a share raises; [EditorMessage.VenuePositionUpdated] belongs to the venue picker. */
+private fun shareMessageRes(message: EditorMessage): StringResource? = when (message) {
+    EditorMessage.MapLinkUnreadable -> Res.string.editor_link_unreadable
+    EditorMessage.NotAMapLink -> Res.string.editor_not_map_link
+    EditorMessage.VenuePositionUpdated -> null
+}
+
+@Composable
+private fun ShareMessageSnackbar(message: EditorMessage?, onConsume: () -> Unit) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val text = message?.let(::shareMessageRes)?.let { stringResource(it) }
+    LaunchedEffect(message) {
+        if (text != null) {
+            snackbarHostState.showSnackbar(text)
+            onConsume()
+        }
+    }
+    SnackbarHost(hostState = snackbarHostState)
+}
+
+/** Moving a venue's marker moves it for every past record there, so the dialog says how many. */
+@Composable
+private fun MoveDialog(
+    pending: EatTimeEditorUiState.PendingMove,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.editor_move_title, pending.venue.name)) },
+        text = {
+            Text(pluralStringResource(Res.plurals.editor_move_body, pending.movedRecords, pending.movedRecords))
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.editor_move_confirm)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.editor_move_keep)) }
+        },
+    )
 }
 
 @Composable

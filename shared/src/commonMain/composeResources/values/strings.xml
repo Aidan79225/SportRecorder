@@ -262,4 +262,14 @@
     </plurals>
     <string name="editor_venue_position_updated">Place position updated</string>
     <string name="editor_venue_merge_confirm">Merge</string>
+    <string name="editor_venue_resolving">Reading the map link…</string>
+    <string name="editor_link_unreadable">Couldn't read this map link — you can choose a place.</string>
+    <string name="editor_not_map_link">This doesn't look like a Google Maps link.</string>
+    <string name="editor_move_title">Update %1$s's position?</string>
+    <plurals name="editor_move_body">
+        <item quantity="one">%1$d past record will move to where Google Maps puts it.</item>
+        <item quantity="other">%1$d past records will move to where Google Maps puts it.</item>
+    </plurals>
+    <string name="editor_move_confirm">Update</string>
+    <string name="editor_move_keep">Keep</string>
 </resources>
