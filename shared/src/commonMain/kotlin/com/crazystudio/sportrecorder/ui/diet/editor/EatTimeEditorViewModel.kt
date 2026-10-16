@@ -13,10 +13,16 @@ import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.venue.MapsLink
+import com.crazystudio.sportrecorder.domain.venue.MapsPlace
+import com.crazystudio.sportrecorder.domain.venue.SharedVenue
+import com.crazystudio.sportrecorder.domain.venue.SharedVenueMatch
 import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.platform.LocationProvider
+import com.crazystudio.sportrecorder.platform.MapsLinkResolver
 import com.crazystudio.sportrecorder.platform.PhotoImporter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +49,7 @@ class EatTimeEditorViewModel constructor(
     private val photoFileStore: PhotoFileStore,
     private val photoImageSource: PhotoImageSource,
     savedStateHandle: SavedStateHandle,
+    private val mapsLinkResolver: MapsLinkResolver,
 ) : ViewModel() {
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the editor's thumbnails. */
@@ -51,6 +58,12 @@ class EatTimeEditorViewModel constructor(
     // Route arg: type-safe route field name "eatTimeId". 0 = create, >0 = edit.
     private val eatTimeId: Int = savedStateHandle.get<Int>("eatTimeId") ?: 0
     private val isEditMode: Boolean = eatTimeId > 0
+
+    // Route arg "sharedText": what another app (Google Maps) shared into a new meal (#84).
+    private val sharedText: String? = savedStateHandle.get<String>("sharedText")
+
+    // Reading the shared place; cancelled once the meal is saved so nothing changes after that.
+    private var shareJob: Job? = null
 
     // The meal's date+time being edited, as epoch millis. Read by the host to seed the platform
     // date/time pickers; mutated by updateDate/updateTime.
@@ -100,7 +113,109 @@ class EatTimeEditorViewModel constructor(
                 }
             }
         }
+        if (!isEditMode && sharedText != null) {
+            shareJob = viewModelScope.launch { openSharedPlace(sharedText) }
+        }
     }
+
+    /**
+     * A place shared from Google Maps becomes this meal's venue, at the position Maps gives — never
+     * the phone's fix. Any failure only leaves a message: the editor stays usable and saving is
+     * never held up by it.
+     */
+    private suspend fun openSharedPlace(text: String) {
+        _uiState.update { it.copy(resolvingLink = true) }
+        try {
+            val link = MapsLink.find(text)
+            val place = link?.let { readPlace(it) }
+            val name = place?.name
+            when {
+                link == null -> showMessage(EditorMessage.NotAMapLink)
+                // A place without a name is unusable: coordinates alone name no venue.
+                place == null || name == null -> showMessage(EditorMessage.MapLinkUnreadable)
+                else -> applySharedPlace(name, place.position())
+            }
+        } finally {
+            _uiState.update { it.copy(resolvingLink = false) }
+        }
+    }
+
+    /** A short link is resolved first (one request, no redirects); [MapsLink.parse] then vets the target host. */
+    private suspend fun readPlace(link: MapsLink): MapsPlace? {
+        val fullUrl = when (link) {
+            is MapsLink.Short -> mapsLinkResolver.resolve(link)
+            is MapsLink.Full -> link.url
+        }
+        return fullUrl?.let(MapsLink::parse)
+    }
+
+    private fun MapsPlace.position(): GeoPoint? {
+        val lat = lat
+        val lng = lng
+        return if (lat != null && lng != null) GeoPoint(lat, lng) else null
+    }
+
+    // Matched against the venues as stored right now, not the possibly not-yet-loaded picker list,
+    // so sharing the same place twice finds the venue the first share created.
+    private suspend fun applySharedPlace(name: String, position: GeoPoint?) {
+        val venues = venueRepository.observeAll().first()
+        when (val match = SharedVenue.match(name, position, venues)) {
+            is SharedVenueMatch.Create -> createSharedVenue(match)
+            is SharedVenueMatch.Use -> useSharedVenue(match)
+            is SharedVenueMatch.AskToMove -> askToMove(match)
+        }
+    }
+
+    // Not createVenue: that adopts the record's device fix, and a shared place is where Maps says.
+    private suspend fun createSharedVenue(match: SharedVenueMatch.Create) {
+        val venue = venueRepository.findOrCreate(
+            name = match.name,
+            lat = match.position?.lat,
+            lng = match.position?.lng,
+            now = now(),
+        )
+        selectVenue(venue)
+    }
+
+    private suspend fun useSharedVenue(match: SharedVenueMatch.Use) {
+        val fill = match.fillPosition
+        if (fill == null) {
+            selectVenue(match.venue)
+        } else {
+            venueRepository.setPosition(match.venue.id, fill.lat, fill.lng)
+            selectVenue(match.venue.copy(lat = fill.lat, lng = fill.lng))
+        }
+    }
+
+    // Moving a venue moves its marker for every record at it, so the user decides — with the count.
+    private suspend fun askToMove(match: SharedVenueMatch.AskToMove) {
+        val movedRecords = venueRepository.recordCount(match.venue.id)
+        _uiState.update {
+            it.copy(
+                venue = match.venue,
+                pendingMove = EatTimeEditorUiState.PendingMove(match.venue, match.to, movedRecords),
+            )
+        }
+    }
+
+    private fun showMessage(message: EditorMessage) = _uiState.update { it.copy(message = message) }
+
+    /** Move the shared venue to where Maps puts it — for every record at it. */
+    fun confirmMove() {
+        val pending = _uiState.value.pendingMove ?: return
+        // Clear first, so a second tap finds nothing pending.
+        _uiState.update { it.copy(pendingMove = null) }
+        viewModelScope.launch {
+            venueRepository.setPosition(pending.venue.id, pending.to.lat, pending.to.lng)
+            val moved = pending.venue.copy(lat = pending.to.lat, lng = pending.to.lng)
+            _uiState.update { state ->
+                state.copy(venue = if (state.venue?.id == moved.id) moved else state.venue)
+            }
+        }
+    }
+
+    /** Keep the venue where it is; it stays selected for this meal. */
+    fun cancelMove() = _uiState.update { it.copy(pendingMove = null) }
 
     // The suggestion follows the note as it is typed, so the order is recomputed with it.
     private fun EatTimeEditorUiState.withVenueOptions() =
@@ -263,6 +378,8 @@ class EatTimeEditorViewModel constructor(
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
             committed = true
+            // The meal is saved; a share still resolving must not create or move a venue after it.
+            shareJob?.cancel()
             // Recency should reflect use, not creation, and not a later edit of an old record:
             // fixing last month's note must not push that venue above what is eaten now.
             state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }

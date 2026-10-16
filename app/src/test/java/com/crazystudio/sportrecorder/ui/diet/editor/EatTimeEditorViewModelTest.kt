@@ -8,23 +8,38 @@ import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
 import com.crazystudio.sportrecorder.fake.FakeLocationProvider
+import com.crazystudio.sportrecorder.fake.FakeMapsLinkResolver
 import com.crazystudio.sportrecorder.fake.FakePhotoFileStore
 import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.fake.FakePhotoImporter
 import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
 import com.crazystudio.sportrecorder.fake.FakeVenueRepository
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** The venue part of the meal editor: picking, creating, clearing, renaming (and merging). */
+// What Google Maps hands over when a place is shared: name, address, and a short link (#84).
+private const val SHARE_TEXT = "鼎泰豐 信義店\n106臺北市大安區信義路二段194號\nhttps://maps.app.goo.gl/3oUGbkxLYE6jt7L29"
+
+// The full URL that short link redirects to: pin and camera both at the restaurant.
+private const val FULL_URL = "https://www.google.com/maps/place/" +
+    "%E9%BC%8E%E6%B3%B0%E8%B1%90+%E4%BF%A1%E7%BE%A9%E5%BA%97/" +
+    "@25.0335035,121.530118,17z/data=!4m6!3m5!1s0x3442a9821392326d:0x93faef9e2359365c!8m2!3d25.0335035" +
+    "!4d121.530118!16s%2Fg%2F1td2dltc?entry=tts"
+
+/**
+ * The venue part of the meal editor: picking, creating, clearing, renaming (and merging), and
+ * opening it from a place shared out of Google Maps.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EatTimeEditorViewModelTest {
 
@@ -39,8 +54,9 @@ class EatTimeEditorViewModelTest {
         val records = FakeEatRecordRepository(records)
         val venues = FakeVenueRepository(venues)
         val locationProvider = FakeLocationProvider()
+        val resolver = FakeMapsLinkResolver(location = FULL_URL)
 
-        fun viewModel(eatTimeId: Int? = null) = EatTimeEditorViewModel(
+        fun viewModel(eatTimeId: Int? = null, sharedText: String? = null) = EatTimeEditorViewModel(
             loadEatRecord = LoadEatRecordUseCase(records),
             saveEatRecord = SaveEatRecordUseCase(records, FakeRemindersRescheduler()),
             locationProvider = locationProvider,
@@ -48,11 +64,10 @@ class EatTimeEditorViewModelTest {
             photoImporter = FakePhotoImporter(),
             photoFileStore = FakePhotoFileStore(),
             photoImageSource = FakePhotoImageSource(),
-            savedStateHandle = if (eatTimeId == null) {
-                SavedStateHandle()
-            } else {
-                SavedStateHandle(mapOf("eatTimeId" to eatTimeId))
-            },
+            savedStateHandle = SavedStateHandle(
+                listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
+            ),
+            mapsLinkResolver = resolver,
         )
     }
 
@@ -357,5 +372,216 @@ class EatTimeEditorViewModelTest {
         vm.setNote("今天吃大戶屋")
 
         assertEquals(listOf("大戶屋", "星巴克"), vm.uiState.value.venueOptions.map { it.name })
+    }
+
+    // --- Opening the editor from a place shared out of Google Maps (#84) ---
+
+    private val mapsPosition = GeoPoint(25.0335035, 121.530118)
+    private val dinTaiFung = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
+
+    @Test
+    fun sharedShortLink_createsTheVenueWithTheMapsPosition() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        editor.locationProvider.location = home
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        vm.requestLocation()
+        advanceUntilIdle()
+
+        val venue = requireNotNull(vm.uiState.value.venue)
+        assertEquals("鼎泰豐 信義店", venue.name)
+        // Where the place is, from Maps — not where the phone happens to be.
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(venue.lat), requireNotNull(venue.lng)))
+        assertEquals(listOf(venue), editor.venues.stored)
+        assertEquals(1, editor.resolver.calls)
+        assertFalse(vm.uiState.value.resolvingLink)
+    }
+
+    @Test
+    fun sharedFullLink_neverCallsTheResolver() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val vm = editor.viewModel(sharedText = FULL_URL)
+        advanceUntilIdle()
+
+        assertEquals(0, editor.resolver.calls)
+        assertEquals("鼎泰豐 信義店", vm.uiState.value.venue?.name)
+        assertEquals(25.0335035, vm.uiState.value.venue?.lat)
+    }
+
+    @Test
+    fun nonMapsText_neverCallsTheResolver() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val vm = editor.viewModel(sharedText = "好吃 https://evil.example/maps/place/x")
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.NotAMapLink, vm.uiState.value.message)
+        assertEquals(0, editor.resolver.calls)
+        assertNull(vm.uiState.value.venue)
+        assertFalse(vm.uiState.value.resolvingLink)
+    }
+
+    @Test
+    fun unresolvableLink_saysSoAndLeavesTheVenueEmpty() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        editor.resolver.location = null
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertNull(vm.uiState.value.venue)
+        assertTrue(editor.venues.stored.isEmpty())
+        assertFalse(vm.uiState.value.resolvingLink)
+    }
+
+    @Test
+    fun aLocationToAnotherHost_isUnreadable() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        editor.resolver.location = "https://consent.google.com/ml?continue=https://www.google.com/maps/place/x"
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertNull(vm.uiState.value.venue)
+        assertTrue(editor.venues.stored.isEmpty())
+    }
+
+    @Test
+    fun linkWithoutAName_isUnreadableEvenWithCoordinates() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        editor.resolver.location = "https://www.google.com/maps/@25.0335035,121.530118,17z"
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        // Coordinates alone name nothing; a venue needs a name, so they are dropped.
+        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertNull(vm.uiState.value.venue)
+        assertTrue(editor.venues.stored.isEmpty())
+    }
+
+    @Test
+    fun existingVenueFarAway_asksBeforeMoving() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        editor.venues.recordCounts[dinTaiFung.id] = 12
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        val pending = requireNotNull(vm.uiState.value.pendingMove)
+        assertEquals(dinTaiFung, pending.venue)
+        assertEquals(mapsPosition, pending.to)
+        // The dialog's whole job: moving a venue moves its marker for every record at it.
+        assertEquals(12, pending.movedRecords)
+        assertEquals(dinTaiFung.id, vm.uiState.value.venue?.id)
+        // Nothing has moved yet — the user has not said yes.
+        assertEquals(dinTaiFung, editor.venues.stored.single())
+    }
+
+    @Test
+    fun confirmMove_movesIt_cancelMove_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val confirming = Editor(venues = listOf(dinTaiFung))
+        val yes = confirming.viewModel(sharedText = SHARE_TEXT)
+        val cancelling = Editor(venues = listOf(dinTaiFung))
+        val no = cancelling.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        yes.confirmMove()
+        no.cancelMove()
+        advanceUntilIdle()
+
+        val moved = confirming.venues.stored.single()
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
+        assertEquals(moved, yes.uiState.value.venue)
+        assertNull(yes.uiState.value.pendingMove)
+
+        assertEquals(dinTaiFung, cancelling.venues.stored.single())
+        assertEquals(dinTaiFung, no.uiState.value.venue)
+        assertNull(no.uiState.value.pendingMove)
+    }
+
+    @Test
+    fun existingVenueWithoutPosition_getsTheMapsPosition() = runTest(mainRule.testDispatcher.scheduler) {
+        val unplaced = dinTaiFung.copy(lat = null, lng = null)
+        val editor = Editor(venues = listOf(unplaced))
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        val learned = unplaced.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
+        assertEquals(learned, editor.venues.stored.single())
+        assertEquals(learned, vm.uiState.value.venue)
+        assertNull(vm.uiState.value.pendingMove)
+    }
+
+    @Test
+    fun theRecordsOwnLocationIsStillTheDevicesFix() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        editor.locationProvider.location = home
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        vm.requestLocation()
+        advanceUntilIdle()
+        vm.updateDate(year = 2024, month = 2, dayOfMonth = 5)
+
+        assertEquals(EatTimeEditorUiState.LatLng(24.0, 120.0), vm.uiState.value.location)
+        assertTrue(vm.save())
+
+        val saved = editor.records.stored.single()
+        // Two different facts: the venue is where Maps says; the record is where you were.
+        assertEquals(home, saved.location)
+        assertEquals(25.0335035, saved.venue?.lat)
+    }
+
+    @Test
+    fun savingBeforeTheLinkResolves_savesWithoutAVenue() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val slowNetwork = CompletableDeferred<Unit>()
+        editor.resolver.gate = slowNetwork
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        vm.updateDate(year = 2024, month = 2, dayOfMonth = 5)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.resolvingLink)
+
+        // A share never blocks a meal: saving goes through while the link is still resolving.
+        assertTrue(vm.save())
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull(editor.records.stored.single().venue)
+        // The meal is saved; a late answer must not create or move a venue behind the user's back.
+        assertTrue(editor.venues.stored.isEmpty())
+    }
+
+    @Test
+    fun runningTheSameShareTwice_isIdempotent() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val first = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        val second = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        val venue = editor.venues.stored.single()
+        assertEquals(venue.id, first.uiState.value.venue?.id)
+        assertEquals(venue.id, second.uiState.value.venue?.id)
+        assertNull(second.uiState.value.pendingMove)
+    }
+
+    @Test
+    fun editModeIgnoresSharedText() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(listOf(mealAt(venue = null)))
+        val vm = editor.viewModel(eatTimeId = 1, sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        assertEquals(0, editor.resolver.calls)
+        assertNull(vm.uiState.value.venue)
+        assertTrue(editor.venues.stored.isEmpty())
+    }
+
+    @Test
+    fun withoutSharedText_nothingChanges() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val vm = editor.viewModel()
+        assertFalse(vm.uiState.value.resolvingLink)
+        advanceUntilIdle()
+
+        assertEquals(0, editor.resolver.calls)
+        assertFalse(vm.uiState.value.resolvingLink)
+        assertNull(vm.uiState.value.message)
+        assertNull(vm.uiState.value.venue)
     }
 }

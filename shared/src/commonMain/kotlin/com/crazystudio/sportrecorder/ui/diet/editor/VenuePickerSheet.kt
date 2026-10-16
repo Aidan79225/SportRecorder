@@ -51,6 +51,7 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_rename
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_here
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_more_vert_24
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -97,7 +98,8 @@ fun VenuePickerSheet(
 
     // The sheet is its own window, so a snackbar hosted behind it would never be seen.
     val snackbarHostState = remember { SnackbarHostState() }
-    val messageText = state.message?.let { stringResource(messageRes(it)) }
+    // Only the picker's own messages; the editor shows the rest (a sheet must not swallow them).
+    val messageText = state.message?.let(::messageRes)?.let { stringResource(it) }
     LaunchedEffect(state.message) {
         if (messageText != null) {
             snackbarHostState.showSnackbar(messageText)
@@ -165,8 +167,9 @@ fun VenuePickerSheet(
     }
 }
 
-private fun messageRes(message: EditorMessage) = when (message) {
+private fun messageRes(message: EditorMessage): StringResource? = when (message) {
     EditorMessage.VenuePositionUpdated -> Res.string.editor_venue_position_updated
+    EditorMessage.MapLinkUnreadable, EditorMessage.NotAMapLink -> null
 }
 
 @Composable
