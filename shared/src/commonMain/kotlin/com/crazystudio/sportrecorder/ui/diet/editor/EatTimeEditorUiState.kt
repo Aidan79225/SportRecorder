@@ -22,6 +22,8 @@ data class EatTimeEditorUiState(
     val resolvingLink: Boolean = false,
     /** Set while a shared place would move an existing venue; the UI asks before it happens. */
     val pendingMove: PendingMove? = null,
+    /** Why a shared text gave no venue; shown under the venue row until the user picks one themselves. */
+    val shareNotice: ShareNotice? = null,
     /** A transient result the UI shows once, then clears via `consumeMessage`. */
     val message: EditorMessage? = null,
 ) {
@@ -39,7 +41,10 @@ data class EatTimeEditorUiState(
 enum class EditorMessage {
     /** A venue's marker moved for every record at it; nothing else on screen would show that. */
     VenuePositionUpdated,
+}
 
+/** Why a shared text left the venue empty — the UI maps each to a localized line (#84). */
+enum class ShareNotice {
     /** Shared text held a Maps link, but no named place could be read from it. */
     MapLinkUnreadable,
 

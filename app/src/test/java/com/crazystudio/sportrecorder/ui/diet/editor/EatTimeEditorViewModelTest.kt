@@ -19,6 +19,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -418,7 +419,7 @@ class EatTimeEditorViewModelTest {
         val vm = editor.viewModel(sharedText = "好吃 https://evil.example/maps/place/x")
         advanceUntilIdle()
 
-        assertEquals(EditorMessage.NotAMapLink, vm.uiState.value.message)
+        assertEquals(ShareNotice.NotAMapLink, vm.uiState.value.shareNotice)
         assertEquals(0, editor.resolver.calls)
         assertNull(vm.uiState.value.venue)
         assertFalse(vm.uiState.value.resolvingLink)
@@ -431,7 +432,7 @@ class EatTimeEditorViewModelTest {
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.shareNotice)
         assertNull(vm.uiState.value.venue)
         assertTrue(editor.venues.stored.isEmpty())
         assertFalse(vm.uiState.value.resolvingLink)
@@ -444,7 +445,7 @@ class EatTimeEditorViewModelTest {
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.shareNotice)
         assertNull(vm.uiState.value.venue)
         assertTrue(editor.venues.stored.isEmpty())
     }
@@ -457,7 +458,7 @@ class EatTimeEditorViewModelTest {
         advanceUntilIdle()
 
         // Coordinates alone name nothing; a venue needs a name, so they are dropped.
-        assertEquals(EditorMessage.MapLinkUnreadable, vm.uiState.value.message)
+        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.shareNotice)
         assertNull(vm.uiState.value.venue)
         assertTrue(editor.venues.stored.isEmpty())
     }
@@ -482,8 +483,10 @@ class EatTimeEditorViewModelTest {
     @Test
     fun confirmMove_movesIt_cancelMove_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
         val confirming = Editor(venues = listOf(dinTaiFung))
+        confirming.venues.recordCounts[dinTaiFung.id] = 2
         val yes = confirming.viewModel(sharedText = SHARE_TEXT)
         val cancelling = Editor(venues = listOf(dinTaiFung))
+        cancelling.venues.recordCounts[dinTaiFung.id] = 2
         val no = cancelling.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
@@ -499,6 +502,19 @@ class EatTimeEditorViewModelTest {
         assertEquals(dinTaiFung, cancelling.venues.stored.single())
         assertEquals(dinTaiFung, no.uiState.value.venue)
         assertNull(no.uiState.value.pendingMove)
+    }
+
+    @Test
+    fun existingVenueFarAwayButUnused_movesWithoutAsking() = runTest(mainRule.testDispatcher.scheduler) {
+        // No record is at it yet, so no marker moves: there is nothing to ask about.
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        val moved = dinTaiFung.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(moved, editor.venues.stored.single())
+        assertEquals(moved, vm.uiState.value.venue)
     }
 
     @Test
@@ -598,6 +614,7 @@ class EatTimeEditorViewModelTest {
     @Test
     fun pickingAVenueWhileAskedToMove_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu, dinTaiFung.copy(id = 2)))
+        editor.venues.recordCounts[2] = 4
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
         requireNotNull(vm.uiState.value.pendingMove)
@@ -637,6 +654,7 @@ class EatTimeEditorViewModelTest {
     @Test
     fun aMoveAlreadyDeclined_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(dinTaiFung))
+        editor.venues.recordCounts[dinTaiFung.id] = 5
         val handle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
         val before = editor.viewModel(handle = handle)
         advanceUntilIdle()
@@ -686,7 +704,44 @@ class EatTimeEditorViewModelTest {
 
         assertEquals(0, editor.resolver.calls)
         assertFalse(vm.uiState.value.resolvingLink)
-        assertNull(vm.uiState.value.message)
+        assertNull(vm.uiState.value.shareNotice)
         assertNull(vm.uiState.value.venue)
+    }
+
+    @Test
+    fun choosingAVenue_clearsTheShareNotice() = runTest(mainRule.testDispatcher.scheduler) {
+        val selecting = Editor(venues = listOf(daHuWu))
+        val clearing = Editor()
+        val creating = Editor()
+        val selected = selecting.viewModel(sharedText = "hello")
+        val cleared = clearing.viewModel(sharedText = "hello")
+        val created = creating.viewModel(sharedText = "hello")
+        advanceUntilIdle()
+        assertEquals(ShareNotice.NotAMapLink, selected.uiState.value.shareNotice)
+
+        selected.selectVenue(daHuWu)
+        cleared.clearVenue()
+        created.createVenue("大戶屋")
+        advanceUntilIdle()
+
+        // The notice explains an empty venue; once the user picks (or clears) it, it has done its job.
+        assertNull(selected.uiState.value.shareNotice)
+        assertNull(cleared.uiState.value.shareNotice)
+        assertNull(created.uiState.value.shareNotice)
+    }
+
+    @Test
+    fun theShareNotice_staysUntilTheUserChooses() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val vm = editor.viewModel(sharedText = "hello")
+        advanceUntilIdle()
+
+        // No timer: typing a note or touching location leaves it in place.
+        vm.setNote("午餐")
+        vm.clearLocation()
+        advanceTimeBy(60_000)
+        advanceUntilIdle()
+
+        assertEquals(ShareNotice.NotAMapLink, vm.uiState.value.shareNotice)
     }
 }

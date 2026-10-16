@@ -340,7 +340,6 @@ fun AppRoot(
                     onClearLocation = vm::clearLocation,
                     onOpenVenuePicker = { showVenuePicker = true },
                     onClearVenue = vm::clearVenue,
-                    onConsumeMessage = vm::consumeMessage,
                     onConfirmMove = vm::confirmMove,
                     onCancelMove = vm::cancelMove,
                     onConfirm = {

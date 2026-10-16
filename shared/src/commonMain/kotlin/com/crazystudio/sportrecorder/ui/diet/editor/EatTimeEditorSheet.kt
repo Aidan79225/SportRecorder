@@ -25,13 +25,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,7 +74,6 @@ import com.crazystudio.sportrecorder.shared.resources.photo_select
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -102,249 +97,230 @@ fun EatTimeEditorSheet(
     onClearLocation: () -> Unit,
     onOpenVenuePicker: () -> Unit,
     onClearVenue: () -> Unit,
-    onConsumeMessage: () -> Unit,
     onConfirmMove: () -> Unit,
     onCancelMove: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    // The Box keeps the share snackbar outside the scroll: it overlays the visible bottom of the
-    // sheet, so it can't expire out of view or resize the sheet as it comes and goes.
-    Box(
+    Column(
+        // Insets + scroll keep the whole sheet reachable no matter how tall it grows
+        // (location row, photo rows, or the keyboard opening for Note).
         modifier = modifier
             .background(colorScheme.surface)
             // Inside the M3 sheet these are no-ops (M3 already consumes the insets); kept so this
             // sheet still lays out correctly if it is ever hosted outside a sheet.
             .navigationBarsPadding()
-            .imePadding(),
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
     ) {
-        Column(
-            // Scroll keeps the whole sheet reachable no matter how tall it grows
-            // (location row, photo rows, or the keyboard opening for Note).
+        // DATE row
+        HeaderRow(
+            icon = Res.drawable.ic_baseline_date_range_24,
+            title = stringResource(Res.string.diet_create_eating_date_title),
+            content = formatDate(state.dateMillis),
+            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+            onActionClick = onPickDate,
+        )
+        // TIME row
+        HeaderRow(
+            icon = Res.drawable.ic_baseline_access_time_24,
+            title = stringResource(Res.string.diet_create_eating_time_title),
+            content = formatTime(state.dateMillis),
+            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+            onActionClick = onPickTime,
+        )
+        // NOTE field
+        OutlinedTextField(
+            value = state.note,
+            onValueChange = onNoteChange,
+            label = { Text(stringResource(Res.string.diet_eat_note)) },
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-        ) {
-            // DATE row
-            HeaderRow(
-                icon = Res.drawable.ic_baseline_date_range_24,
-                title = stringResource(Res.string.diet_create_eating_date_title),
-                content = formatDate(state.dateMillis),
-                actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-                onActionClick = onPickDate,
-            )
-            // TIME row
-            HeaderRow(
-                icon = Res.drawable.ic_baseline_access_time_24,
-                title = stringResource(Res.string.diet_create_eating_time_title),
-                content = formatTime(state.dateMillis),
-                actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-                onActionClick = onPickTime,
-            )
-            // NOTE field
-            OutlinedTextField(
-                value = state.note,
-                onValueChange = onNoteChange,
-                label = { Text(stringResource(Res.string.diet_eat_note)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                minLines = 2,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = colorScheme.onSurface,
-                    unfocusedTextColor = colorScheme.onSurface,
-                    focusedBorderColor = colorScheme.primary,
-                    unfocusedBorderColor = colorScheme.onSurfaceVariant,
-                    focusedLabelColor = colorScheme.primary,
-                    unfocusedLabelColor = colorScheme.onSurfaceVariant,
-                    cursorColor = colorScheme.primary,
-                ),
-            )
-            // VENUE row — the place the food came from; never where the user was (that is LOCATION).
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // Announced as a button that chooses a place, not just "Place, Not set".
-                    .clickable(onClickLabel = stringResource(Res.string.editor_venue_pick), role = Role.Button) {
-                        onOpenVenuePicker()
-                    }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(Res.string.editor_venue),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    // A shared place is being read: say so rather than show "Not set" for a beat.
-                    text = if (state.resolvingLink) {
-                        stringResource(Res.string.editor_venue_resolving)
-                    } else {
-                        state.venue?.name ?: stringResource(Res.string.editor_venue_none)
-                    },
-                    modifier = Modifier.weight(1f).padding(start = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (state.venue != null) {
-                    IconButton(onClick = onClearVenue) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_baseline_close_24),
-                            contentDescription = stringResource(Res.string.editor_venue_clear),
-                        )
-                    }
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            minLines = 2,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface,
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.onSurfaceVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                cursorColor = colorScheme.primary,
+            ),
+        )
+        // VENUE row — the place the food came from; never where the user was (that is LOCATION).
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Announced as a button that chooses a place, not just "Place, Not set".
+                .clickable(onClickLabel = stringResource(Res.string.editor_venue_pick), role = Role.Button) {
+                    onOpenVenuePicker()
                 }
-            }
-            // LOCATION row — custom Row with two action icons
-            val locationText = when (state.locationStatus) {
-                EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(Res.string.diet_eat_location_loading)
-                EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
-                    "${fmt5(it.lat)}, ${fmt5(it.lng)}"
-                } ?: stringResource(Res.string.diet_eat_location_none)
-                else -> stringResource(Res.string.diet_eat_location_none)
-            }
-            Row(
-                modifier = Modifier,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.ic_baseline_date_range_24),
-                    contentDescription = "",
-                    modifier = Modifier
-                        .padding(10.dp)
-                        .size(36.dp),
-                )
-                Text(
-                    text = stringResource(Res.string.diet_eat_location),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorScheme.onSurface,
-                )
-                Text(
-                    text = locationText,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colorScheme.onSurface,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 10.dp),
-                )
-                // Re-capture location icon (ic_baseline_add_24 — no refresh drawable available)
-                Image(
-                    painter = painterResource(Res.drawable.ic_baseline_add_24),
-                    contentDescription = stringResource(Res.string.diet_eat_recapture_location),
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .size(36.dp)
-                        .clickable { onRecaptureLocation() },
-                )
-                // Clear location icon — only shown when location is set
-                if (state.location != null) {
-                    Image(
-                        painter = painterResource(Res.drawable.ic_baseline_delete_24),
-                        contentDescription = stringResource(Res.string.diet_eat_clear_location),
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(36.dp)
-                            .clickable { onClearLocation() },
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.editor_venue),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                // A shared place is being read: say so rather than show "Not set" for a beat.
+                text = if (state.resolvingLink) {
+                    stringResource(Res.string.editor_venue_resolving)
+                } else {
+                    state.venue?.name ?: stringResource(Res.string.editor_venue_none)
+                },
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (state.venue != null) {
+                IconButton(onClick = onClearVenue) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_baseline_close_24),
+                        contentDescription = stringResource(Res.string.editor_venue_clear),
                     )
                 }
             }
-            // TAKE PHOTO (camera) row
-            HeaderRow(
-                icon = Res.drawable.ic_baseline_photo_camera_24,
-                title = stringResource(Res.string.photo_add),
-                content = "",
-                actionIcon = Res.drawable.ic_baseline_add_24,
-                onActionClick = onAddPhoto,
+        }
+        // Why a shared text left the venue empty; stays until the user picks a venue themselves.
+        state.shareNotice?.let { notice ->
+            Text(
+                text = stringResource(shareNoticeRes(notice)),
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
             )
-            // SELECT PHOTO (gallery) row
-            HeaderRow(
-                icon = Res.drawable.ic_baseline_photo_library_24,
-                title = stringResource(Res.string.photo_select),
-                content = "",
-                actionIcon = Res.drawable.ic_baseline_add_24,
-                onActionClick = onSelectPhoto,
-            )
-            // EXISTING photos (edit mode)
-            if (state.existingPhotos.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                ) {
-                    items(state.existingPhotos, key = { it.id }) { photo ->
-                        PhotoTile(
-                            model = photoModel(photo.fileName),
-                            contentDescription = photo.fileName,
-                            onRemove = { onRemoveExistingPhoto(photo) },
-                        )
-                    }
-                }
-            }
-            // PENDING photos (newly captured)
-            if (state.pendingPhotos.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 10.dp),
-                ) {
-                    items(state.pendingPhotos, key = { it }) { name ->
-                        PhotoTile(
-                            model = photoModel(name),
-                            contentDescription = name,
-                            onRemove = { onRemovePendingPhoto(name) },
-                        )
-                    }
-                }
-            }
-            // CONFIRM button
-            Button(
+        }
+        // LOCATION row — custom Row with two action icons
+        val locationText = when (state.locationStatus) {
+            EatTimeEditorUiState.LocationStatus.LOADING -> stringResource(Res.string.diet_eat_location_loading)
+            EatTimeEditorUiState.LocationStatus.AVAILABLE -> state.location?.let {
+                "${fmt5(it.lat)}, ${fmt5(it.lng)}"
+            } ?: stringResource(Res.string.diet_eat_location_none)
+            else -> stringResource(Res.string.diet_eat_location_none)
+        }
+        Row(
+            modifier = Modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(Res.drawable.ic_baseline_date_range_24),
+                contentDescription = "",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 30.dp),
-                onClick = onConfirm,
-            ) {
-                Text(
-                    text = stringResource(
-                        if (state.isEditMode) Res.string.diet_eat_save else Res.string.diet_eat_create,
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    .padding(10.dp)
+                    .size(36.dp),
+            )
+            Text(
+                text = stringResource(Res.string.diet_eat_location),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colorScheme.onSurface,
+            )
+            Text(
+                text = locationText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colorScheme.onSurface,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 10.dp),
+            )
+            // Re-capture location icon (ic_baseline_add_24 — no refresh drawable available)
+            Image(
+                painter = painterResource(Res.drawable.ic_baseline_add_24),
+                contentDescription = stringResource(Res.string.diet_eat_recapture_location),
+                modifier = Modifier
+                    .padding(4.dp)
+                    .size(36.dp)
+                    .clickable { onRecaptureLocation() },
+            )
+            // Clear location icon — only shown when location is set
+            if (state.location != null) {
+                Image(
+                    painter = painterResource(Res.drawable.ic_baseline_delete_24),
+                    contentDescription = stringResource(Res.string.diet_eat_clear_location),
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .size(36.dp)
+                        .clickable { onClearLocation() },
                 )
             }
         }
-        ShareMessageSnackbar(
-            message = state.message,
-            onConsume = onConsumeMessage,
-            modifier = Modifier.align(Alignment.BottomCenter),
+        // TAKE PHOTO (camera) row
+        HeaderRow(
+            icon = Res.drawable.ic_baseline_photo_camera_24,
+            title = stringResource(Res.string.photo_add),
+            content = "",
+            actionIcon = Res.drawable.ic_baseline_add_24,
+            onActionClick = onAddPhoto,
         )
+        // SELECT PHOTO (gallery) row
+        HeaderRow(
+            icon = Res.drawable.ic_baseline_photo_library_24,
+            title = stringResource(Res.string.photo_select),
+            content = "",
+            actionIcon = Res.drawable.ic_baseline_add_24,
+            onActionClick = onSelectPhoto,
+        )
+        // EXISTING photos (edit mode)
+        if (state.existingPhotos.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+            ) {
+                items(state.existingPhotos, key = { it.id }) { photo ->
+                    PhotoTile(
+                        model = photoModel(photo.fileName),
+                        contentDescription = photo.fileName,
+                        onRemove = { onRemoveExistingPhoto(photo) },
+                    )
+                }
+            }
+        }
+        // PENDING photos (newly captured)
+        if (state.pendingPhotos.isNotEmpty()) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+            ) {
+                items(state.pendingPhotos, key = { it }) { name ->
+                    PhotoTile(
+                        model = photoModel(name),
+                        contentDescription = name,
+                        onRemove = { onRemovePendingPhoto(name) },
+                    )
+                }
+            }
+        }
+        // CONFIRM button
+        Button(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 30.dp),
+            onClick = onConfirm,
+        ) {
+            Text(
+                text = stringResource(
+                    if (state.isEditMode) Res.string.diet_eat_save else Res.string.diet_eat_create,
+                ),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+            )
+        }
     }
     state.pendingMove?.let { pending ->
         MoveDialog(pending = pending, onConfirm = onConfirmMove, onDismiss = onCancelMove)
     }
 }
 
-/** Only the messages a share raises; [EditorMessage.VenuePositionUpdated] belongs to the venue picker. */
-private fun shareMessageRes(message: EditorMessage): StringResource? = when (message) {
-    EditorMessage.MapLinkUnreadable -> Res.string.editor_link_unreadable
-    EditorMessage.NotAMapLink -> Res.string.editor_not_map_link
-    EditorMessage.VenuePositionUpdated -> null
-}
-
-@Composable
-private fun ShareMessageSnackbar(message: EditorMessage?, onConsume: () -> Unit, modifier: Modifier = Modifier) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val text = message?.let(::shareMessageRes)?.let { stringResource(it) }
-    LaunchedEffect(message) {
-        if (text != null) {
-            snackbarHostState.showSnackbar(text)
-            onConsume()
-        }
-    }
-    SnackbarHost(hostState = snackbarHostState, modifier = modifier)
+private fun shareNoticeRes(notice: ShareNotice) = when (notice) {
+    ShareNotice.MapLinkUnreadable -> Res.string.editor_link_unreadable
+    ShareNotice.NotAMapLink -> Res.string.editor_not_map_link
 }
 
 /** Moving a venue's marker moves it for every past record there, so the dialog says how many. */

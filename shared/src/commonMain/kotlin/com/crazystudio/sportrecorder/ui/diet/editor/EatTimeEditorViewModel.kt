@@ -123,8 +123,8 @@ class EatTimeEditorViewModel constructor(
 
     /**
      * A place shared from Google Maps becomes this meal's venue, at the position Maps gives — never
-     * the phone's fix. Any failure only leaves a message: the editor stays usable and saving is
-     * never held up by it.
+     * the phone's fix. Any failure only leaves a notice under the venue row: the editor stays usable
+     * and saving is never held up by it.
      */
     private suspend fun openSharedPlace(text: String) {
         _uiState.update { it.copy(resolvingLink = true) }
@@ -133,9 +133,9 @@ class EatTimeEditorViewModel constructor(
             val place = link?.let { readPlace(it) }
             val name = place?.name
             when {
-                link == null -> showMessage(EditorMessage.NotAMapLink)
+                link == null -> showNotice(ShareNotice.NotAMapLink)
                 // A place without a name is unusable: coordinates alone name no venue.
-                place == null || name == null -> showMessage(EditorMessage.MapLinkUnreadable)
+                place == null || name == null -> showNotice(ShareNotice.MapLinkUnreadable)
                 else -> applySharedPlace(name, place.position())
             }
         } finally {
@@ -192,29 +192,38 @@ class EatTimeEditorViewModel constructor(
 
     // Moving a venue moves its marker for every record at it, so the user decides — with the count.
     // Asked once per share: a share re-run after process death must not re-ask what was answered.
+    // A venue no record uses yet has no marker to move, so Maps' position is simply taken.
     private suspend fun askToMove(match: SharedVenueMatch.AskToMove) {
-        if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
-            showVenue(match.venue)
-            return
+        val movedRecords = if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
+            null
+        } else {
+            venueRepository.recordCount(match.venue.id)
         }
-        val movedRecords = venueRepository.recordCount(match.venue.id)
-        _uiState.update {
-            it.copy(
-                venue = match.venue,
-                pendingMove = EatTimeEditorUiState.PendingMove(match.venue, match.to, movedRecords),
-            )
+        when (movedRecords) {
+            null -> showVenue(match.venue)
+            0 -> {
+                venueRepository.setPosition(match.venue.id, match.to.lat, match.to.lng)
+                showVenue(match.venue.copy(lat = match.to.lat, lng = match.to.lng))
+            }
+            else -> _uiState.update {
+                it.copy(
+                    venue = match.venue,
+                    pendingMove = EatTimeEditorUiState.PendingMove(match.venue, match.to, movedRecords),
+                )
+            }
         }
     }
 
     private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
 
-    private fun showMessage(message: EditorMessage) = _uiState.update { it.copy(message = message) }
+    private fun showNotice(notice: ShareNotice) = _uiState.update { it.copy(shareNotice = notice) }
 
     // The user's own venue choice (or saving) wins over the share: once dropped, a share still
-    // resolving creates, moves or asks nothing, and a move question still open is withdrawn.
+    // resolving creates, moves or asks nothing, a move question still open is withdrawn, and a
+    // notice about the shared text has nothing left to explain.
     private fun dropSharedPlace() {
         shareJob?.cancel()
-        _uiState.update { it.copy(pendingMove = null) }
+        _uiState.update { it.copy(pendingMove = null, shareNotice = null) }
     }
 
     /** Move the shared venue to where Maps puts it — for every record at it. */

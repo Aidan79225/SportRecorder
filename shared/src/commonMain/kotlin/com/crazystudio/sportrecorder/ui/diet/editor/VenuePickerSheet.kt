@@ -51,7 +51,6 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_rename
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_here
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_more_vert_24
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -84,10 +83,9 @@ fun VenuePickerSheet(
 
     // A merge left pending, or a snackbar message cut off by closing the sheet (showSnackbar is
     // cancelled before it can consume), must not outlive the sheet and reappear the next time.
-    // Only the picker's own messages: the editor's (a shared link it could not read) are its to show.
     val dismiss = {
         onCancelMerge()
-        if (state.message?.let(::messageRes) != null) onConsumeMessage()
+        onConsumeMessage()
         onDismiss()
     }
 
@@ -99,8 +97,7 @@ fun VenuePickerSheet(
 
     // The sheet is its own window, so a snackbar hosted behind it would never be seen.
     val snackbarHostState = remember { SnackbarHostState() }
-    // Only the picker's own messages; the editor shows the rest (a sheet must not swallow them).
-    val messageText = state.message?.let(::messageRes)?.let { stringResource(it) }
+    val messageText = state.message?.let { stringResource(messageRes(it)) }
     LaunchedEffect(state.message) {
         if (messageText != null) {
             snackbarHostState.showSnackbar(messageText)
@@ -168,9 +165,8 @@ fun VenuePickerSheet(
     }
 }
 
-private fun messageRes(message: EditorMessage): StringResource? = when (message) {
+private fun messageRes(message: EditorMessage) = when (message) {
     EditorMessage.VenuePositionUpdated -> Res.string.editor_venue_position_updated
-    EditorMessage.MapLinkUnreadable, EditorMessage.NotAMapLink -> null
 }
 
 @Composable
