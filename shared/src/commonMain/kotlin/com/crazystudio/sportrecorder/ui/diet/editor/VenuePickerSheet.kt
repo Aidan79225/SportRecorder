@@ -84,9 +84,10 @@ fun VenuePickerSheet(
 
     // A merge left pending, or a snackbar message cut off by closing the sheet (showSnackbar is
     // cancelled before it can consume), must not outlive the sheet and reappear the next time.
+    // Only the picker's own messages: the editor's (a shared link it could not read) are its to show.
     val dismiss = {
         onCancelMerge()
-        onConsumeMessage()
+        if (state.message?.let(::messageRes) != null) onConsumeMessage()
         onDismiss()
     }
 

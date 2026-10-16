@@ -38,6 +38,9 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+// SavedStateHandle key: the user already answered this share's move question.
+private const val MOVE_ANSWERED = "shareMoveAnswered"
+
 // LongParameterList: these are injected DI dependencies, not logic params.
 @Suppress("TooManyFunctions", "LongParameterList") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel constructor(
@@ -48,7 +51,7 @@ class EatTimeEditorViewModel constructor(
     private val photoImporter: PhotoImporter,
     private val photoFileStore: PhotoFileStore,
     private val photoImageSource: PhotoImageSource,
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val mapsLinkResolver: MapsLinkResolver,
 ) : ViewModel() {
 
@@ -188,7 +191,12 @@ class EatTimeEditorViewModel constructor(
     }
 
     // Moving a venue moves its marker for every record at it, so the user decides — with the count.
+    // Asked once per share: a share re-run after process death must not re-ask what was answered.
     private suspend fun askToMove(match: SharedVenueMatch.AskToMove) {
+        if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
+            showVenue(match.venue)
+            return
+        }
         val movedRecords = venueRepository.recordCount(match.venue.id)
         _uiState.update {
             it.copy(
@@ -202,9 +210,11 @@ class EatTimeEditorViewModel constructor(
 
     private fun showMessage(message: EditorMessage) = _uiState.update { it.copy(message = message) }
 
-    // The user's own venue choice wins over a share still resolving: it creates, moves or asks nothing after.
+    // The user's own venue choice (or saving) wins over the share: once dropped, a share still
+    // resolving creates, moves or asks nothing, and a move question still open is withdrawn.
     private fun dropSharedPlace() {
         shareJob?.cancel()
+        _uiState.update { it.copy(pendingMove = null) }
     }
 
     /** Move the shared venue to where Maps puts it — for every record at it. */
@@ -212,6 +222,7 @@ class EatTimeEditorViewModel constructor(
         val pending = _uiState.value.pendingMove ?: return
         // Clear first, so a second tap finds nothing pending.
         _uiState.update { it.copy(pendingMove = null) }
+        savedStateHandle[MOVE_ANSWERED] = true
         viewModelScope.launch {
             venueRepository.setPosition(pending.venue.id, pending.to.lat, pending.to.lng)
             val moved = pending.venue.copy(lat = pending.to.lat, lng = pending.to.lng)
@@ -222,7 +233,10 @@ class EatTimeEditorViewModel constructor(
     }
 
     /** Keep the venue where it is; it stays selected for this meal. */
-    fun cancelMove() = _uiState.update { it.copy(pendingMove = null) }
+    fun cancelMove() {
+        _uiState.update { it.copy(pendingMove = null) }
+        savedStateHandle[MOVE_ANSWERED] = true
+    }
 
     // The suggestion follows the note as it is typed, so the order is recomputed with it.
     private fun EatTimeEditorUiState.withVenueOptions() =
@@ -378,6 +392,9 @@ class EatTimeEditorViewModel constructor(
 
     /** Validate + persist via the use case. Returns false if rejected (e.g. future time). */
     suspend fun save(): Boolean {
+        // Saving takes the venue as it is now: a share still resolving must not change it during or
+        // after the write (it would create a venue the saved meal never gets).
+        dropSharedPlace()
         val state = _uiState.value
         val record = EatRecord(
             id = eatTimeId,
@@ -392,8 +409,6 @@ class EatTimeEditorViewModel constructor(
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
             committed = true
-            // The meal is saved; a share still resolving must not create or move a venue after it.
-            dropSharedPlace()
             // Recency should reflect use, not creation, and not a later edit of an old record:
             // fixing last month's note must not push that venue above what is eaten now.
             state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }

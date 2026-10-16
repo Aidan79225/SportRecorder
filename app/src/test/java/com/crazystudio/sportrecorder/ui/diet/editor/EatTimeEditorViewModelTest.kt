@@ -17,6 +17,7 @@ import com.crazystudio.sportrecorder.fake.FakeVenueRepository
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -56,7 +57,13 @@ class EatTimeEditorViewModelTest {
         val locationProvider = FakeLocationProvider()
         val resolver = FakeMapsLinkResolver(location = FULL_URL)
 
-        fun viewModel(eatTimeId: Int? = null, sharedText: String? = null) = EatTimeEditorViewModel(
+        fun viewModel(
+            eatTimeId: Int? = null,
+            sharedText: String? = null,
+            handle: SavedStateHandle = SavedStateHandle(
+                listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
+            ),
+        ) = EatTimeEditorViewModel(
             loadEatRecord = LoadEatRecordUseCase(records),
             saveEatRecord = SaveEatRecordUseCase(records, FakeRemindersRescheduler()),
             locationProvider = locationProvider,
@@ -64,9 +71,7 @@ class EatTimeEditorViewModelTest {
             photoImporter = FakePhotoImporter(),
             photoFileStore = FakePhotoFileStore(),
             photoImageSource = FakePhotoImageSource(),
-            savedStateHandle = SavedStateHandle(
-                listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
-            ),
+            savedStateHandle = handle,
             mapsLinkResolver = resolver,
         )
     }
@@ -588,6 +593,63 @@ class EatTimeEditorViewModelTest {
         assertEquals(listOf("大戶屋"), creating.venues.stored.map { it.name })
         assertFalse(cleared.uiState.value.resolvingLink)
         assertFalse(created.uiState.value.resolvingLink)
+    }
+
+    @Test
+    fun pickingAVenueWhileAskedToMove_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(daHuWu, dinTaiFung.copy(id = 2)))
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingMove)
+
+        vm.selectVenue(daHuWu)
+
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(daHuWu, vm.uiState.value.venue)
+        assertEquals(dinTaiFung.copy(id = 2), editor.venues.stored.last()) // not moved
+    }
+
+    @Test
+    fun aShareResolvingDuringTheSave_createsNoVenue() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor()
+        val slowNetwork = CompletableDeferred<Unit>()
+        val slowDisk = CompletableDeferred<Unit>()
+        editor.resolver.gate = slowNetwork
+        editor.records.saveGate = slowDisk
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        vm.updateDate(year = 2024, month = 2, dayOfMonth = 5)
+        advanceUntilIdle()
+
+        // The link answers while the meal is being written: the write already took "no venue".
+        val saving = async { vm.save() }
+        advanceUntilIdle()
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+        slowDisk.complete(Unit)
+        assertTrue(saving.await())
+        advanceUntilIdle()
+
+        assertNull(editor.records.stored.single().venue)
+        assertTrue(editor.venues.stored.isEmpty())
+        assertNull(vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aMoveAlreadyDeclined_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val handle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
+        val before = editor.viewModel(handle = handle)
+        advanceUntilIdle()
+        requireNotNull(before.uiState.value.pendingMove)
+        before.cancelMove()
+
+        // The process dies; the route (with its shared text) and the saved state come back.
+        val after = editor.viewModel(handle = handle)
+        advanceUntilIdle()
+
+        assertEquals(dinTaiFung, after.uiState.value.venue)
+        assertNull(after.uiState.value.pendingMove)
+        assertEquals(dinTaiFung, editor.venues.stored.single())
     }
 
     @Test

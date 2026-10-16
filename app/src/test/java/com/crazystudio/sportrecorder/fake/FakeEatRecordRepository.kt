@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.fake
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -28,6 +29,9 @@ class FakeEatRecordRepository(
     /** Timestamp stamped onto photos inserted by [save]; the real repository uses the wall clock. */
     var photoCreatedAt: Long = 0L
 
+    /** When set, [save] waits for it before writing — a slow database write, for ordering tests. */
+    var saveGate: CompletableDeferred<Unit>? = null
+
     /** The records currently stored, for direct assertions. */
     val stored: List<EatRecord> get() = state.value
 
@@ -46,6 +50,7 @@ class FakeEatRecordRepository(
         newPhotoFileNames: List<String>,
         removedPhotos: List<EatPhoto>,
     ): Int {
+        saveGate?.await()
         val newPhotos = newPhotoFileNames.map { EatPhoto(nextPhotoId++, it, photoCreatedAt) }
         return if (record.id > 0) {
             update(record, newPhotos, removedPhotos)
