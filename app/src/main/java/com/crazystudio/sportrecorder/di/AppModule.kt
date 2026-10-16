@@ -50,6 +50,8 @@ import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
 import com.crazystudio.sportrecorder.platform.AndroidLocationProvider
 import com.crazystudio.sportrecorder.platform.AndroidPhotoImporter
 import com.crazystudio.sportrecorder.platform.LocationProvider
+import com.crazystudio.sportrecorder.platform.MapsLinkResolver
+import com.crazystudio.sportrecorder.platform.OkHttpMapsLinkResolver
 import com.crazystudio.sportrecorder.platform.PhotoImporter
 import com.crazystudio.sportrecorder.reminder.AlarmReminderScheduler
 import com.crazystudio.sportrecorder.reminder.ReminderNotifier
@@ -63,6 +65,7 @@ import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.settings.SettingsViewModel
 import com.crazystudio.sportrecorder.util.PhotoStorage
+import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -93,6 +96,7 @@ val appModule = module {
     single<PhotoImageSource> { AndroidPhotoImageSource(androidContext()) }
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
     single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
+    single<MapsLinkResolver> { OkHttpMapsLinkResolver(OkHttpClient()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
