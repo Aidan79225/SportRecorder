@@ -174,16 +174,16 @@ class EatTimeEditorViewModel constructor(
             lng = match.position?.lng,
             now = now(),
         )
-        selectVenue(venue)
+        showVenue(venue)
     }
 
     private suspend fun useSharedVenue(match: SharedVenueMatch.Use) {
         val fill = match.fillPosition
         if (fill == null) {
-            selectVenue(match.venue)
+            showVenue(match.venue)
         } else {
             venueRepository.setPosition(match.venue.id, fill.lat, fill.lng)
-            selectVenue(match.venue.copy(lat = fill.lat, lng = fill.lng))
+            showVenue(match.venue.copy(lat = fill.lat, lng = fill.lng))
         }
     }
 
@@ -198,7 +198,14 @@ class EatTimeEditorViewModel constructor(
         }
     }
 
+    private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
+
     private fun showMessage(message: EditorMessage) = _uiState.update { it.copy(message = message) }
+
+    // The user's own venue choice wins over a share still resolving: it creates, moves or asks nothing after.
+    private fun dropSharedPlace() {
+        shareJob?.cancel()
+    }
 
     /** Move the shared venue to where Maps puts it — for every record at it. */
     fun confirmMove() {
@@ -223,9 +230,15 @@ class EatTimeEditorViewModel constructor(
 
     fun setNote(value: String) = _uiState.update { it.copy(note = value).withVenueOptions() }
 
-    fun selectVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
+    fun selectVenue(venue: Venue) {
+        dropSharedPlace()
+        showVenue(venue)
+    }
 
-    fun clearVenue() = _uiState.update { it.copy(venue = null) }
+    fun clearVenue() {
+        dropSharedPlace()
+        _uiState.update { it.copy(venue = null) }
+    }
 
     /**
      * A name the user typed that is not in the list yet. The venue adopts this record's fix, if any.
@@ -233,6 +246,7 @@ class EatTimeEditorViewModel constructor(
      */
     fun createVenue(name: String) {
         if (VenueName.normalize(name).isEmpty()) return
+        dropSharedPlace()
         viewModelScope.launch {
             val state = _uiState.value
             val venue = venueRepository.findOrCreate(
@@ -379,7 +393,7 @@ class EatTimeEditorViewModel constructor(
         if (ok) {
             committed = true
             // The meal is saved; a share still resolving must not create or move a venue after it.
-            shareJob?.cancel()
+            dropSharedPlace()
             // Recency should reflect use, not creation, and not a later edit of an old record:
             // fixing last month's note must not push that venue above what is eaten now.
             state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }

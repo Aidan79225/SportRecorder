@@ -548,6 +548,49 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
+    fun pickingAVenueWhileResolving_keepsTheUsersChoice() = runTest(mainRule.testDispatcher.scheduler) {
+        // The link names a venue that exists elsewhere: left alone, the share would select it and ask to move it.
+        val editor = Editor(venues = listOf(daHuWu, dinTaiFung.copy(id = 2)))
+        val slowNetwork = CompletableDeferred<Unit>()
+        editor.resolver.gate = slowNetwork
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        vm.selectVenue(daHuWu)
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(daHuWu, vm.uiState.value.venue)
+        assertNull(vm.uiState.value.pendingMove)
+        assertFalse(vm.uiState.value.resolvingLink)
+        assertEquals(listOf(daHuWu, dinTaiFung.copy(id = 2)), editor.venues.stored)
+    }
+
+    @Test
+    fun clearingOrCreatingAVenueWhileResolving_keepsTheUsersChoice() = runTest(mainRule.testDispatcher.scheduler) {
+        val clearing = Editor()
+        val creating = Editor()
+        val slowNetwork = CompletableDeferred<Unit>()
+        clearing.resolver.gate = slowNetwork
+        creating.resolver.gate = slowNetwork
+        val cleared = clearing.viewModel(sharedText = SHARE_TEXT)
+        val created = creating.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        cleared.clearVenue()
+        created.createVenue("大戶屋")
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+
+        assertNull(cleared.uiState.value.venue)
+        assertTrue(clearing.venues.stored.isEmpty())
+        assertEquals("大戶屋", created.uiState.value.venue?.name)
+        assertEquals(listOf("大戶屋"), creating.venues.stored.map { it.name })
+        assertFalse(cleared.uiState.value.resolvingLink)
+        assertFalse(created.uiState.value.resolvingLink)
+    }
+
+    @Test
     fun runningTheSameShareTwice_isIdempotent() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor()
         val first = editor.viewModel(sharedText = SHARE_TEXT)
