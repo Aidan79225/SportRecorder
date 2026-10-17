@@ -1,5 +1,4 @@
-New in 0.12.0
-• A record can now name the place its food came from — pick one you have used before instead of typing it again.
-• Rename a place, or fix where it is, and every past record follows.
-• The Insights map shows place names instead of plain dots. Records without a place still appear, just as before.
-• Places are included in your Google Drive backup.
+New in 0.13.0
+• Share a place from Google Maps: tap Share, choose SportRecorder, and a new record opens with the place already filled in — name and position straight from Maps, nothing to type.
+• If a place you already have sits somewhere else on the map, the app asks before updating it, and tells you how many past records would move.
+• If a link can't be read, you can still save the meal and choose the place yourself.
