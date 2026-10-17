@@ -261,4 +261,13 @@
     </plurals>
     <string name="editor_venue_position_updated">已更新店家位置</string>
     <string name="editor_venue_merge_confirm">合併</string>
+    <string name="editor_venue_resolving">正在讀取地圖連結…</string>
+    <string name="editor_link_unreadable">沒辦法讀取這個地圖連結，可以手動選擇店家。</string>
+    <string name="editor_not_map_link">這看起來不是 Google 地圖的連結。</string>
+    <string name="editor_move_title">要更新「%1$s」的位置嗎？</string>
+    <plurals name="editor_move_body">
+        <item quantity="other">有 %1$d 筆過去的紀錄會移到 Google 地圖標示的位置。</item>
+    </plurals>
+    <string name="editor_move_confirm">更新</string>
+    <string name="editor_move_keep">保留</string>
 </resources>

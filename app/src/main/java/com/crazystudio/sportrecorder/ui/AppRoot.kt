@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -87,9 +89,18 @@ private fun VenuePickerHost(
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
 
+/**
+ * The app's navigation root. [sharedText] (what another app shared, #84) opens a new meal's editor
+ * once; when [launchedByShare], [onShareDone] runs after that editor is saved or dismissed, so the
+ * user lands back in the app they shared from.
+ */
 @Composable
 @Suppress("LongMethod") // cohesive single navigation-graph builder; splitting hurts readability
-fun AppRoot() {
+fun AppRoot(
+    sharedText: String? = null,
+    launchedByShare: Boolean = false,
+    onShareDone: () -> Unit = {},
+) {
     val bottomSheetNavigator = remember { BottomSheetNavigator() }
     val navController = rememberNavController(bottomSheetNavigator)
 
@@ -329,6 +340,8 @@ fun AppRoot() {
                     onClearLocation = vm::clearLocation,
                     onOpenVenuePicker = { showVenuePicker = true },
                     onClearVenue = vm::clearVenue,
+                    onConfirmMove = vm::confirmMove,
+                    onCancelMove = vm::cancelMove,
                     onConfirm = {
                         scope.launch { if (vm.save()) navController.popBackStack() }
                     },
@@ -346,6 +359,39 @@ fun AppRoot() {
         // this slot to its SubcomposeLayout measure pass, so a sibling placed after the
         // Scaffold(...) call itself would run first, before NavHost attaches the navigator.
         BottomSheetHost(bottomSheetNavigator)
+        // Same placement rule as BottomSheetHost: it navigates and reads the sheet back stack.
+        ShareEntry(navController, bottomSheetNavigator, sharedText, launchedByShare, onShareDone)
+    }
+}
+
+/**
+ * Opens the editor for [sharedText] once and, for a share launch only, calls [onShareDone] when that
+ * editor, having been on the back stack, has left it (saved or dismissed). Driven by the back stack,
+ * never by the sheet's onDispose: that also fires on rotation and would close the app mid-edit.
+ */
+@Composable
+private fun ShareEntry(
+    navController: NavHostController,
+    sheetNavigator: BottomSheetNavigator,
+    sharedText: String?,
+    launchedByShare: Boolean,
+    onShareDone: () -> Unit,
+) {
+    LaunchedEffect(Unit) {
+        // MainActivity passes the text only on a fresh start, so a recreation never opens a second editor.
+        if (sharedText != null) navController.navigate(Route.EatTimeEditor(sharedText = sharedText))
+    }
+    if (!launchedByShare) return
+    val sheets by sheetNavigator.backStack.collectAsState()
+    val editorOnStack = sheets.any { it.destination.hasRoute(Route.EatTimeEditor::class) }
+    // Saveable: the editor restored after a rotation must still count as the one that was open.
+    var editorWasOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(editorOnStack) {
+        if (editorOnStack) {
+            editorWasOpen = true
+        } else if (editorWasOpen) {
+            onShareDone()
+        }
     }
 }
 

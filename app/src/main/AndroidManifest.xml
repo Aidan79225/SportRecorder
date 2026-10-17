@@ -41,6 +41,17 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!--
+              Share a place from Google Maps into a new meal (#84). Default launch mode on purpose:
+              the share opens inside the sender's task, so finishing returns the user to Maps.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
         </activity>
         <provider
             android:name="androidx.core.content.FileProvider"

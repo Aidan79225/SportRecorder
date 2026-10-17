@@ -8,6 +8,7 @@ import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
 import com.crazystudio.sportrecorder.fake.FakeLocationProvider
+import com.crazystudio.sportrecorder.fake.FakeMapsLinkResolver
 import com.crazystudio.sportrecorder.fake.FakePhotoFileStore
 import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.fake.FakePhotoImporter
@@ -85,6 +86,7 @@ class EatTimeEditorFlowTest {
             } else {
                 SavedStateHandle(mapOf("eatTimeId" to eatTimeId))
             },
+            mapsLinkResolver = FakeMapsLinkResolver(),
         )
     }
 
