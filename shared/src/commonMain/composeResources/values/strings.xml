@@ -272,4 +272,16 @@
     </plurals>
     <string name="editor_move_confirm">Update</string>
     <string name="editor_move_keep">Keep</string>
+    <string name="editor_store_title">Is this the same %1$s?</string>
+    <string name="editor_store_body_at">The %1$s you saved is at %2$s, about %3$s from this link.</string>
+    <string name="editor_store_body">The %1$s you saved is about %2$s from this link.</string>
+    <string name="distance_meters">%1$d m</string>
+    <string name="distance_kilometers">%1$s km</string>
+    <string name="editor_store_branch">It's another branch</string>
+    <plurals name="editor_store_move">
+        <item quantity="one">Same place — update its position (%1$d past record will move)</item>
+        <item quantity="other">Same place — update its position (%1$d past records will move)</item>
+    </plurals>
+    <string name="editor_store_move_none">Same place — update its position</string>
+    <string name="editor_store_keep">Same place — keep its position</string>
 </resources>

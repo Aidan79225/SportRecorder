@@ -342,6 +342,9 @@ fun AppRoot(
                     onClearVenue = vm::clearVenue,
                     onConfirmMove = vm::confirmMove,
                     onCancelMove = vm::cancelMove,
+                    onAnswerAnotherBranch = vm::answerAnotherBranch,
+                    onAnswerSameStoreMove = vm::answerSameStoreMove,
+                    onAnswerSameStoreKeep = vm::answerSameStoreKeep,
                     onConfirm = {
                         scope.launch { if (vm.save()) navController.popBackStack() }
                     },

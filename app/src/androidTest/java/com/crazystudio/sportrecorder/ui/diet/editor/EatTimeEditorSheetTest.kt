@@ -78,6 +78,9 @@ class EatTimeEditorSheetTest {
                     onClearVenue = {},
                     onConfirmMove = {},
                     onCancelMove = {},
+                    onAnswerAnotherBranch = {},
+                    onAnswerSameStoreMove = {},
+                    onAnswerSameStoreKeep = {},
                     onConfirm = { confirm++ },
                 )
             }

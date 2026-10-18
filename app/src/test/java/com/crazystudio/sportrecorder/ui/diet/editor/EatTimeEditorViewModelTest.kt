@@ -6,6 +6,9 @@ import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
+import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
+import com.crazystudio.sportrecorder.fake.FakeAddressLookup
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
 import com.crazystudio.sportrecorder.fake.FakeLocationProvider
 import com.crazystudio.sportrecorder.fake.FakeMapsLinkResolver
@@ -57,6 +60,7 @@ class EatTimeEditorViewModelTest {
         val venues = FakeVenueRepository(venues)
         val locationProvider = FakeLocationProvider()
         val resolver = FakeMapsLinkResolver(location = FULL_URL)
+        val lookup = FakeAddressLookup()
 
         fun viewModel(
             eatTimeId: Int? = null,
@@ -74,6 +78,7 @@ class EatTimeEditorViewModelTest {
             photoImageSource = FakePhotoImageSource(),
             savedStateHandle = handle,
             mapsLinkResolver = resolver,
+            venueAddressFiller = VenueAddressFiller(lookup, venues),
         )
     }
 
@@ -464,59 +469,118 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun existingVenueFarAway_asksBeforeMoving() = runTest(mainRule.testDispatcher.scheduler) {
+    fun aFarSameNameVenue_asksWhichStore() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(dinTaiFung))
         editor.venues.recordCounts[dinTaiFung.id] = 12
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        val pending = requireNotNull(vm.uiState.value.pendingMove)
+        val pending = requireNotNull(vm.uiState.value.pendingStore)
         assertEquals(dinTaiFung, pending.venue)
         assertEquals(mapsPosition, pending.to)
-        // The dialog's whole job: moving a venue moves its marker for every record at it.
+        // The saved one is about 53.5 km from the link's pin.
+        assertEquals(RoundedDistance.Kilometers(535), pending.distance)
+        // Moving a venue moves its marker for every record at it, so the question carries the count.
         assertEquals(12, pending.movedRecords)
+        assertEquals("鼎泰豐 信義店", pending.sharedName)
         assertEquals(dinTaiFung.id, vm.uiState.value.venue?.id)
-        // Nothing has moved yet — the user has not said yes.
-        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertNull(vm.uiState.value.pendingMove)
+        // Nothing is written yet — the user has not answered.
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
     }
 
     @Test
-    fun confirmMove_movesIt_cancelMove_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
-        val confirming = Editor(venues = listOf(dinTaiFung))
-        confirming.venues.recordCounts[dinTaiFung.id] = 2
-        val yes = confirming.viewModel(sharedText = SHARE_TEXT)
-        val cancelling = Editor(venues = listOf(dinTaiFung))
-        cancelling.venues.recordCounts[dinTaiFung.id] = 2
-        val no = cancelling.viewModel(sharedText = SHARE_TEXT)
+    fun anotherBranch_createsANewVenueAtThePin_andSelectsIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerAnotherBranch()
         advanceUntilIdle()
 
-        yes.confirmMove()
-        no.cancelMove()
+        assertNull(vm.uiState.value.pendingStore)
+        val branch = editor.venues.stored.last()
+        assertEquals(2, editor.venues.stored.size)
+        assertEquals("鼎泰豐 信義店", branch.name)
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(branch.lat), requireNotNull(branch.lng)))
+        assertEquals(branch, vm.uiState.value.venue)
+        // The other branch stays exactly where it was.
+        assertEquals(dinTaiFung, editor.venues.stored.first())
+    }
+
+    @Test
+    fun sameStoreMove_movesIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung.copy(address = "舊地址")))
+        editor.venues.recordCounts[dinTaiFung.id] = 2
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerSameStoreMove()
         advanceUntilIdle()
 
-        val moved = confirming.venues.stored.single()
+        assertNull(vm.uiState.value.pendingStore)
+        val moved = editor.venues.stored.single()
+        assertEquals(dinTaiFung.id, moved.id)
         assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
-        assertEquals(moved, yes.uiState.value.venue)
-        assertNull(yes.uiState.value.pendingMove)
-
-        assertEquals(dinTaiFung, cancelling.venues.stored.single())
-        assertEquals(dinTaiFung, no.uiState.value.venue)
-        assertNull(no.uiState.value.pendingMove)
+        // The old address described the old position.
+        assertNull(moved.address)
+        assertEquals(moved, vm.uiState.value.venue)
     }
 
     @Test
-    fun existingVenueFarAwayButUnused_stillAsks() = runTest(mainRule.testDispatcher.scheduler) {
-        // Even with no record at it, the user is asked: it may be another branch.
+    fun sameStoreKeep_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        editor.venues.recordCounts[dinTaiFung.id] = 2
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerSameStoreKeep()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.pendingStore)
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
+        assertEquals(dinTaiFung, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun zeroRecords_stillAsks() = runTest(mainRule.testDispatcher.scheduler) {
+        // Even with no record at it, the user is asked: it may be another branch (#84 moved it silently).
         val editor = Editor(venues = listOf(dinTaiFung))
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        val pending = requireNotNull(vm.uiState.value.pendingMove)
+        val pending = requireNotNull(vm.uiState.value.pendingStore)
         assertEquals(dinTaiFung, pending.venue)
-        assertEquals(mapsPosition, pending.to)
         assertEquals(0, pending.movedRecords)
-        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
         assertEquals(dinTaiFung, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aCreatedOrMovedVenue_getsItsAddressFilled() = runTest(mainRule.testDispatcher.scheduler) {
+        val address = "信義路二段 194號"
+        val creating = Editor()
+        val branching = Editor(venues = listOf(dinTaiFung))
+        val moving = Editor(venues = listOf(dinTaiFung))
+        listOf(creating, branching, moving).forEach { it.lookup.address = address }
+        creating.viewModel(sharedText = SHARE_TEXT)
+        val branched = branching.viewModel(sharedText = SHARE_TEXT)
+        val moved = moving.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        // Asking which store looks nothing up: only what the VM creates or moves gets an address.
+        assertTrue(branching.lookup.asked.isEmpty())
+
+        branched.answerAnotherBranch()
+        moved.answerSameStoreMove()
+        advanceUntilIdle()
+
+        assertEquals(address, creating.venues.stored.single().address)
+        assertEquals(listOf(null, address), branching.venues.stored.map { it.address })
+        assertEquals(address, moving.venues.stored.single().address)
+        assertEquals(listOf(mapsPosition), moving.lookup.asked)
     }
 
     @Test
@@ -529,7 +593,7 @@ class EatTimeEditorViewModelTest {
         val learned = unplaced.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
         assertEquals(learned, editor.venues.stored.single())
         assertEquals(learned, vm.uiState.value.venue)
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
     }
 
     @Test
@@ -584,7 +648,7 @@ class EatTimeEditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals(daHuWu, vm.uiState.value.venue)
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
         assertFalse(vm.uiState.value.resolvingLink)
         assertEquals(listOf(daHuWu, dinTaiFung.copy(id = 2)), editor.venues.stored)
     }
@@ -614,18 +678,20 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun pickingAVenueWhileAskedToMove_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
+    fun pickingAVenueWhileAsked_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu, dinTaiFung.copy(id = 2)))
         editor.venues.recordCounts[2] = 4
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
-        requireNotNull(vm.uiState.value.pendingMove)
+        requireNotNull(vm.uiState.value.pendingStore)
 
         vm.selectVenue(daHuWu)
+        advanceUntilIdle()
 
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
         assertEquals(daHuWu, vm.uiState.value.venue)
-        assertEquals(dinTaiFung.copy(id = 2), editor.venues.stored.last()) // not moved
+        // Neither moved nor branched.
+        assertEquals(listOf(daHuWu, dinTaiFung.copy(id = 2)), editor.venues.stored)
     }
 
     @Test
@@ -654,22 +720,30 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun aMoveAlreadyDeclined_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(venues = listOf(dinTaiFung))
-        editor.venues.recordCounts[dinTaiFung.id] = 5
-        val handle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
-        val before = editor.viewModel(handle = handle)
+    fun anAnsweredQuestion_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
+        val keeping = Editor(venues = listOf(dinTaiFung))
+        val branching = Editor(venues = listOf(dinTaiFung))
+        val keepHandle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
+        val branchHandle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
+        val kept = keeping.viewModel(handle = keepHandle)
+        val branched = branching.viewModel(handle = branchHandle)
         advanceUntilIdle()
-        requireNotNull(before.uiState.value.pendingMove)
-        before.cancelMove()
+        kept.answerSameStoreKeep()
+        branched.answerAnotherBranch()
+        advanceUntilIdle()
 
         // The process dies; the route (with its shared text) and the saved state come back.
-        val after = editor.viewModel(handle = handle)
+        val keptAgain = keeping.viewModel(handle = keepHandle)
+        val branchedAgain = branching.viewModel(handle = branchHandle)
         advanceUntilIdle()
 
-        assertEquals(dinTaiFung, after.uiState.value.venue)
-        assertNull(after.uiState.value.pendingMove)
-        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertNull(keptAgain.uiState.value.pendingStore)
+        assertEquals(dinTaiFung, keptAgain.uiState.value.venue)
+        assertEquals(listOf(dinTaiFung), keeping.venues.stored)
+        // The new branch is at the pin now: it is the one picked, and no third venue appears.
+        assertNull(branchedAgain.uiState.value.pendingStore)
+        assertEquals(2, branching.venues.stored.size)
+        assertEquals(branching.venues.stored.last().id, branchedAgain.uiState.value.venue?.id)
     }
 
     @Test
@@ -683,7 +757,7 @@ class EatTimeEditorViewModelTest {
         val venue = editor.venues.stored.single()
         assertEquals(venue.id, first.uiState.value.venue?.id)
         assertEquals(venue.id, second.uiState.value.venue?.id)
-        assertNull(second.uiState.value.pendingMove)
+        assertNull(second.uiState.value.pendingStore)
     }
 
     @Test

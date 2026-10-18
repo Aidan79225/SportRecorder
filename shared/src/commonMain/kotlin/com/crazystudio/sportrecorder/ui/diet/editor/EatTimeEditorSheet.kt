@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
+import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_title
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
@@ -50,12 +51,21 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
+import com.crazystudio.sportrecorder.shared.resources.distance_kilometers
+import com.crazystudio.sportrecorder.shared.resources.distance_meters
 import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_move_body
 import com.crazystudio.sportrecorder.shared.resources.editor_move_confirm
 import com.crazystudio.sportrecorder.shared.resources.editor_move_keep
 import com.crazystudio.sportrecorder.shared.resources.editor_move_title
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
+import com.crazystudio.sportrecorder.shared.resources.editor_store_body
+import com.crazystudio.sportrecorder.shared.resources.editor_store_body_at
+import com.crazystudio.sportrecorder.shared.resources.editor_store_branch
+import com.crazystudio.sportrecorder.shared.resources.editor_store_keep
+import com.crazystudio.sportrecorder.shared.resources.editor_store_move
+import com.crazystudio.sportrecorder.shared.resources.editor_store_move_none
+import com.crazystudio.sportrecorder.shared.resources.editor_store_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_clear
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_none
@@ -99,6 +109,9 @@ fun EatTimeEditorSheet(
     onClearVenue: () -> Unit,
     onConfirmMove: () -> Unit,
     onCancelMove: () -> Unit,
+    onAnswerAnotherBranch: () -> Unit,
+    onAnswerSameStoreMove: () -> Unit,
+    onAnswerSameStoreKeep: () -> Unit,
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -316,6 +329,14 @@ fun EatTimeEditorSheet(
     state.pendingMove?.let { pending ->
         MoveDialog(pending = pending, onConfirm = onConfirmMove, onDismiss = onCancelMove)
     }
+    state.pendingStore?.let { pending ->
+        StoreDialog(
+            pending = pending,
+            onAnotherBranch = onAnswerAnotherBranch,
+            onMove = onAnswerSameStoreMove,
+            onKeep = onAnswerSameStoreKeep,
+        )
+    }
 }
 
 private fun shareNoticeRes(notice: ShareNotice) = when (notice) {
@@ -342,6 +363,63 @@ private fun MoveDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(Res.string.editor_move_keep)) }
         },
+    )
+}
+
+/**
+ * A shared place has the name of a saved venue that is far away: another branch, or the same store
+ * mis-placed? Only the user knows. The three answers are stacked; dismissing keeps everything as is.
+ */
+@Composable
+private fun StoreDialog(
+    pending: EatTimeEditorUiState.PendingStore,
+    onAnotherBranch: () -> Unit,
+    onMove: () -> Unit,
+    onKeep: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onKeep,
+        title = { Text(stringResource(Res.string.editor_store_title, pending.venue.name)) },
+        text = { Text(storeBody(pending)) },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onAnotherBranch) { Text(stringResource(Res.string.editor_store_branch)) }
+                TextButton(onClick = onMove) { Text(storeMoveLabel(pending.movedRecords)) }
+                TextButton(onClick = onKeep) { Text(stringResource(Res.string.editor_store_keep)) }
+            }
+        },
+    )
+}
+
+@Composable
+private fun storeBody(pending: EatTimeEditorUiState.PendingStore): String {
+    val name = pending.venue.name
+    val distance = distanceText(pending.distance)
+    val address = pending.venue.address
+    return if (address != null) {
+        stringResource(Res.string.editor_store_body_at, name, address, distance)
+    } else {
+        stringResource(Res.string.editor_store_body, name, distance)
+    }
+}
+
+// Moving it moves the marker of every record at it, so the answer says how many — when there are any.
+@Composable
+private fun storeMoveLabel(movedRecords: Int): String = if (movedRecords > 0) {
+    pluralStringResource(Res.plurals.editor_store_move, movedRecords, movedRecords)
+} else {
+    stringResource(Res.string.editor_store_move_none)
+}
+
+private const val TENTHS_PER_KILOMETER = 10
+
+@Composable
+private fun distanceText(distance: RoundedDistance): String = when (distance) {
+    is RoundedDistance.Meters -> stringResource(Res.string.distance_meters, distance.value)
+    // One decimal, built by hand: no String.format in common code.
+    is RoundedDistance.Kilometers -> stringResource(
+        Res.string.distance_kilometers,
+        "${distance.tenths / TENTHS_PER_KILOMETER}.${distance.tenths % TENTHS_PER_KILOMETER}",
     )
 }
 

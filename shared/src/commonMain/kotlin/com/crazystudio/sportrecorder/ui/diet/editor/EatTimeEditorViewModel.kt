@@ -17,7 +17,9 @@ import com.crazystudio.sportrecorder.domain.venue.MapsLink
 import com.crazystudio.sportrecorder.domain.venue.MapsPlace
 import com.crazystudio.sportrecorder.domain.venue.SharedVenue
 import com.crazystudio.sportrecorder.domain.venue.SharedVenueMatch
+import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
 import com.crazystudio.sportrecorder.domain.venue.VenuePicker
+import com.crazystudio.sportrecorder.domain.venue.roundedDistance
 import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.platform.MapsLinkResolver
 import com.crazystudio.sportrecorder.platform.PhotoImporter
@@ -53,6 +55,7 @@ class EatTimeEditorViewModel constructor(
     private val photoImageSource: PhotoImageSource,
     private val savedStateHandle: SavedStateHandle,
     private val mapsLinkResolver: MapsLinkResolver,
+    private val venueAddressFiller: VenueAddressFiller,
 ) : ViewModel() {
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the editor's thumbnails. */
@@ -165,7 +168,7 @@ class EatTimeEditorViewModel constructor(
         when (val match = SharedVenue.match(name, position, venues)) {
             is SharedVenueMatch.Create -> createSharedVenue(match)
             is SharedVenueMatch.Use -> useSharedVenue(match)
-            is SharedVenueMatch.AskWhichStore -> askToMove(match)
+            is SharedVenueMatch.AskWhichStore -> askWhichStore(name, match)
         }
     }
 
@@ -178,6 +181,7 @@ class EatTimeEditorViewModel constructor(
             now = now(),
         )
         showVenue(venue)
+        fillAddress(venue)
     }
 
     private suspend fun useSharedVenue(match: SharedVenueMatch.Use) {
@@ -186,40 +190,87 @@ class EatTimeEditorViewModel constructor(
             showVenue(match.venue)
         } else {
             venueRepository.setPosition(match.venue.id, fill.lat, fill.lng)
-            showVenue(match.venue.copy(lat = fill.lat, lng = fill.lng))
+            val placed = match.venue.copy(lat = fill.lat, lng = fill.lng, address = null)
+            showVenue(placed)
+            fillAddress(placed)
         }
     }
 
-    // Moving a venue moves its marker for every record at it, so the user decides — with the count.
+    // The same name far away may be another branch or the same store mis-placed: only the user knows.
+    // Moving it would move its marker for every record at it, so the question carries the count.
     // Asked once per share: a share re-run after process death must not re-ask what was answered.
-    private suspend fun askToMove(match: SharedVenueMatch.AskWhichStore) {
-        val movedRecords = if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
-            null
-        } else {
-            venueRepository.recordCount(match.venue.id)
-        }
-        if (movedRecords == null) {
+    private suspend fun askWhichStore(sharedName: String, match: SharedVenueMatch.AskWhichStore) {
+        if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
             showVenue(match.venue)
         } else {
-            _uiState.update {
-                it.copy(
-                    venue = match.venue,
-                    pendingMove = EatTimeEditorUiState.PendingMove(match.venue, match.to, movedRecords),
-                )
-            }
+            val pending = EatTimeEditorUiState.PendingStore(
+                venue = match.venue,
+                to = match.to,
+                distance = roundedDistance(match.meters),
+                movedRecords = venueRepository.recordCount(match.venue.id),
+                sharedName = sharedName,
+            )
+            _uiState.update { it.copy(venue = match.venue, pendingStore = pending) }
         }
     }
 
     private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
 
+    // An answer replaces the venue only if the user has not switched to another one meanwhile.
+    private fun showVenueInPlaceOf(replacedId: Int, venue: Venue) = _uiState.update { state ->
+        state.copy(venue = if (state.venue?.id == replacedId) venue else state.venue)
+    }
+
     private fun showNotice(notice: ShareNotice) = _uiState.update { it.copy(shareNotice = notice) }
 
+    // Fire and forget: a slow or failing lookup never holds up the editor, and a result that comes
+    // back after the venue moved again is dropped by the filler.
+    private fun fillAddress(venue: Venue) {
+        viewModelScope.launch { venueAddressFiller.fill(listOf(venue)) }
+    }
+
     // The user's own venue choice (or saving) wins over the share: once dropped, a share still
-    // resolving creates, moves or asks nothing, a move question still open is withdrawn, and a
-    // notice about the shared text has nothing left to explain.
+    // resolving creates, moves or asks nothing, a question still open is withdrawn, and a notice
+    // about the shared text has nothing left to explain.
     private fun dropSharedPlace() {
         shareJob?.cancel()
-        _uiState.update { it.copy(pendingMove = null, shareNotice = null) }
+        _uiState.update { it.copy(pendingMove = null, pendingStore = null, shareNotice = null) }
+    }
+
+    // Clear first, so a second tap finds nothing pending; remembered so a re-run share won't re-ask.
+    private fun takePendingStore(): EatTimeEditorUiState.PendingStore? {
+        val pending = _uiState.value.pendingStore
+        if (pending != null) {
+            _uiState.update { it.copy(pendingStore = null) }
+            savedStateHandle[MOVE_ANSWERED] = true
+        }
+        return pending
+    }
+
+    /** The shared place is another branch: a new venue by that name at the link's pin, for this meal. */
+    fun answerAnotherBranch() {
+        val pending = takePendingStore() ?: return
+        viewModelScope.launch {
+            val branch = venueRepository.create(pending.sharedName, pending.to.lat, pending.to.lng, now())
+            showVenueInPlaceOf(pending.venue.id, branch)
+            fillAddress(branch)
+        }
+    }
+
+    /** Same store, mis-placed: move it to the link's pin — for every record at it. */
+    fun answerSameStoreMove() {
+        val pending = takePendingStore() ?: return
+        viewModelScope.launch {
+            venueRepository.setPosition(pending.venue.id, pending.to.lat, pending.to.lng)
+            val moved = pending.venue.copy(lat = pending.to.lat, lng = pending.to.lng, address = null)
+            showVenueInPlaceOf(pending.venue.id, moved)
+            fillAddress(moved)
+        }
+    }
+
+    /** Same store, and it stays where it is; it stays selected for this meal. Also what dismissing means. */
+    fun answerSameStoreKeep() {
+        takePendingStore()
     }
 
     /** Move the shared venue to where Maps puts it — for every record at it. */
@@ -275,6 +326,7 @@ class EatTimeEditorViewModel constructor(
                 now = now(),
             )
             _uiState.update { it.copy(venue = venue) }
+            fillAddress(venue)
         }
     }
 
@@ -343,6 +395,7 @@ class EatTimeEditorViewModel constructor(
         val fix = _uiState.value.location ?: return
         viewModelScope.launch {
             venueRepository.setPosition(venue.id, fix.lat, fix.lng)
+            fillAddress(venue.copy(lat = fix.lat, lng = fix.lng, address = null))
             // The write moves a marker the user is not looking at; say so, or it feels like a no-op.
             _uiState.update { it.copy(message = EditorMessage.VenuePositionUpdated) }
         }

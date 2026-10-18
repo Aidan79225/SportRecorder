@@ -270,4 +270,15 @@
     </plurals>
     <string name="editor_move_confirm">更新</string>
     <string name="editor_move_keep">保留</string>
+    <string name="editor_store_title">「%1$s」是同一家嗎？</string>
+    <string name="editor_store_body_at">你存過的「%1$s」在 %2$s，和這個連結的位置相距約 %3$s。</string>
+    <string name="editor_store_body">你存過的「%1$s」和這個連結的位置相距約 %2$s。</string>
+    <string name="distance_meters">%1$d 公尺</string>
+    <string name="distance_kilometers">%1$s 公里</string>
+    <string name="editor_store_branch">是另一家分店</string>
+    <plurals name="editor_store_move">
+        <item quantity="other">同一家，更新位置（%1$d 筆紀錄會跟著移動）</item>
+    </plurals>
+    <string name="editor_store_move_none">同一家，更新位置</string>
+    <string name="editor_store_keep">同一家，位置不變</string>
 </resources>

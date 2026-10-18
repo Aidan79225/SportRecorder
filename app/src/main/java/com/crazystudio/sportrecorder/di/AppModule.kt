@@ -147,6 +147,6 @@ val appModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
-    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { BackupViewModel(get(), get(), get(), get(), get(), get()) }
 }
