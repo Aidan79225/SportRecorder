@@ -1,4 +1,5 @@
-New in 0.13.0
-• Share a place from Google Maps: tap Share, choose SportRecorder, and a new record opens with the place already filled in — name and position straight from Maps, nothing to type.
-• If a place you already have sits somewhere else on the map, the app asks before updating it, and tells you how many past records would move.
-• If a link can't be read, you can still save the meal and choose the place yourself.
+New in 0.14.0
+• Branches of the same chain are now separate places, each with its own address shown under its name.
+• Sharing or pasting a place that has the same name as one you saved, but sits elsewhere, asks: another branch, or the same place?
+• Paste a Google Maps link right from the place list.
+• Edit a place's name and address, or delete it — your records stay.
