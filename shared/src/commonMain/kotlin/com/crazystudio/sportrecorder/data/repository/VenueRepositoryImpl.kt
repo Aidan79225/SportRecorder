@@ -55,13 +55,12 @@ class VenueRepositoryImpl(
     override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
         val normalized = VenueName.normalize(name)
         require(normalized.isNotEmpty()) { "a venue needs a name" }
-        val written = venueDao.setNameAndAddress(
+        venueDao.setNameAndAddress(
             id = venueId,
             name = normalized,
             address = address?.trim()?.ifEmpty { null },
             now = now,
         )
-        check(written > 0) { "venue $venueId is gone" }
         return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
     }
 

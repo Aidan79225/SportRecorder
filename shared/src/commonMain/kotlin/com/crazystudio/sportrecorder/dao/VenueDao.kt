@@ -31,12 +31,11 @@ interface VenueDao {
      * column of the same venue is never undone by a stale whole-row rewrite.
      */
 
-    /** Returns the number of rows written (0 when the venue is gone). */
     @Query(
         "UPDATE ${VenueEntity.tableName} SET name = :name, address = :address, last_used_at = :now " +
             "WHERE id = :id",
     )
-    suspend fun setNameAndAddress(id: Int, name: String, address: String?, now: Long): Int
+    suspend fun setNameAndAddress(id: Int, name: String, address: String?, now: Long)
 
     /**
      * Moves the venue and clears its address (it described the old position). Re-applying the same
