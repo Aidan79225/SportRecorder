@@ -61,14 +61,20 @@ or null when unknown.
   next time the picker shows that venue. It never blocks or delays anything the user is doing.
 - **Format:** road + number when the geocoder gives them (Taiwan: 「信義路二段 194 號」); otherwise the
   shortest useful line it returns. Device locale. Exact field choice is the builder's.
-- **The user can edit it** in the edit dialog. A user-edited address is never overwritten by a later
-  lookup unless the position itself changes (then the lookup runs again and replaces it — the old
-  address described the old position).
-- **Display:** a second, smaller line under the venue name in the picker. Venue with no position:
-  「沒有位置」. Position but no address yet: the second line is simply absent.
+- **The user can edit it** in the edit dialog. One rule keeps this simple *(builder's call)*: **a
+  lookup only ever writes into an empty address, and a position change empties it.** So a typed
+  address stays until the position moves (then it is cleared and looked up again — the old address
+  described the old position), and an address the user clears is filled in again by the next lookup
+  (accepted; there is no "deliberately blank" state). A lookup result is written only if the venue
+  still has the position that was looked up and its address is still empty (a conditional update),
+  so a slow lookup can never overwrite an edit or describe a stale position.
+- **Display:** a second, smaller line under the venue name in the picker: the address when there is
+  one (even without a position); 「沒有位置」 when there is neither; nothing while a venue with a
+  position waits for its lookup *(builder's call)*.
 - **Where else:** wherever names are listed together (the Insights map's venue list/accessibility
-  text) and two listed names are the same, append the address in parentheses:
-  「麥當勞（信義路二段）」. Elsewhere the name alone is shown, as today.
+  text) and two listed names are the same, append the stored address in parentheses:
+  「麥當勞（信義路二段 194 號）」; no parenthesis when the address is null or the same for both
+  *(builder's call)*. Elsewhere the name alone is shown, as today.
 
 ## Matching a shared or pasted place (replaces #84's *Matching* section)
 
@@ -81,13 +87,15 @@ Given the Maps name and (maybe) its pin, against all venues whose name `sameAs` 
    the three-way question:
 
    > **「麥當勞」是同一家嗎？**
-   > 你存過的「麥當勞」在 信義路二段，這個連結在 忠孝東路四段，相距約 1.8 公里。
+   > 你存過的「麥當勞」在 信義路二段，和這個連結的位置相距約 1.8 公里。
    > - **是另一家分店** → create a new venue (Maps name + pin), select it.
    > - **同一家，更新位置**（N 筆紀錄會跟著移動）→ move the existing venue to the pin.
    > - **同一家，位置不變** → keep it as it is, still selected.
    > Dismissing = 同一家，位置不變 (nothing is created or moved).
 
-   The address line names the saved venue's address (or omits it when unknown); distance is
+   The question shows at once — the link's own address is **not** looked up for it, so no network
+   call sits in front of the dialog *(builder's call)*. It names the saved venue's address (「在
+   信義路二段」 is omitted when unknown); distance is
    rounded (m under 1 km, otherwise km with one decimal). The record count is stated only when
    N > 0.
 5. **The link carried no pin** → steps 2–4 don't apply: use the most recently used same-name venue;
@@ -117,6 +125,10 @@ edit dialog — not by typing a duplicate.
   and a confirm button; confirming runs the same path. Its failure lines are the existing ones.
 - Works in **create and edit mode**. In edit mode it changes only the record's venue; the record's
   own `location` is never touched (the #83 two-facts rule).
+- *(builder's call)* A paste is the user's own act, so it **replaces** whatever venue is selected and
+  cancels any share or earlier paste still resolving. Each paste has its own "already answered"
+  state. A paste is **not** replayed after process death (unlike a share, whose text lives in the
+  route): it is gone, and the user can paste again.
 - Network rules are #84's, unchanged: only `maps.app.goo.gl` / `goo.gl` contacted, one request,
   5 s, no redirects.
 
@@ -128,15 +140,21 @@ itself still selects the venue).
 - **店名** — text field. **地址** — text field (prefilled from the lookup, editable, may be cleared).
 - A line with the position and how many records use the venue: 「位置：25.0335, 121.5301 · 12 筆紀錄」,
   or 「沒有位置」.
+- *(builder's call)* **Name and address are drafts saved by 儲存; the two position actions apply
+  immediately** (as today's overflow action does) and update the dialog's position line. 取消 does
+  not undo a position change.
 - **用這筆紀錄的位置更新** — today's overflow action, moved here; only offered when the record has a fix.
 - **貼上地圖連結更新** — reads the clipboard (same rule as above; falls back to the paste dialog), takes
   **only the pin** from the link (never the name) and moves this venue there. Moving a venue with
   records asks first, with the count, as today.
 - **刪除** (bottom-left, destructive colour) → the delete confirmation.
 - **取消 / 儲存.** Saving with a blank name is refused, as rename is today.
-- **Renaming onto a name another venue already has** no longer merges silently-by-confirmation only:
-  the existing merge dialog gains a choice — **合併成同一家**（N 筆紀錄會移過去）/ **兩家都保留**.
-  Keeping both just saves the new name.
+- **Renaming onto a name another venue already has** no longer only merges: the existing merge
+  dialog gains a choice — **合併成同一家**（N 筆紀錄會移過去）/ **兩家都保留**. Keeping both just saves
+  the new name. *(builder's call)* When several venues have that name, the merge target is the
+  nearest one to this venue (when both have positions), otherwise the most recently used; the dialog
+  names it with its address. The survivor keeps its own name, address and position. Saving with a
+  name that `sameAs` the venue's current name never opens this dialog.
 
 ## Delete
 
