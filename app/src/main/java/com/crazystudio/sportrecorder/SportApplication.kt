@@ -38,6 +38,6 @@ class SportApplication : Application(), SingletonImageLoader.Factory {
 
     private companion object {
         val USER_AGENT =
-            "SportRecorder/${BuildConfig.VERSION_NAME} (Android; +https://github.com/Aidan79225/SportRecorder)"
+            "Sitora/${BuildConfig.VERSION_NAME} (Android; +https://github.com/Aidan79225/SportRecorder)"
     }
 }
