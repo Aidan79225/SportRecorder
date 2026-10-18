@@ -1,8 +1,8 @@
 # 店家：分店、地址、編輯與刪除、貼上地圖連結 · Venue branches, addresses, edit/delete, paste a Maps link
 
 - **Date:** 2026-10-18
-- **Status:** Designed, not implemented. Issue [#89](https://github.com/Aidan79225/SportRecorder/issues/89),
-  plus owner requests made while designing it.
+- **Status:** Implemented on `claude/venue-branches-89` (PR pending).
+  Issue [#89](https://github.com/Aidan79225/SportRecorder/issues/89), plus owner requests made while designing it.
 - **Builds on:** `2026-10-05-venue-design.md` (#83) and `2026-10-10-maps-share-design.md` (#84).
   Both still hold except where this document says otherwise.
 

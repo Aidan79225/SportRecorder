@@ -155,6 +155,7 @@
 | 09-29 | Home 動態標語(依時段 / 進度輪替) | ✓ | — | 實作中(`claude/busy-mccarthy-t7xloj`) |
 | 10-05 | 店家(餐點可記錄店家、從用過的店家選、改名合併、備份帶店家、回顧地圖優先用店家) | ✓ | ✓ | 已實作(`claude/venue-83`,issue #83) |
 | 10-10 | 從 Google 地圖分享進來(分享地點 → 新餐點,店家與位置由 Maps 帶入) | ✓ | ✓ | 已實作(`claude/maps-share-84`,issue #84,PR 待開) |
+| 10-18 | 店家分店、地址、編輯與刪除、貼上地圖連結(同名不同地點可並存,自動帶地址) | ✓ | ✓ | 已實作(`claude/venue-branches-89`,issue #89,PR 待開) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。
