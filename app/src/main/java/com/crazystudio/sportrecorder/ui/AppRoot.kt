@@ -74,20 +74,9 @@ private fun VenuePickerHost(
     onDismiss: () -> Unit,
 ) {
     if (!visible) return
-    VenuePickerSheet(
-        state = state,
-        onSelect = vm::selectVenue,
-        onCreate = vm::createVenue,
-        onRename = vm::requestRename,
-        onUseThisPosition = vm::useThisPositionFor,
-        onConsumeMessage = vm::consumeMessage,
-        onConfirmMerge = vm::confirmRename,
-        onCancelMerge = vm::cancelRename,
-        onPaste = vm::pasteMapsLink,
-        onPasteText = vm::pasteText,
-        onDismissPasteDialog = vm::dismissPasteDialog,
-        onDismiss = onDismiss,
-    )
+    // Each opening back-fills the addresses its venues are still missing, in the background.
+    LaunchedEffect(Unit) { vm.onPickerShown() }
+    VenuePickerSheet(state = state, actions = vm, onDismiss = onDismiss)
 }
 
 private data class Tab(val route: Route, val label: String, @DrawableRes val icon: Int)
@@ -343,8 +332,6 @@ fun AppRoot(
                     onClearLocation = vm::clearLocation,
                     onOpenVenuePicker = { showVenuePicker = true },
                     onClearVenue = vm::clearVenue,
-                    onConfirmMove = vm::confirmMove,
-                    onCancelMove = vm::cancelMove,
                     onAnswerAnotherBranch = vm::answerAnotherBranch,
                     onAnswerSameStoreMove = vm::answerSameStoreMove,
                     onAnswerSameStoreKeep = vm::answerSameStoreKeep,

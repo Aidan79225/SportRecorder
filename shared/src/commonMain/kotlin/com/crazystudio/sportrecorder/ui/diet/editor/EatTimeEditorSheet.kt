@@ -54,10 +54,6 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
 import com.crazystudio.sportrecorder.shared.resources.distance_kilometers
 import com.crazystudio.sportrecorder.shared.resources.distance_meters
 import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
-import com.crazystudio.sportrecorder.shared.resources.editor_move_body
-import com.crazystudio.sportrecorder.shared.resources.editor_move_confirm
-import com.crazystudio.sportrecorder.shared.resources.editor_move_keep
-import com.crazystudio.sportrecorder.shared.resources.editor_move_title
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_store_body
 import com.crazystudio.sportrecorder.shared.resources.editor_store_body_at
@@ -107,8 +103,6 @@ fun EatTimeEditorSheet(
     onClearLocation: () -> Unit,
     onOpenVenuePicker: () -> Unit,
     onClearVenue: () -> Unit,
-    onConfirmMove: () -> Unit,
-    onCancelMove: () -> Unit,
     onAnswerAnotherBranch: () -> Unit,
     onAnswerSameStoreMove: () -> Unit,
     onAnswerSameStoreKeep: () -> Unit,
@@ -326,9 +320,6 @@ fun EatTimeEditorSheet(
             )
         }
     }
-    state.pendingMove?.let { pending ->
-        MoveDialog(pending = pending, onConfirm = onConfirmMove, onDismiss = onCancelMove)
-    }
     state.pendingStore?.let { pending ->
         StoreDialog(
             pending = pending,
@@ -339,31 +330,9 @@ fun EatTimeEditorSheet(
     }
 }
 
-private fun shareNoticeRes(notice: ShareNotice) = when (notice) {
+internal fun shareNoticeRes(notice: ShareNotice) = when (notice) {
     ShareNotice.MapLinkUnreadable -> Res.string.editor_link_unreadable
     ShareNotice.NotAMapLink -> Res.string.editor_not_map_link
-}
-
-/** Moving a venue's marker moves it for every past record there, so the dialog says how many. */
-@Composable
-private fun MoveDialog(
-    pending: EatTimeEditorUiState.PendingMove,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.editor_move_title, pending.venue.name)) },
-        text = {
-            Text(pluralStringResource(Res.plurals.editor_move_body, pending.movedRecords, pending.movedRecords))
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(Res.string.editor_move_confirm)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.editor_move_keep)) }
-        },
-    )
 }
 
 /**

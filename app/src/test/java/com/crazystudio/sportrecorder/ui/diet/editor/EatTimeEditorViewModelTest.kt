@@ -8,7 +8,6 @@ import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -20,8 +19,8 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * The venue part of the meal editor: picking, creating, clearing, renaming (and merging), and
- * opening it from a place shared out of Google Maps.
+ * The venue part of the meal editor: picking, creating, clearing, and opening it from a place
+ * shared out of Google Maps. Editing, merging and deleting venues: [EatTimeEditorViewModelVenueEditTest].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EatTimeEditorViewModelTest {
@@ -168,110 +167,6 @@ class EatTimeEditorViewModelTest {
 
         assertTrue(editor.venues.stored.isEmpty())
         assertNull(vm.uiState.value.venue)
-    }
-
-    @Test
-    fun renamingToABlankName_isRefused() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(venues = listOf(daHuWu))
-        val vm = editor.viewModel()
-
-        vm.requestRename(daHuWu, "  　 ")
-        advanceUntilIdle()
-
-        assertEquals("大戶屋", editor.venues.stored.single().name)
-        assertNull(vm.uiState.value.pendingMerge)
-    }
-
-    @Test
-    fun renamingWithoutACollision_renamesAtOnceAndFollowsTheSelectedVenue() =
-        runTest(mainRule.testDispatcher.scheduler) {
-            val editor = Editor(venues = listOf(daHuWu))
-            val vm = editor.viewModel()
-            vm.selectVenue(daHuWu)
-
-            vm.requestRename(daHuWu, "大戶屋 信義店")
-            advanceUntilIdle()
-
-            assertNull(vm.uiState.value.pendingMerge)
-            assertEquals("大戶屋 信義店", editor.venues.stored.single().name)
-            assertEquals("大戶屋 信義店", vm.uiState.value.venue?.name)
-        }
-
-    @Test
-    fun renamingOntoAnExistingName_asksBeforeMoving() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        editor.venues.recordCounts[typo.id] = 7
-
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        val pending = requireNotNull(vm.uiState.value.pendingMerge)
-        assertEquals("大戶屋", pending.intoName)
-        // The dialog's whole job: say how many records are about to change hands.
-        assertEquals(7, pending.movedRecords)
-        // Nothing has moved yet — the user has not said yes.
-        assertEquals(2, editor.venues.observeAll().first().size)
-    }
-
-    @Test
-    fun cancellingAMerge_leavesEverythingWhereItWas() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        vm.cancelRename()
-        advanceUntilIdle()
-
-        assertNull(vm.uiState.value.pendingMerge)
-        assertEquals(2, editor.venues.stored.size)
-    }
-
-    @Test
-    fun confirmingAMerge_movesTheRecordsAndSwapsTheSelectedVenueForTheSurvivor() =
-        runTest(mainRule.testDispatcher.scheduler) {
-            val editor = Editor()
-            val vm = editor.viewModel()
-            val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-            val keeper = editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-            editor.venues.recordCounts[typo.id] = 3
-            vm.selectVenue(typo)
-            vm.requestRename(typo, "大戶屋")
-            advanceUntilIdle()
-
-            vm.confirmRename()
-            advanceUntilIdle()
-
-            assertNull(vm.uiState.value.pendingMerge)
-            assertEquals(listOf(keeper.id), editor.venues.stored.map { it.id })
-            assertEquals(3, editor.venues.recordCount(keeper.id))
-            assertEquals(keeper.id, vm.uiState.value.venue?.id)
-        }
-
-    @Test
-    fun confirmingAMergeTwice_mergesOnlyOnce() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        val keeper = editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        editor.venues.recordCounts[typo.id] = 3
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        // A double tap: the second must find nothing pending instead of renaming a venue that the
-        // first one is about to delete.
-        vm.confirmRename()
-        vm.confirmRename()
-        advanceUntilIdle()
-
-        assertNull(vm.uiState.value.pendingMerge)
-        assertEquals(listOf(keeper.id), editor.venues.stored.map { it.id })
-        assertEquals(3, editor.venues.recordCount(keeper.id))
     }
 
     @Test

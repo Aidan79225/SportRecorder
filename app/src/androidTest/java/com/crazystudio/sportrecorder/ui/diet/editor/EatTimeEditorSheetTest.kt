@@ -76,8 +76,6 @@ class EatTimeEditorSheetTest {
                     onClearLocation = { clearLocation++ },
                     onOpenVenuePicker = {},
                     onClearVenue = {},
-                    onConfirmMove = {},
-                    onCancelMove = {},
                     onAnswerAnotherBranch = {},
                     onAnswerSameStoreMove = {},
                     onAnswerSameStoreKeep = {},

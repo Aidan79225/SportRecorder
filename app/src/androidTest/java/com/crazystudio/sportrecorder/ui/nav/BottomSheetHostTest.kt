@@ -78,7 +78,7 @@ class BottomSheetHostTest {
                                 onPickDate = {}, onPickTime = {}, onNoteChange = {},
                                 onAddPhoto = {}, onSelectPhoto = {}, onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
                                 onClearLocation = {}, onOpenVenuePicker = {}, onClearVenue = {},
-                                onConfirmMove = {}, onCancelMove = {}, onAnswerAnotherBranch = {},
+                                onAnswerAnotherBranch = {},
                                 onAnswerSameStoreMove = {}, onAnswerSameStoreKeep = {}, onConfirm = {},
                             )
                         }

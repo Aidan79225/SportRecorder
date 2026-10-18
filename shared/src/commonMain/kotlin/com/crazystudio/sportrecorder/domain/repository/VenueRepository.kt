@@ -32,7 +32,10 @@ interface VenueRepository {
      */
     suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean
 
-    /** Saves name and address as given (name normalized; blank address → null). Never merges. */
+    /**
+     * Saves name and address as given: the name normalized, the address trimmed (blank → null).
+     * Never merges. A name that is blank once normalized is refused (throws).
+     */
     suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue
 
     /**

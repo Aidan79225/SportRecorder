@@ -17,11 +17,13 @@ data class EatTimeEditorUiState(
     val venue: Venue? = null,
     /** Picker contents, already ordered by [com.crazystudio.sportrecorder.domain.venue.VenuePicker]. */
     val venueOptions: List<Venue> = emptyList(),
-    /** Set while a rename would merge two venues; the UI must show the count before it happens. */
+    /** Set while a rename takes another venue's name: merge into it, or keep both? The UI shows the count. */
     val pendingMerge: PendingMerge? = null,
+    /** Set while the user is asked to confirm deleting a venue; the UI shows how many records use it. */
+    val pendingDelete: PendingDelete? = null,
     /** True while a place shared from Google Maps is being read. Never blocks saving. */
     val resolvingLink: Boolean = false,
-    /** Set while a venue would move to a place from a map link; the UI asks before it happens. */
+    /** Set while a venue with records would move to the pin of a map link; the picker asks before it happens. */
     val pendingMove: PendingMove? = null,
     /** Set while a shared place has the name of a venue that is far away: another branch, or the same store? */
     val pendingStore: PendingStore? = null,
@@ -29,14 +31,29 @@ data class EatTimeEditorUiState(
     val shareNotice: ShareNotice? = null,
     /** Set while the user is asked to paste a Maps link by hand: the clipboard held none (#89). */
     val pasteDialog: PasteTarget? = null,
+    /** Why a map link moved no venue; shown inside the edit dialog, never under the editor's venue row. */
+    val repositionNotice: ShareNotice? = null,
     /** A transient result the UI shows once, then clears via `consumeMessage`. */
     val message: EditorMessage? = null,
 ) {
     data class LatLng(val lat: Double, val lng: Double)
     enum class LocationStatus { IDLE, LOADING, AVAILABLE, UNAVAILABLE }
 
-    /** A rename that collides with an existing name: [movedRecords] records would change hands. */
-    data class PendingMerge(val from: Venue, val intoName: String, val movedRecords: Int)
+    /**
+     * Saving [from] as [newName] / [newAddress] takes the name of [into]: merging moves [from]'s
+     * [movedRecords] records to [into] (which keeps its own name, address and position); keeping both
+     * just saves the edit.
+     */
+    data class PendingMerge(
+        val from: Venue,
+        val into: Venue,
+        val movedRecords: Int,
+        val newName: String,
+        val newAddress: String?,
+    )
+
+    /** Deleting [venue] leaves its [records] records without a venue; none of them is deleted. */
+    data class PendingDelete(val venue: Venue, val records: Int)
 
     /** A map link puts [venue] at [to], far from where it is: [movedRecords] records' marker would move. */
     data class PendingMove(val venue: Venue, val to: GeoPoint, val movedRecords: Int)

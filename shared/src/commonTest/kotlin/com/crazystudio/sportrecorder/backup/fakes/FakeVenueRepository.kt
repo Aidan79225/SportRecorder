@@ -64,8 +64,10 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     }
 
     override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
+        val normalized = VenueName.normalize(name)
+        require(normalized.isNotEmpty()) { "a venue needs a name" }
         val edited = state.value.first { it.id == venueId }.copy(
-            name = VenueName.normalize(name),
+            name = normalized,
             address = address?.trim()?.ifEmpty { null },
             lastUsedAt = now,
         )
@@ -74,6 +76,7 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     }
 
     override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
+        require(fromId != intoId) { "cannot merge venue $fromId into itself" }
         val from = state.value.first { it.id == fromId }
         val into = state.value.first { it.id == intoId }
         val survivor = if (into.lat == null && from.lat != null) {

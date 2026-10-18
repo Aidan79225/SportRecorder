@@ -252,8 +252,6 @@
     <string name="editor_venue_pick">Choose a place</string>
     <string name="editor_venue_new">Use "%1$s"</string>
     <string name="editor_venue_clear">Clear place</string>
-    <string name="editor_venue_rename">Rename</string>
-    <string name="editor_venue_more">More options</string>
     <string name="editor_venue_use_here">Set its position from this record</string>
     <string name="editor_venue_merge_title">Merge with "%1$s"?</string>
     <plurals name="editor_venue_merge_body">
@@ -261,7 +259,7 @@
         <item quantity="other">%1$d records will move to "%2$s".</item>
     </plurals>
     <string name="editor_venue_position_updated">Place position updated</string>
-    <string name="editor_venue_merge_confirm">Merge</string>
+    <string name="editor_venue_merge_confirm">Merge into one</string>
     <string name="editor_venue_resolving">Reading the map link…</string>
     <string name="editor_venue_paste">Paste a map link</string>
     <string name="editor_paste_title">Paste a map link</string>
@@ -288,4 +286,23 @@
     </plurals>
     <string name="editor_store_move_none">Same place — update its position</string>
     <string name="editor_store_keep">Same place — keep its position</string>
+    <string name="venue_no_position">No position</string>
+    <string name="editor_venue_edit">Edit place</string>
+    <string name="editor_venue_name">Name</string>
+    <string name="editor_venue_address">Address</string>
+    <string name="editor_venue_position">Position: %1$s, %2$s</string>
+    <plurals name="editor_venue_records">
+        <item quantity="one">%1$d record</item>
+        <item quantity="other">%1$d records</item>
+    </plurals>
+    <string name="editor_venue_use_link">Update from a map link</string>
+    <string name="editor_venue_delete">Delete</string>
+    <string name="editor_venue_save">Save</string>
+    <string name="editor_delete_title">Delete %1$s?</string>
+    <plurals name="editor_delete_body">
+        <item quantity="one">%1$d record uses this place. It stays — its place just becomes "Not set".</item>
+        <item quantity="other">%1$d records use this place. They stay — their place just becomes "Not set".</item>
+    </plurals>
+    <string name="editor_venue_merge_keep">Keep both</string>
+    <string name="editor_venue_merge_where">That one is at %1$s.</string>
 </resources>
