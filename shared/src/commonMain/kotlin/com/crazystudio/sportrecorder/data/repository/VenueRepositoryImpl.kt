@@ -78,8 +78,9 @@ class VenueRepositoryImpl(
             val into = venueDao.findById(intoId) ?: error("venue $intoId is gone")
             venueDao.repointRecords(fromId = fromId, toId = intoId)
             venueDao.deleteById(fromId)
-            val survivor = if (into.lat == null) {
-                into.copy(lat = from.lat, lng = from.lng, lastUsedAt = now)
+            // Adopting a position is a position change, so the survivor's address goes with it.
+            val survivor = if (into.lat == null && from.lat != null) {
+                into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
             } else {
                 into.copy(lastUsedAt = now)
             }

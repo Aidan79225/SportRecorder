@@ -91,6 +91,18 @@ class VenueRepositoryTest {
         assertEquals(2L, db.getVenueDao().findById(newer.id)!!.lastUsedAt)
     }
 
+    @Test fun findOrCreate_adoptingAFirstPosition_clearsTheAddress() = runBlocking {
+        val v = repo.create("麥當勞", null, null, now = 1L)
+        repo.edit(v.id, "麥當勞", address = "沒有位置時打的地址", now = 2L)
+
+        val adopted = repo.findOrCreate("麥當勞", lat = 25.03, lng = 121.56, now = 3L)
+
+        assertEquals(v.id, adopted.id)
+        assertEquals(25.03, adopted.lat!!, 0.0)
+        assertNull(adopted.address)
+        assertNull(db.getVenueDao().findById(v.id)!!.address)
+    }
+
     @Test fun setPosition_clearsTheAddress() = runBlocking {
         val v = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
         repo.edit(v.id, "麥當勞", address = "信義路二段 194 號", now = 2L)
@@ -147,7 +159,7 @@ class VenueRepositoryTest {
     @Test fun merge_repointsRecordsAndDeletesTheOther_survivorKeepsItsOwnFields() = runBlocking {
         val typo = repo.create("大戶屋 信義店", lat = 25.0, lng = 121.0, now = 1L)
         repo.edit(typo.id, "大戶屋 信義店", address = "舊地址", now = 1L)
-        val good = repo.create("大戶屋", null, null, now = 2L)
+        val good = repo.create("大戶屋", lat = 25.1, lng = 121.1, now = 2L)
         repo.edit(good.id, "大戶屋", address = "好地址", now = 2L)
         db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id))
         db.getEatTimeDao().insert(EatTime(time = 200L, venueId = good.id))
@@ -157,13 +169,26 @@ class VenueRepositoryTest {
         assertEquals(good.id, survivor.id)
         assertEquals("大戶屋", survivor.name)
         assertEquals("好地址", survivor.address)
-        // It had no position, so it adopts the merged venue's.
-        assertEquals(25.0, survivor.lat!!, 0.0)
-        assertEquals(121.0, survivor.lng!!, 0.0)
+        assertEquals(25.1, survivor.lat!!, 0.0)
+        assertEquals(121.1, survivor.lng!!, 0.0)
         assertEquals(3L, survivor.lastUsedAt)
         assertEquals(2, repo.recordCount(good.id))
         assertNull(db.getVenueDao().findById(typo.id))
         assertEquals(listOf(survivor), repo.observeAll().first())
+    }
+
+    @Test fun merge_survivorAdoptingAPosition_losesItsAddress() = runBlocking {
+        val from = repo.create("大戶屋 信義店", lat = 25.0, lng = 121.0, now = 1L)
+        val into = repo.create("大戶屋", null, null, now = 2L)
+        repo.edit(into.id, "大戶屋", address = "沒有位置時打的地址", now = 2L)
+
+        val survivor = repo.merge(fromId = from.id, intoId = into.id, now = 3L)
+
+        // It had no position, so it adopts the merged venue's — a position change, so the address goes.
+        assertEquals(25.0, survivor.lat!!, 0.0)
+        assertEquals(121.0, survivor.lng!!, 0.0)
+        assertNull(survivor.address)
+        assertNull(db.getVenueDao().findById(into.id)!!.address)
     }
 
     @Test fun delete_clearsRecordsVenueAndRemovesIt() = runBlocking {

@@ -38,7 +38,7 @@ interface VenueRepository {
     /**
      * Re-points [fromId]'s records to [intoId] and deletes [fromId], in one transaction. The
      * survivor keeps its own name, address and position, but adopts [fromId]'s position if it has
-     * none. Returns the survivor.
+     * none — and then loses its address, as any position change does. Returns the survivor.
      */
     suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue
 

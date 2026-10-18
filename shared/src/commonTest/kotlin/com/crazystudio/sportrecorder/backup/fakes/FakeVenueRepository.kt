@@ -76,8 +76,8 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
         val from = state.value.first { it.id == fromId }
         val into = state.value.first { it.id == intoId }
-        val survivor = if (into.lat == null) {
-            into.copy(lat = from.lat, lng = from.lng, lastUsedAt = now)
+        val survivor = if (into.lat == null && from.lat != null) {
+            into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
         } else {
             into.copy(lastUsedAt = now)
         }
