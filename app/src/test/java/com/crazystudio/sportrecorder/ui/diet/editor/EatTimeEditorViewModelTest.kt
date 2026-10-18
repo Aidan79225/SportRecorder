@@ -505,16 +505,18 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun existingVenueFarAwayButUnused_movesWithoutAsking() = runTest(mainRule.testDispatcher.scheduler) {
-        // No record is at it yet, so no marker moves: there is nothing to ask about.
+    fun existingVenueFarAwayButUnused_stillAsks() = runTest(mainRule.testDispatcher.scheduler) {
+        // Even with no record at it, the user is asked: it may be another branch.
         val editor = Editor(venues = listOf(dinTaiFung))
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        val moved = dinTaiFung.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
-        assertNull(vm.uiState.value.pendingMove)
-        assertEquals(moved, editor.venues.stored.single())
-        assertEquals(moved, vm.uiState.value.venue)
+        val pending = requireNotNull(vm.uiState.value.pendingMove)
+        assertEquals(dinTaiFung, pending.venue)
+        assertEquals(mapsPosition, pending.to)
+        assertEquals(0, pending.movedRecords)
+        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertEquals(dinTaiFung, vm.uiState.value.venue)
     }
 
     @Test

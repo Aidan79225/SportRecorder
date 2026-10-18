@@ -165,7 +165,7 @@ class EatTimeEditorViewModel constructor(
         when (val match = SharedVenue.match(name, position, venues)) {
             is SharedVenueMatch.Create -> createSharedVenue(match)
             is SharedVenueMatch.Use -> useSharedVenue(match)
-            is SharedVenueMatch.AskToMove -> askToMove(match)
+            is SharedVenueMatch.AskWhichStore -> askToMove(match)
         }
     }
 
@@ -192,20 +192,16 @@ class EatTimeEditorViewModel constructor(
 
     // Moving a venue moves its marker for every record at it, so the user decides — with the count.
     // Asked once per share: a share re-run after process death must not re-ask what was answered.
-    // A venue no record uses yet has no marker to move, so Maps' position is simply taken.
-    private suspend fun askToMove(match: SharedVenueMatch.AskToMove) {
+    private suspend fun askToMove(match: SharedVenueMatch.AskWhichStore) {
         val movedRecords = if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
             null
         } else {
             venueRepository.recordCount(match.venue.id)
         }
-        when (movedRecords) {
-            null -> showVenue(match.venue)
-            0 -> {
-                venueRepository.setPosition(match.venue.id, match.to.lat, match.to.lng)
-                showVenue(match.venue.copy(lat = match.to.lat, lng = match.to.lng))
-            }
-            else -> _uiState.update {
+        if (movedRecords == null) {
+            showVenue(match.venue)
+        } else {
+            _uiState.update {
                 it.copy(
                     venue = match.venue,
                     pendingMove = EatTimeEditorUiState.PendingMove(match.venue, match.to, movedRecords),
