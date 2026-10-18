@@ -290,8 +290,8 @@ class EatTimeEditorViewModel constructor(
     fun requestRename(venue: Venue, newName: String) {
         if (VenueName.normalize(newName).isEmpty()) return
         viewModelScope.launch {
-            val collides = venueRepository.observeAll().first()
-                .any { it.id != venue.id && VenueName.sameAs(it.name, newName) }
+            val venues = venueRepository.observeAll().first()
+            val collides = venues.any { it.id != venue.id && VenueName.sameAs(it.name, newName) }
             if (collides) {
                 val movedRecords = venueRepository.recordCount(venue.id)
                 _uiState.update {
@@ -304,7 +304,9 @@ class EatTimeEditorViewModel constructor(
                     )
                 }
             } else {
-                val renamed = venueRepository.rename(venue.id, newName, now())
+                // Keep whatever address is stored now; this flow only changes the name.
+                val currentAddress = venues.firstOrNull { it.id == venue.id }?.address
+                val renamed = venueRepository.edit(venue.id, newName, currentAddress, now())
                 _uiState.update { state ->
                     state.copy(venue = if (state.venue?.id == venue.id) renamed else state.venue)
                 }
@@ -318,7 +320,16 @@ class EatTimeEditorViewModel constructor(
         // the first one already merged away.
         _uiState.update { it.copy(pendingMerge = null) }
         viewModelScope.launch {
-            val survivor = venueRepository.rename(pending.from.id, pending.intoName, now())
+            // Names are not unique any more: merge into the most recently used venue with that name
+            // (observeAll is most-recently-used first). If it vanished meanwhile, just rename.
+            val venues = venueRepository.observeAll().first()
+            val into = venues.firstOrNull { it.id != pending.from.id && VenueName.sameAs(it.name, pending.intoName) }
+            val survivor = if (into != null) {
+                venueRepository.merge(fromId = pending.from.id, intoId = into.id, now = now())
+            } else {
+                val currentAddress = venues.firstOrNull { it.id == pending.from.id }?.address
+                venueRepository.edit(pending.from.id, pending.intoName, currentAddress, now())
+            }
             _uiState.update { state ->
                 state.copy(venue = if (state.venue?.id == pending.from.id) survivor else state.venue)
             }

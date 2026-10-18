@@ -14,6 +14,7 @@ private const val VERSION_5 = 5
 private const val VERSION_6 = 6
 private const val VERSION_7 = 7
 private const val VERSION_8 = 8
+private const val VERSION_9 = 9
 
 // SQL is unchanged from the Android version — only the API moves from SupportSQLiteDatabase to the
 // multiplatform SQLiteConnection. Room runs each migrate() inside its own transaction.
@@ -83,6 +84,18 @@ object Migrations {
                             "`index_${VenueEntity.tableName}_name` ON `${VenueEntity.tableName}` (`name`)"
                     )
                     connection.execSQL("ALTER TABLE `eat_time` ADD COLUMN `venue_id` INTEGER")
+                }
+            },
+            // #89: branches of a chain share a name, so the name index stops being unique; venues
+            // gain an address to tell them apart.
+            object : Migration(VERSION_8, VERSION_9) {
+                override fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("ALTER TABLE `${VenueEntity.tableName}` ADD COLUMN `address` TEXT")
+                    connection.execSQL("DROP INDEX IF EXISTS `index_${VenueEntity.tableName}_name`")
+                    connection.execSQL(
+                        "CREATE INDEX IF NOT EXISTS " +
+                            "`index_${VenueEntity.tableName}_name` ON `${VenueEntity.tableName}` (`name`)"
+                    )
                 }
             }
         )

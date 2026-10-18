@@ -3,30 +3,54 @@ package com.crazystudio.sportrecorder.domain.repository
 import com.crazystudio.sportrecorder.domain.model.Venue
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Venues by **id**: names are not unique (branches of a chain share one, #89). Whether two names are
+ * the same name is `VenueName.sameAs`.
+ */
 interface VenueRepository {
     /** Every venue, most recently used first — the order the picker shows. */
     fun observeAll(): Flow<List<Venue>>
 
     /**
-     * The venue called [name] (compared case-insensitively), created if it is new. [lat]/[lng] are
-     * only adopted when the venue has no position yet: a later mention without a fix must never
-     * erase one the venue already learned.
+     * For typed names: the most recently used venue with this name (compared by `VenueName.sameAs`),
+     * else a new one. [lat]/[lng] are only adopted when that venue has no position yet: a later
+     * mention without a fix must never erase one the venue already learned.
      */
     suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue
 
+    /** Always a new venue, even if the name exists (a new branch). */
+    suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue
+
     suspend fun touch(venueId: Int, now: Long)
 
+    /** Moves the venue **and** clears its address: the old address described the old position. */
     suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?)
 
-    /** How many records point at this venue — the number a merge confirmation must show. */
+    /**
+     * Writes [address] only if the venue is still at ([lat], [lng]) and its address is still null —
+     * a lookup result never overwrites an edit or describes a stale position. True if written.
+     */
+    suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean
+
+    /** Saves name and address as given (name normalized; blank address → null). Never merges. */
+    suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue
+
+    /**
+     * Re-points [fromId]'s records to [intoId] and deletes [fromId], in one transaction. The
+     * survivor keeps its own name, address and position, but adopts [fromId]'s position if it has
+     * none. Returns the survivor.
+     */
+    suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue
+
+    /** Clears the venue on its records and deletes it, in one transaction. Records are never deleted. */
+    suspend fun delete(venueId: Int)
+
+    /** How many records point at this venue — the number a merge or delete confirmation shows. */
     suspend fun recordCount(venueId: Int): Int
 
     /**
-     * Rename, **merging** when [newName] already belongs to another venue: that venue's records
-     * re-point to the survivor and the emptied one is deleted. Returns the surviving venue.
+     * Restore: drop every venue and insert [venues] in order. Ids are assigned fresh; returns the
+     * inserted venues in the same order, so the caller can map old keys to new ids.
      */
-    suspend fun rename(venueId: Int, newName: String, now: Long): Venue
-
-    /** Restore: drop every venue and insert [venues]. Ids are assigned fresh. */
-    suspend fun replaceAll(venues: List<Venue>)
+    suspend fun replaceAll(venues: List<Venue>): List<Venue>
 }

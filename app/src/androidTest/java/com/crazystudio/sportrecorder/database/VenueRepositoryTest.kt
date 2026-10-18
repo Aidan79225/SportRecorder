@@ -8,13 +8,17 @@ import com.crazystudio.sportrecorder.data.repository.EatRecordRepositoryImpl
 import com.crazystudio.sportrecorder.data.repository.VenueRepositoryImpl
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.entity.EatTime
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,27 +70,135 @@ class VenueRepositoryTest {
         assertEquals(listOf("B", "A"), repo.observeAll().first().map { it.name })
     }
 
-    @Test fun rename_toAFreeName_keepsTheSameVenue() = runBlocking {
-        val v = repo.findOrCreate("Starbuck", null, null, now = 1L)
+    @Test fun create_allowsASecondVenueWithTheSameName() = runBlocking {
+        val first = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
+        val second = repo.create("麥當勞", lat = 25.05, lng = 121.52, now = 2L)
 
-        val renamed = repo.rename(v.id, "Starbucks", now = 2L)
-
-        assertEquals(v.id, renamed.id)
-        assertEquals("Starbucks", repo.observeAll().first().single().name)
+        assertNotEquals(first.id, second.id)
+        assertEquals(listOf("麥當勞", "麥當勞"), repo.observeAll().first().map { it.name })
+        assertEquals(25.05, db.getVenueDao().findById(second.id)!!.lat!!, 0.0)
     }
 
-    @Test fun rename_ontoAnExistingName_mergesAndMovesRecords() = runBlocking {
-        val typo = repo.findOrCreate("大戶屋 信義店", null, null, now = 1L)
-        val good = repo.findOrCreate("大戶屋", null, null, now = 2L)
-        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id))
-        assertEquals(1, repo.recordCount(typo.id))
+    @Test fun findOrCreate_picksTheMostRecentlyUsedOfSameNames() = runBlocking {
+        val older = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
+        val newer = repo.create("麥當勞", lat = 25.05, lng = 121.52, now = 2L)
+        repo.touch(older.id, now = 3L)
 
-        val survivor = repo.rename(typo.id, "大戶屋", now = 3L)
+        val picked = repo.findOrCreate("麥當勞", lat = null, lng = null, now = 4L)
+
+        assertEquals(older.id, picked.id)
+        assertEquals(2, repo.observeAll().first().size)
+        assertEquals(2L, db.getVenueDao().findById(newer.id)!!.lastUsedAt)
+    }
+
+    @Test fun setPosition_clearsTheAddress() = runBlocking {
+        val v = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
+        repo.edit(v.id, "麥當勞", address = "信義路二段 194 號", now = 2L)
+
+        repo.setPosition(v.id, lat = 25.05, lng = 121.52)
+
+        val moved = repo.observeAll().first().single()
+        assertEquals(25.05, moved.lat!!, 0.0)
+        assertEquals(121.52, moved.lng!!, 0.0)
+        assertNull("the old address described the old position", moved.address)
+    }
+
+    @Test fun setAddressIfUnchanged_writesOnlyWhenPositionAndEmptyAddressStillMatch() = runBlocking {
+        // Matches: still at the looked-up position, address still empty → written.
+        val a = repo.create("A", lat = 25.0, lng = 121.0, now = 1L)
+        assertTrue(repo.setAddressIfUnchanged(a.id, lat = 25.0, lng = 121.0, address = "一路 1 號"))
+        assertEquals("一路 1 號", db.getVenueDao().findById(a.id)!!.address)
+
+        // The venue moved while the lookup ran → the result describes a stale position.
+        val b = repo.create("B", lat = 25.0, lng = 121.0, now = 1L)
+        repo.setPosition(b.id, lat = 25.1, lng = 121.1)
+        assertFalse(repo.setAddressIfUnchanged(b.id, lat = 25.0, lng = 121.0, address = "二路 2 號"))
+        assertNull(db.getVenueDao().findById(b.id)!!.address)
+
+        // The user typed an address meanwhile → a lookup never overwrites it.
+        val c = repo.create("C", lat = 25.0, lng = 121.0, now = 1L)
+        repo.edit(c.id, "C", address = "我打的地址", now = 2L)
+        assertFalse(repo.setAddressIfUnchanged(c.id, lat = 25.0, lng = 121.0, address = "三路 3 號"))
+        assertEquals("我打的地址", db.getVenueDao().findById(c.id)!!.address)
+    }
+
+    @Test fun edit_savesNameAndAddress_blankAddressBecomesNull_andNeverMerges() = runBlocking {
+        val other = repo.create("大戶屋", null, null, now = 1L)
+        val v = repo.create("大戶屋 信義店", lat = 25.0, lng = 121.0, now = 2L)
+        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = v.id))
+
+        val edited = repo.edit(v.id, "  大戶屋　", address = "信義路 1 號", now = 3L)
+
+        assertEquals(v.id, edited.id)
+        assertEquals("大戶屋", edited.name)
+        assertEquals("信義路 1 號", edited.address)
+        assertEquals(3L, edited.lastUsedAt)
+        // Same name as another venue now, but both stay; nothing moved.
+        assertEquals(setOf(other.id, v.id), repo.observeAll().first().map { it.id }.toSet())
+        assertEquals(1, repo.recordCount(v.id))
+        assertEquals(0, repo.recordCount(other.id))
+
+        val cleared = repo.edit(v.id, "大戶屋", address = "   ", now = 4L)
+
+        assertNull(cleared.address)
+        assertNull(db.getVenueDao().findById(v.id)!!.address)
+    }
+
+    @Test fun merge_repointsRecordsAndDeletesTheOther_survivorKeepsItsOwnFields() = runBlocking {
+        val typo = repo.create("大戶屋 信義店", lat = 25.0, lng = 121.0, now = 1L)
+        repo.edit(typo.id, "大戶屋 信義店", address = "舊地址", now = 1L)
+        val good = repo.create("大戶屋", null, null, now = 2L)
+        repo.edit(good.id, "大戶屋", address = "好地址", now = 2L)
+        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id))
+        db.getEatTimeDao().insert(EatTime(time = 200L, venueId = good.id))
+
+        val survivor = repo.merge(fromId = typo.id, intoId = good.id, now = 3L)
 
         assertEquals(good.id, survivor.id)
-        assertEquals(1, repo.recordCount(good.id))
-        assertEquals(listOf("大戶屋"), repo.observeAll().first().map { it.name })
+        assertEquals("大戶屋", survivor.name)
+        assertEquals("好地址", survivor.address)
+        // It had no position, so it adopts the merged venue's.
+        assertEquals(25.0, survivor.lat!!, 0.0)
+        assertEquals(121.0, survivor.lng!!, 0.0)
+        assertEquals(3L, survivor.lastUsedAt)
+        assertEquals(2, repo.recordCount(good.id))
         assertNull(db.getVenueDao().findById(typo.id))
+        assertEquals(listOf(survivor), repo.observeAll().first())
+    }
+
+    @Test fun delete_clearsRecordsVenueAndRemovesIt() = runBlocking {
+        val v = repo.create("麥當勞", null, null, now = 1L)
+        val kept = repo.create("摩斯", null, null, now = 2L)
+        db.getEatTimeDao().insert(EatTime(time = 100L, note = "lunch", venueId = v.id))
+        db.getEatTimeDao().insert(EatTime(time = 200L, venueId = kept.id))
+
+        repo.delete(v.id)
+
+        assertNull(db.getVenueDao().findById(v.id))
+        val records = db.getEatTimeDao().flowAll().first().sortedBy { it.time }
+        // The meal survives; only its venue is gone.
+        assertEquals(2, records.size)
+        assertEquals("lunch", records[0].note)
+        assertNull(records[0].venueId)
+        assertEquals(kept.id, records[1].venueId)
+    }
+
+    @Test fun replaceAll_returnsInsertedVenuesInOrderWithFreshIds() = runBlocking {
+        val stale = repo.create("stale", null, null, now = 1L)
+
+        val inserted = repo.replaceAll(
+            listOf(
+                Venue(id = 0, name = " 麥當勞 ", lat = 25.0, lng = 121.0, lastUsedAt = 5L, address = "一路 1 號"),
+                Venue(id = 0, name = "麥當勞", lat = null, lng = null, lastUsedAt = 6L),
+            ),
+        )
+
+        assertEquals(listOf("麥當勞", "麥當勞"), inserted.map { it.name })
+        assertEquals(listOf("一路 1 號", null), inserted.map { it.address })
+        assertEquals(listOf(5L, 6L), inserted.map { it.lastUsedAt })
+        assertEquals(2, inserted.map { it.id }.toSet().size)
+        assertFalse(inserted.any { it.id == 0 || it.id == stale.id })
+        assertEquals(inserted.toSet(), repo.observeAll().first().toSet())
     }
 
     @Test fun aSavedRecordComesBackWithItsVenue() = runBlocking {
