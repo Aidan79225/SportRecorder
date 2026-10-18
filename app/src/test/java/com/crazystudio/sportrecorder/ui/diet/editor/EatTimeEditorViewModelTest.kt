@@ -1,22 +1,9 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.lifecycle.SavedStateHandle
-import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
-import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
-import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
-import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
-import com.crazystudio.sportrecorder.fake.FakeAddressLookup
-import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
-import com.crazystudio.sportrecorder.fake.FakeLocationProvider
-import com.crazystudio.sportrecorder.fake.FakeMapsLinkResolver
-import com.crazystudio.sportrecorder.fake.FakePhotoFileStore
-import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
-import com.crazystudio.sportrecorder.fake.FakePhotoImporter
-import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
-import com.crazystudio.sportrecorder.fake.FakeVenueRepository
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,15 +19,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-// What Google Maps hands over when a place is shared: name, address, and a short link (#84).
-private const val SHARE_TEXT = "鼎泰豐 信義店\n106臺北市大安區信義路二段194號\nhttps://maps.app.goo.gl/3oUGbkxLYE6jt7L29"
-
-// The full URL that short link redirects to: pin and camera both at the restaurant.
-private const val FULL_URL = "https://www.google.com/maps/place/" +
-    "%E9%BC%8E%E6%B3%B0%E8%B1%90+%E4%BF%A1%E7%BE%A9%E5%BA%97/" +
-    "@25.0335035,121.530118,17z/data=!4m6!3m5!1s0x3442a9821392326d:0x93faef9e2359365c!8m2!3d25.0335035" +
-    "!4d121.530118!16s%2Fg%2F1td2dltc?entry=tts"
-
 /**
  * The venue part of the meal editor: picking, creating, clearing, renaming (and merging), and
  * opening it from a place shared out of Google Maps.
@@ -50,40 +28,6 @@ class EatTimeEditorViewModelTest {
 
     @get:Rule
     val mainRule = MainDispatcherRule()
-
-    private val pastMeal = 1_700_000_000_000L
-    private val home = GeoPoint(24.0, 120.0)
-    private val daHuWu = Venue(id = 1, name = "大戶屋", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
-
-    private class Editor(records: List<EatRecord> = emptyList(), venues: List<Venue> = emptyList()) {
-        val records = FakeEatRecordRepository(records)
-        val venues = FakeVenueRepository(venues)
-        val locationProvider = FakeLocationProvider()
-        val resolver = FakeMapsLinkResolver(location = FULL_URL)
-        val lookup = FakeAddressLookup()
-
-        fun viewModel(
-            eatTimeId: Int? = null,
-            sharedText: String? = null,
-            handle: SavedStateHandle = SavedStateHandle(
-                listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
-            ),
-        ) = EatTimeEditorViewModel(
-            loadEatRecord = LoadEatRecordUseCase(records),
-            saveEatRecord = SaveEatRecordUseCase(records, FakeRemindersRescheduler()),
-            locationProvider = locationProvider,
-            venueRepository = venues,
-            photoImporter = FakePhotoImporter(),
-            photoFileStore = FakePhotoFileStore(),
-            photoImageSource = FakePhotoImageSource(),
-            savedStateHandle = handle,
-            mapsLinkResolver = resolver,
-            venueAddressFiller = VenueAddressFiller(lookup, venues),
-        )
-    }
-
-    private fun mealAt(venue: Venue?, location: GeoPoint? = home) =
-        EatRecord(id = 1, time = pastMeal, location = location, note = "午餐", photos = emptyList(), venue = venue)
 
     @Test
     fun pickingAVenue_doesNotTouchTheRecordsOwnLocation() = runTest(mainRule.testDispatcher.scheduler) {
@@ -386,9 +330,6 @@ class EatTimeEditorViewModelTest {
     }
 
     // --- Opening the editor from a place shared out of Google Maps (#84) ---
-
-    private val mapsPosition = GeoPoint(25.0335035, 121.530118)
-    private val dinTaiFung = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
 
     @Test
     fun sharedShortLink_createsTheVenueWithTheMapsPosition() = runTest(mainRule.testDispatcher.scheduler) {

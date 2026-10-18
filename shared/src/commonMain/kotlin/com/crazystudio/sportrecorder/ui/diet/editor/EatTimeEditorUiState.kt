@@ -27,6 +27,8 @@ data class EatTimeEditorUiState(
     val pendingStore: PendingStore? = null,
     /** Why a shared text gave no venue; shown under the venue row until the user picks one themselves. */
     val shareNotice: ShareNotice? = null,
+    /** Set while the user is asked to paste a Maps link by hand: the clipboard held none (#89). */
+    val pasteDialog: PasteTarget? = null,
     /** A transient result the UI shows once, then clears via `consumeMessage`. */
     val message: EditorMessage? = null,
 ) {
@@ -51,6 +53,15 @@ data class EatTimeEditorUiState(
         val movedRecords: Int,
         val sharedName: String,
     )
+}
+
+/** What a Maps link pasted by hand is for (#89). */
+sealed interface PasteTarget {
+    /** Opens the place as this meal's venue, like a share does. */
+    data object Select : PasteTarget
+
+    /** Puts [venue] at the place's position. */
+    data class Reposition(val venue: Venue) : PasteTarget
 }
 
 /** Semantic result — the UI maps each to a localized string (the VM holds no user-facing copy). */

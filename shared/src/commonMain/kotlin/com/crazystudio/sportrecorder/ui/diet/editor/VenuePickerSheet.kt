@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -40,15 +41,20 @@ import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
+import com.crazystudio.sportrecorder.shared.resources.editor_paste_hint
+import com.crazystudio.sportrecorder.shared.resources.editor_paste_title
+import com.crazystudio.sportrecorder.shared.resources.editor_paste_use
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_body
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_confirm
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_more
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_new
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_paste
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_pick
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_position_updated
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_rename
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_here
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_content_paste_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_more_vert_24
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
@@ -61,6 +67,10 @@ import org.jetbrains.compose.resources.stringResource
  * Choosing a venue only sets [EatTimeEditorUiState.venue]; it never copies the venue's position
  * onto the record, because the record's location is where the user was and the venue is where the
  * food came from. Everything here is optional — the editor can be saved without ever opening it.
+ *
+ * The paste row reads the clipboard only when tapped: [onPaste] is true when it held a Maps link and
+ * the place is being opened (the sheet closes); otherwise the VM asks for a link through
+ * [EatTimeEditorUiState.pasteDialog], which this sheet shows.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +84,9 @@ fun VenuePickerSheet(
     onConsumeMessage: () -> Unit,
     onConfirmMerge: () -> Unit,
     onCancelMerge: () -> Unit,
+    onPaste: suspend () -> Boolean,
+    onPasteText: (String) -> Unit,
+    onDismissPasteDialog: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -81,10 +94,12 @@ fun VenuePickerSheet(
     var query by remember { mutableStateOf("") }
     var renaming by remember { mutableStateOf<Venue?>(null) }
 
-    // A merge left pending, or a snackbar message cut off by closing the sheet (showSnackbar is
-    // cancelled before it can consume), must not outlive the sheet and reappear the next time.
+    // A merge or paste dialog left pending, or a snackbar message cut off by closing the sheet
+    // (showSnackbar is cancelled before it can consume), must not outlive the sheet and reappear
+    // the next time.
     val dismiss = {
         onCancelMerge()
+        onDismissPasteDialog()
         onConsumeMessage()
         onDismiss()
     }
@@ -125,6 +140,9 @@ fun VenuePickerSheet(
             val canCreate = VenuePicker.canCreate(state.venueOptions, query)
             val typed = VenueName.normalize(query)
             LazyColumn {
+                item(key = "paste") {
+                    PasteRow(onClick = { scope.launch { if (onPaste()) finish {} } })
+                }
                 if (canCreate) {
                     item(key = "create") {
                         VenueRow(
@@ -163,6 +181,9 @@ fun VenuePickerSheet(
     state.pendingMerge?.let { pending ->
         MergeDialog(pending = pending, onConfirm = onConfirmMerge, onDismiss = onCancelMerge)
     }
+    if (state.pasteDialog == PasteTarget.Select) {
+        PasteDialog(onConfirm = { text -> finish { onPasteText(text) } }, onDismiss = onDismissPasteDialog)
+    }
 }
 
 private fun messageRes(message: EditorMessage) = when (message) {
@@ -185,6 +206,54 @@ private fun VenueRow(text: String, onClick: () -> Unit, trailing: @Composable ()
         )
         trailing()
     }
+}
+
+@Composable
+private fun PasteRow(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 48.dp)
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_baseline_content_paste_24),
+            contentDescription = null, // the text beside it says what the row does
+            modifier = Modifier
+                .padding(end = 12.dp)
+                .size(24.dp),
+        )
+        Text(
+            text = stringResource(Res.string.editor_venue_paste),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+/** Asked when the clipboard held no Maps link: the user pastes (or types) one here. */
+@Composable
+private fun PasteDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.editor_paste_title)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = { Text(stringResource(Res.string.editor_paste_hint)) },
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) {
+                Text(stringResource(Res.string.editor_paste_use))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.backup_cancel)) }
+        },
+    )
 }
 
 @Composable

@@ -262,6 +262,10 @@
     <string name="editor_venue_position_updated">已更新店家位置</string>
     <string name="editor_venue_merge_confirm">合併</string>
     <string name="editor_venue_resolving">正在讀取地圖連結…</string>
+    <string name="editor_venue_paste">貼上地圖連結</string>
+    <string name="editor_paste_title">貼上地圖連結</string>
+    <string name="editor_paste_hint">把 Google 地圖連結貼在這裡</string>
+    <string name="editor_paste_use">使用</string>
     <string name="editor_link_unreadable">沒辦法讀取這個地圖連結，可以手動選擇店家。</string>
     <string name="editor_not_map_link">這看起來不是 Google 地圖的連結。</string>
     <string name="editor_move_title">要更新「%1$s」的位置嗎？</string>

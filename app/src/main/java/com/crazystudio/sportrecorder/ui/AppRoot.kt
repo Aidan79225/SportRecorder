@@ -83,6 +83,9 @@ private fun VenuePickerHost(
         onConsumeMessage = vm::consumeMessage,
         onConfirmMerge = vm::confirmRename,
         onCancelMerge = vm::cancelRename,
+        onPaste = vm::pasteMapsLink,
+        onPasteText = vm::pasteText,
+        onDismissPasteDialog = vm::dismissPasteDialog,
         onDismiss = onDismiss,
     )
 }

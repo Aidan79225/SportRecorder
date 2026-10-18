@@ -20,6 +20,7 @@ import com.crazystudio.sportrecorder.domain.venue.SharedVenueMatch
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
 import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.domain.venue.roundedDistance
+import com.crazystudio.sportrecorder.platform.ClipboardReader
 import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.platform.MapsLinkResolver
 import com.crazystudio.sportrecorder.platform.PhotoImporter
@@ -43,6 +44,27 @@ import kotlin.time.Instant
 // SavedStateHandle key: the user already answered this share's move question.
 private const val MOVE_ANSWERED = "shareMoveAnswered"
 
+/**
+ * One opening of a Maps place, and whether the question it asked was answered. A share re-runs from
+ * its route after process death, so its answer is kept in the SavedStateHandle; a paste never re-runs,
+ * so its answer lives only as long as that paste. Neither answers the other's question.
+ */
+private sealed interface PlaceRun {
+    var answered: Boolean
+
+    class Share(private val handle: SavedStateHandle) : PlaceRun {
+        override var answered: Boolean
+            get() = handle.get<Boolean>(MOVE_ANSWERED) == true
+            set(value) {
+                handle[MOVE_ANSWERED] = value
+            }
+    }
+
+    class Paste : PlaceRun {
+        override var answered = false
+    }
+}
+
 // LongParameterList: these are injected DI dependencies, not logic params.
 @Suppress("TooManyFunctions", "LongParameterList") // cohesive editor VM: one handler per UI interaction
 class EatTimeEditorViewModel constructor(
@@ -56,6 +78,7 @@ class EatTimeEditorViewModel constructor(
     private val savedStateHandle: SavedStateHandle,
     private val mapsLinkResolver: MapsLinkResolver,
     private val venueAddressFiller: VenueAddressFiller,
+    private val clipboardReader: ClipboardReader,
 ) : ViewModel() {
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the editor's thumbnails. */
@@ -68,8 +91,11 @@ class EatTimeEditorViewModel constructor(
     // Route arg "sharedText": what another app (Google Maps) shared into a new meal (#84).
     private val sharedText: String? = savedStateHandle.get<String>("sharedText")
 
-    // Reading the shared place; cancelled once the meal is saved so nothing changes after that.
-    private var shareJob: Job? = null
+    // Reading the shared or pasted place; cancelled once the meal is saved so nothing changes after that.
+    private var placeJob: Job? = null
+
+    // The run the open question (if any) belongs to: answering it marks that run, not another.
+    private var placeRun: PlaceRun = PlaceRun.Share(savedStateHandle)
 
     // The meal's date+time being edited, as epoch millis. Read by the host to seed the platform
     // date/time pickers; mutated by updateDate/updateTime.
@@ -120,16 +146,58 @@ class EatTimeEditorViewModel constructor(
             }
         }
         if (!isEditMode && sharedText != null) {
-            shareJob = viewModelScope.launch { openSharedPlace(sharedText) }
+            startPlaceRun(sharedText, PlaceRun.Share(savedStateHandle))
+        }
+    }
+
+    private fun startPlaceRun(text: String, run: PlaceRun) {
+        val previous = placeJob
+        placeRun = run
+        placeJob = viewModelScope.launch {
+            // A cancelled run still clears resolvingLink on its way out; let it finish before this one starts.
+            previous?.join()
+            openPlace(text, run)
         }
     }
 
     /**
-     * A place shared from Google Maps becomes this meal's venue, at the position Maps gives — never
-     * the phone's fix. Any failure only leaves a notice under the venue row: the editor stays usable
-     * and saving is never held up by it.
+     * Opens the Maps link on the clipboard, read now because the user tapped to paste. True when it
+     * held one and the place is being opened; otherwise the user is asked to paste a link by hand.
      */
-    private suspend fun openSharedPlace(text: String) {
+    suspend fun pasteMapsLink(): Boolean {
+        val text = clipboardReader.text()?.takeIf { MapsLink.find(it) != null }
+        if (text != null) {
+            startPaste(text)
+        } else {
+            _uiState.update { it.copy(pasteDialog = PasteTarget.Select) }
+        }
+        return text != null
+    }
+
+    /** What the user pasted into the dialog. Text with no Maps link says so, the way a share does. */
+    fun pasteText(text: String) {
+        val target = _uiState.value.pasteDialog
+        dismissPasteDialog()
+        // Only Select for now; PasteTarget.Reposition is handled by Task 7 of #89.
+        if (target == PasteTarget.Select) startPaste(text)
+    }
+
+    fun dismissPasteDialog() = _uiState.update { it.copy(pasteDialog = null) }
+
+    // A paste replaces the chosen venue, works when editing an old meal too, and like a share never
+    // touches the meal's own location.
+    private fun startPaste(text: String) {
+        dropSharedPlace()
+        _uiState.update { it.copy(venue = null) }
+        startPlaceRun(text, PlaceRun.Paste())
+    }
+
+    /**
+     * A place shared from Google Maps (or pasted) becomes this meal's venue, at the position Maps
+     * gives — never the phone's fix. Any failure only leaves a notice under the venue row: the editor
+     * stays usable and saving is never held up by it.
+     */
+    private suspend fun openPlace(text: String, run: PlaceRun) {
         _uiState.update { it.copy(resolvingLink = true) }
         try {
             val link = MapsLink.find(text)
@@ -139,7 +207,7 @@ class EatTimeEditorViewModel constructor(
                 link == null -> showNotice(ShareNotice.NotAMapLink)
                 // A place without a name is unusable: coordinates alone name no venue.
                 place == null || name == null -> showNotice(ShareNotice.MapLinkUnreadable)
-                else -> applySharedPlace(name, place.position())
+                else -> applySharedPlace(name, place.position(), run)
             }
         } finally {
             _uiState.update { it.copy(resolvingLink = false) }
@@ -163,12 +231,12 @@ class EatTimeEditorViewModel constructor(
 
     // Matched against the venues as stored right now, not the possibly not-yet-loaded picker list,
     // so sharing the same place twice finds the venue the first share created.
-    private suspend fun applySharedPlace(name: String, position: GeoPoint?) {
+    private suspend fun applySharedPlace(name: String, position: GeoPoint?, run: PlaceRun) {
         val venues = venueRepository.observeAll().first()
         when (val match = SharedVenue.match(name, position, venues)) {
             is SharedVenueMatch.Create -> createSharedVenue(match)
             is SharedVenueMatch.Use -> useSharedVenue(match)
-            is SharedVenueMatch.AskWhichStore -> askWhichStore(name, match)
+            is SharedVenueMatch.AskWhichStore -> askWhichStore(name, match, run)
         }
     }
 
@@ -198,9 +266,9 @@ class EatTimeEditorViewModel constructor(
 
     // The same name far away may be another branch or the same store mis-placed: only the user knows.
     // Moving it would move its marker for every record at it, so the question carries the count.
-    // Asked once per share: a share re-run after process death must not re-ask what was answered.
-    private suspend fun askWhichStore(sharedName: String, match: SharedVenueMatch.AskWhichStore) {
-        if (savedStateHandle.get<Boolean>(MOVE_ANSWERED) == true) {
+    // Asked once per run: a share re-run after process death must not re-ask what was answered.
+    private suspend fun askWhichStore(sharedName: String, match: SharedVenueMatch.AskWhichStore, run: PlaceRun) {
+        if (run.answered) {
             showVenue(match.venue)
         } else {
             val pending = EatTimeEditorUiState.PendingStore(
@@ -229,11 +297,11 @@ class EatTimeEditorViewModel constructor(
         viewModelScope.launch { venueAddressFiller.fill(listOf(venue)) }
     }
 
-    // The user's own venue choice (or saving) wins over the share: once dropped, a share still
-    // resolving creates, moves or asks nothing, a question still open is withdrawn, and a notice
-    // about the shared text has nothing left to explain.
+    // The user's own venue choice (or saving, or a new paste) wins over a share or paste: once
+    // dropped, one still resolving creates, moves or asks nothing, a question still open is
+    // withdrawn, and a notice about the shared text has nothing left to explain.
     private fun dropSharedPlace() {
-        shareJob?.cancel()
+        placeJob?.cancel()
         _uiState.update { it.copy(pendingMove = null, pendingStore = null, shareNotice = null) }
     }
 
@@ -242,7 +310,7 @@ class EatTimeEditorViewModel constructor(
         val pending = _uiState.value.pendingStore
         if (pending != null) {
             _uiState.update { it.copy(pendingStore = null) }
-            savedStateHandle[MOVE_ANSWERED] = true
+            placeRun.answered = true
         }
         return pending
     }
