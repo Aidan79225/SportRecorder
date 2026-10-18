@@ -39,11 +39,12 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_body
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_confirm
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_keep
-import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_where
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_name
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_position
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_records
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_resolving
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_same_name_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_save
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_here
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_link
@@ -61,6 +62,7 @@ internal fun VenueEditDialog(
     venue: Venue,
     canUseThisPosition: Boolean,
     notice: ShareNotice?,
+    resolving: Boolean,
     actions: VenuePickerActions,
     onClose: () -> Unit,
 ) {
@@ -82,6 +84,7 @@ internal fun VenueEditDialog(
                 onAddressChange = { typedAddress = it },
                 positionLine = positionLine(venue, records),
                 notice = notice,
+                resolving = resolving,
                 onUseThisPosition = if (canUseThisPosition) {
                     { actions.useThisPositionFor(venue) }
                 } else {
@@ -114,6 +117,7 @@ private fun VenueEditFields(
     onAddressChange: (String) -> Unit,
     positionLine: String,
     notice: ShareNotice?,
+    resolving: Boolean,
     onUseThisPosition: (() -> Unit)?,
     onUseLink: () -> Unit,
 ) {
@@ -144,9 +148,10 @@ private fun VenueEditFields(
             TextButton(onClick = onClick) { Text(stringResource(Res.string.editor_venue_use_here)) }
         }
         TextButton(onClick = onUseLink) { Text(stringResource(Res.string.editor_venue_use_link)) }
-        notice?.let {
+        val status = if (resolving) Res.string.editor_venue_resolving else notice?.let { shareNoticeRes(it) }
+        status?.let {
             Text(
-                text = stringResource(shareNoticeRes(it)),
+                text = stringResource(it),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -222,7 +227,7 @@ internal fun MergeOrKeepDialog(
     val into = pending.into
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.editor_venue_merge_title, into.name)) },
+        title = { Text(stringResource(Res.string.editor_venue_same_name_title, into.name)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // The count is said when there is one, as the delete and which-store questions do.

@@ -43,7 +43,7 @@ import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.editor_paste_hint
 import com.crazystudio.sportrecorder.shared.resources.editor_paste_title
 import com.crazystudio.sportrecorder.shared.resources.editor_paste_use
-import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit_named
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_new
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_paste
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_pick
@@ -86,7 +86,7 @@ fun VenuePickerSheet(
         actions.cancelDelete()
         actions.cancelMove()
         actions.dismissPasteDialog()
-        actions.dismissRepositionNotice()
+        actions.closeVenueEdit()
         actions.consumeMessage()
         onDismiss()
     }
@@ -130,7 +130,8 @@ fun VenuePickerSheet(
                 onCreate = { name -> finish { actions.createVenue(name) } },
                 onSelect = { venue -> finish { actions.selectVenue(venue) } },
                 onEdit = { venue ->
-                    actions.dismissRepositionNotice()
+                    // Whatever an earlier edit left behind goes before this one starts.
+                    actions.closeVenueEdit()
                     editingId = venue.id
                 },
             )
@@ -144,7 +145,7 @@ fun VenuePickerSheet(
         editing = editingId?.let { id -> state.venueOptions.firstOrNull { it.id == id } },
         closeEditing = {
             editingId = null
-            actions.dismissRepositionNotice()
+            actions.closeVenueEdit()
         },
         pasteToSelect = { text -> finish { actions.pasteText(text) } },
     )
@@ -197,6 +198,7 @@ private fun VenuePickerDialogs(
             venue = venue,
             canUseThisPosition = state.location != null,
             notice = state.repositionNotice,
+            resolving = state.repositioning,
             actions = actions,
             onClose = closeEditing,
         )
@@ -264,7 +266,7 @@ private fun VenueRow(venue: Venue, onClick: () -> Unit, onEdit: () -> Unit) {
         IconButton(onClick = onEdit) {
             Icon(
                 painter = painterResource(Res.drawable.ic_outline_edit_24),
-                contentDescription = stringResource(Res.string.editor_venue_edit),
+                contentDescription = stringResource(Res.string.editor_venue_edit_named, venue.name),
             )
         }
     }
@@ -297,7 +299,8 @@ private fun PasteRow(onClick: () -> Unit) {
 /** Asked when the clipboard held no Maps link: the user pastes (or types) one here. */
 @Composable
 private fun PasteDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
-    var text by remember { mutableStateOf("") }
+    // Saveable, so a link pasted in survives rotation.
+    var text by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(Res.string.editor_paste_title)) },
@@ -306,6 +309,7 @@ private fun PasteDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
                 value = text,
                 onValueChange = { text = it },
                 placeholder = { Text(stringResource(Res.string.editor_paste_hint)) },
+                singleLine = true,
             )
         },
         confirmButton = {

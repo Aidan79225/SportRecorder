@@ -98,7 +98,8 @@ class EatTimeEditorViewModel constructor(
     // The run the open question (if any) belongs to: answering it marks that run, not another.
     private var placeRun: PlaceRun = PlaceRun.Share(savedStateHandle)
 
-    // Reading a map link to move a venue from the edit dialog; dropped when the user declines the move.
+    // Reading a map link to move a venue from the edit dialog; dropped when the user declines the
+    // move or closes the dialog.
     private var repositionJob: Job? = null
 
     // Looking up the addresses the picker is missing; one at a time, however often it is opened.
@@ -373,32 +374,57 @@ class EatTimeEditorViewModel constructor(
     }
 
     private fun startReposition(text: String, venue: Venue) {
-        repositionJob?.cancel()
+        val previous = repositionJob
+        previous?.cancel()
         _uiState.update { it.copy(repositionNotice = null) }
-        repositionJob = viewModelScope.launch { reposition(text, venue) }
+        repositionJob = viewModelScope.launch {
+            // A cancelled run still clears repositioning on its way out; let it finish before this one starts.
+            previous?.join()
+            reposition(text, venue)
+        }
     }
 
     private suspend fun reposition(text: String, venue: Venue) {
-        val link = MapsLink.find(text)
-        val to = link?.let { readPlace(it) }?.position()
-        when {
-            link == null -> showRepositionNotice(ShareNotice.NotAMapLink)
-            to == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
-            else -> {
-                val records = venueRepository.recordCount(venue.id)
-                if (records > 0) {
-                    _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records)) }
-                } else {
-                    moveVenue(venue, to)
-                }
+        _uiState.update { it.copy(repositioning = true) }
+        try {
+            val link = MapsLink.find(text)
+            val to = link?.let { readPlace(it) }?.position()
+            when {
+                link == null -> showRepositionNotice(ShareNotice.NotAMapLink)
+                to == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
+                else -> askOrMove(venue, to)
             }
+        } finally {
+            _uiState.update { it.copy(repositioning = false) }
+        }
+    }
+
+    private suspend fun askOrMove(venue: Venue, to: GeoPoint) {
+        val records = venueRepository.recordCount(venue.id)
+        if (records > 0) {
+            _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records)) }
+        } else {
+            moveVenue(venue, to)
         }
     }
 
     private fun showRepositionNotice(notice: ShareNotice) = _uiState.update { it.copy(repositionNotice = notice) }
 
-    /** Clear the edit dialog's map-link notice once the dialog it explained is gone. */
-    override fun dismissRepositionNotice() = _uiState.update { it.copy(repositionNotice = null) }
+    /**
+     * The edit dialog is gone: a map link still being read for it moves nothing, and the question,
+     * paste dialog or notice it led to goes with it.
+     */
+    override fun closeVenueEdit() {
+        repositionJob?.cancel()
+        _uiState.update { state ->
+            state.copy(
+                repositionNotice = null,
+                repositioning = false,
+                pendingMove = null,
+                pasteDialog = state.pasteDialog.takeUnless { it is PasteTarget.Reposition },
+            )
+        }
+    }
 
     /** Move the venue to the link's pin — for every record at it. */
     override fun confirmMove() {

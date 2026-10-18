@@ -254,7 +254,7 @@
     <string name="editor_venue_new">Use "%1$s"</string>
     <string name="editor_venue_clear">Clear place</string>
     <string name="editor_venue_use_here">Set its position from this record</string>
-    <string name="editor_venue_merge_title">Merge with "%1$s"?</string>
+    <string name="editor_venue_same_name_title">There's already a %1$s</string>
     <plurals name="editor_venue_merge_body">
         <item quantity="one">%1$d record will move to "%2$s".</item>
         <item quantity="other">%1$d records will move to "%2$s".</item>
@@ -289,6 +289,7 @@
     <string name="editor_store_keep">Same place — keep its position</string>
     <string name="venue_no_position">No position</string>
     <string name="editor_venue_edit">Edit place</string>
+    <string name="editor_venue_edit_named">Edit %1$s</string>
     <string name="editor_venue_name">Name</string>
     <string name="editor_venue_address">Address</string>
     <string name="editor_venue_position">Position: %1$s, %2$s</string>

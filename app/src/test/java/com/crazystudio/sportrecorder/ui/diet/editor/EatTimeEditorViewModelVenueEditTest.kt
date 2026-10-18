@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -271,6 +272,74 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
+    fun repositionFromALink_isSaidToBeReadingWhileTheLinkResolves() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val slowNetwork = CompletableDeferred<Unit>()
+        editor.resolver.gate = slowNetwork
+        editor.clipboard.text = SHARE_TEXT
+        val vm = editor.viewModel()
+
+        assertTrue(vm.repositionFromClipboard(dinTaiFung))
+        advanceUntilIdle()
+
+        assertEquals(1, editor.resolver.calls)
+        assertTrue(vm.uiState.value.repositioning)
+        // The edit dialog says so; the editor's own venue row does not.
+        assertFalse(vm.uiState.value.resolvingLink)
+
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.repositioning)
+        val moved = editor.venues.stored.single()
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
+    }
+
+    @Test
+    fun closingTheEditDialog_dropsALinkStillResolving() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val slowNetwork = CompletableDeferred<Unit>()
+        editor.resolver.gate = slowNetwork
+        editor.clipboard.text = SHARE_TEXT
+        val vm = editor.viewModel()
+        vm.repositionFromClipboard(dinTaiFung)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.repositioning)
+
+        vm.closeVenueEdit()
+        slowNetwork.complete(Unit)
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.repositioning)
+        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.repositionNotice)
+        // The link came back after the dialog was gone: the venue stays where it was.
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
+    }
+
+    @Test
+    fun closingTheEditDialog_withdrawsItsMoveQuestionAndPasteDialog() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        editor.venues.recordCounts[dinTaiFung.id] = 5
+        editor.clipboard.text = SHARE_TEXT
+        val vm = editor.viewModel()
+        vm.repositionFromClipboard(dinTaiFung)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingMove)
+
+        vm.closeVenueEdit()
+
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
+
+        editor.clipboard.text = "午餐"
+        assertFalse(vm.repositionFromClipboard(dinTaiFung))
+        vm.closeVenueEdit()
+
+        assertNull(vm.uiState.value.pasteDialog)
+    }
+
+    @Test
     fun repositionFromALink_takesOnlyThePin_notTheName() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu.copy(address = "舊地址")))
         editor.clipboard.text = SHARE_TEXT
@@ -326,7 +395,7 @@ class EatTimeEditorViewModelVenueEditTest {
         assertEquals(daHuWu, vm.uiState.value.venue)
         assertEquals(listOf(daHuWu), editor.venues.stored)
 
-        vm.dismissRepositionNotice()
+        vm.closeVenueEdit()
         assertNull(vm.uiState.value.repositionNotice)
     }
 

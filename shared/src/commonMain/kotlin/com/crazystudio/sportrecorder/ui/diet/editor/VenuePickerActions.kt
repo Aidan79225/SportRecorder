@@ -30,7 +30,8 @@ interface VenuePickerActions {
     /** True when the clipboard held a Maps link and [venue] is being moved to its pin; else the paste dialog asks. */
     suspend fun repositionFromClipboard(venue: Venue): Boolean
 
-    fun dismissRepositionNotice()
+    /** The edit dialog closed: drops a map link still being read for it, and what that link asked or said. */
+    fun closeVenueEdit()
 
     fun confirmMove()
 

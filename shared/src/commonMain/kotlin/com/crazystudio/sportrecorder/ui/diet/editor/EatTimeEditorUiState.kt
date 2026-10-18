@@ -33,6 +33,8 @@ data class EatTimeEditorUiState(
     val pasteDialog: PasteTarget? = null,
     /** Why a map link moved no venue; shown inside the edit dialog, never under the editor's venue row. */
     val repositionNotice: ShareNotice? = null,
+    /** True while the edit dialog's map link is being read; said inside that dialog. */
+    val repositioning: Boolean = false,
     /** A transient result the UI shows once, then clears via `consumeMessage`. */
     val message: EditorMessage? = null,
 ) {

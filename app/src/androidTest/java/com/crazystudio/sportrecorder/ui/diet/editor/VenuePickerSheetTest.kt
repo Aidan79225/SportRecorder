@@ -11,8 +11,8 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -23,13 +23,14 @@ import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit_named
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_body
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_keep
-import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_where
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_name
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_position
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_records
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_same_name_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_save
 import com.crazystudio.sportrecorder.shared.resources.venue_no_position
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
@@ -91,7 +92,7 @@ class VenuePickerSheetTest {
         actions.records = 12
         show()
 
-        compose.onAllNodesWithContentDescription(str(Res.string.editor_venue_edit))[0].performClick()
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
 
         compose.onNodeWithText(str(Res.string.editor_venue_edit)).assertIsDisplayed()
         val position = str(Res.string.editor_venue_position, "25.0335", "121.5301")
@@ -111,7 +112,7 @@ class VenuePickerSheetTest {
     @Test
     fun deleteConfirmation_mentionsTheRecordCount() {
         show()
-        compose.onAllNodesWithContentDescription(str(Res.string.editor_venue_edit))[1].performClick()
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, unplaced.name)).performClick()
         compose.onNodeWithText(str(Res.string.editor_venue_delete)).performClick()
         assertEquals(listOf(unplaced), actions.deleteRequests)
 
@@ -137,7 +138,7 @@ class VenuePickerSheetTest {
         state = state.copy(pendingMerge = pending)
         show()
 
-        compose.onNodeWithText(str(Res.string.editor_venue_merge_title, placed.name)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.editor_venue_same_name_title, placed.name)).assertIsDisplayed()
         compose.onNodeWithText(str(Res.string.editor_venue_merge_where, "信義路二段 194 號")).assertIsDisplayed()
         // No record would move: the count is not said.
         compose.onAllNodesWithText(plural(Res.plurals.editor_venue_merge_body, 0, placed.name)).assertCountEquals(0)
@@ -166,7 +167,7 @@ class VenuePickerSheetTest {
         override suspend fun recordCount(venue: Venue) = records
         override fun useThisPositionFor(venue: Venue) = Unit
         override suspend fun repositionFromClipboard(venue: Venue) = false
-        override fun dismissRepositionNotice() = Unit
+        override fun closeVenueEdit() = Unit
         override fun confirmMove() = Unit
         override fun cancelMove() = Unit
         override fun saveVenue(venue: Venue, name: String, address: String?) {
