@@ -15,13 +15,14 @@ data class BackupDocument(
     val dietSettings: BackupDietSettings,
     val reminderPrefs: BackupReminderPrefs,
     /**
-     * Added without a [SCHEMA_VERSION] bump: the default lets a snapshot written before venues
-     * existed decode, and `ignoreUnknownKeys` lets an older app restore a newer snapshot minus
-     * its venues. Bumping would make that older app refuse the whole snapshot.
+     * Added in schema 1 without a bump: the default lets a snapshot written before venues existed
+     * decode. Schema 2 gives each venue a [BackupVenue.key] and an address (venue names are no
+     * longer unique, so a name alone can no longer tell two branches apart); a restore accepts 1
+     * (venues re-attached by name) and 2 (by key).
      */
     val venues: List<BackupVenue> = emptyList(),
 ) {
-    companion object { const val SCHEMA_VERSION = 1 }
+    companion object { const val SCHEMA_VERSION = 2 }
 }
 
 @Serializable
@@ -32,11 +33,15 @@ data class BackupMeal(
     val location: BackupGeoPoint?,
     val photos: List<BackupPhoto>,
     /**
-     * The venue's NAME, never its id: a restore does not preserve ids (Room assigns fresh ones),
-     * so the name is the only key that is stable across installs. Null for no venue, and the
-     * default keeps pre-venue snapshots decodable.
+     * Which venue this meal was at, never by the local venue id itself: a restore does not
+     * preserve ids (Room assigns fresh ones). [venueKey] is the venue's [BackupVenue.key], a
+     * per-snapshot handle that tells two same-name branches apart and takes precedence. [venueName]
+     * is the fallback for schema-1 snapshots (no keys) and is still written so the JSON stays
+     * readable. Both null means no venue; a key that names no venue in the snapshot also means no
+     * venue, never a dangling id. The defaults keep older snapshots decodable.
      */
     val venueName: String? = null,
+    val venueKey: String? = null,
 )
 
 @Serializable
@@ -45,6 +50,9 @@ data class BackupVenue(
     val lat: Double? = null,
     val lng: Double? = null,
     val lastUsedAt: Long = 0L,
+    val address: String? = null,
+    /** The venue's local id when the snapshot was taken, as a string; only meaningful within it. */
+    val key: String? = null,
 )
 
 @Serializable data class BackupGeoPoint(val lat: Double, val lng: Double)

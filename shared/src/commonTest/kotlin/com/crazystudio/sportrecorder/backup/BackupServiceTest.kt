@@ -247,7 +247,7 @@ class BackupServiceTest {
         assertEquals(listOf("x.webp"), store.lastDownloadedPhotoNames)
     }
 
-    @Test fun backupThenRestore_bringsVenuesBackByName() = runTest {
+    @Test fun backupThenRestore_bringsVenuesBackAndReattachesMeals() = runTest {
         val venueRepo = FakeVenueRepository()
         val venue = venueRepo.findOrCreate("大戶屋", lat = 25.0, lng = 121.0, now = 1L)
         val eat = FakeEatRecordRepository(
@@ -262,7 +262,7 @@ class BackupServiceTest {
         service.restore(info.id)
 
         assertEquals(listOf("大戶屋"), venueRepo.observeAll().first().map { it.name })
-        // Re-attached by name, with the id the venue has on THIS device after the restore ...
+        // Re-attached by key, with the id the venue has on THIS device after the restore ...
         val restoredVenue = venueRepo.observeAll().first().single()
         assertEquals(restoredVenue.id, eat.state.value.single().venue?.id)
         // ... which is not the id it had before (ids do not survive a restore).
@@ -279,9 +279,128 @@ class BackupServiceTest {
         service(eat, store, venueRepo).backup()
 
         val doc = BackupJson.decodeFromString(BackupDocument.serializer(), store.uploads.last().manifestJson)
-        assertEquals(listOf(BackupVenue("Cafe", null, null, 5L)), doc.venues)
-        assertEquals("Cafe", doc.meals.single().venueName)
-        assertEquals(1, doc.schemaVersion) // additive: the version is deliberately not bumped
+        assertEquals(listOf(BackupVenue("Cafe", null, null, 5L, null, venue.id.toString())), doc.venues)
+        assertEquals("Cafe", doc.meals.single().venueName) // still written, for humans reading the JSON
+        assertEquals(venue.id.toString(), doc.meals.single().venueKey)
+    }
+
+    @Test fun backup_writesSchemaVersion2() = runTest {
+        val store = FakeBackupStore()
+        service(FakeEatRecordRepository(), store).backup()
+
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), store.uploads.last().manifestJson)
+        assertEquals(2, BackupDocument.SCHEMA_VERSION)
+        assertEquals(2, doc.schemaVersion)
+    }
+
+    @Test fun twoBranches_roundTripOnTheirOwnVenues() = runTest {
+        val venueRepo = FakeVenueRepository()
+        val taipei = venueRepo.create("麥當勞", lat = 25.0, lng = 121.0, now = 1L)
+            .also { venueRepo.setAddressIfUnchanged(it.id, 25.0, 121.0, "Taipei St") }
+        val taichung = venueRepo.create("麥當勞", lat = 24.1, lng = 120.7, now = 2L)
+            .also { venueRepo.setAddressIfUnchanged(it.id, 24.1, 120.7, "Taichung Rd") }
+        val eat = FakeEatRecordRepository(
+            listOf(
+                EatRecord(1, 100L, null, null, emptyList(), venueRepo.stored.first { it.id == taipei.id }),
+                EatRecord(2, 200L, null, null, emptyList(), venueRepo.stored.first { it.id == taichung.id }),
+            ),
+        )
+        val store = FakeBackupStore()
+        val service = service(eat, store, venueRepo)
+
+        val info = service.backup()
+        venueRepo.replaceAll(emptyList())
+        eat.state.value = emptyList()
+        service.restore(info.id)
+
+        assertEquals(2, venueRepo.stored.size)
+        val byTime = eat.state.value.sortedBy { it.time }
+        val first = byTime[0].venue!!
+        val second = byTime[1].venue!!
+        assertNotEquals(first.id, second.id)
+        assertEquals(Triple(25.0, 121.0, "Taipei St"), Triple(first.lat, first.lng, first.address))
+        assertEquals(Triple(24.1, 120.7, "Taichung Rd"), Triple(second.lat, second.lng, second.address))
+        assertEquals(setOf(first.id, second.id), venueRepo.stored.map { it.id }.toSet())
+    }
+
+    @Test fun addressIsBackedUp() = runTest {
+        val venueRepo = FakeVenueRepository()
+        val venue = venueRepo.create("Cafe", lat = 1.0, lng = 2.0, now = 5L)
+        venueRepo.setAddressIfUnchanged(venue.id, 1.0, 2.0, "1 Main St")
+        val store = FakeBackupStore()
+        val eat = FakeEatRecordRepository()
+        val service = service(eat, store, venueRepo)
+
+        val info = service.backup()
+        venueRepo.replaceAll(emptyList())
+        service.restore(info.id)
+
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), store.uploads.first().manifestJson)
+        assertEquals("1 Main St", doc.venues.single().address)
+        assertEquals("1 Main St", venueRepo.stored.single().address)
+    }
+
+    @Test fun aVersion1Snapshot_stillRestoresVenuesByName() = runTest {
+        val json = """
+            {"schemaVersion":1,"createdAt":1,"appVersionName":"0.12.0",
+             "meals":[{"id":1,"time":100,"note":null,"location":null,"photos":[],"venueName":"Cafe"},
+                      {"id":2,"time":200,"note":null,"location":null,"photos":[],"venueName":" cafe "}],
+             "fastingTypes":[],"dietSettings":{"fastingHours":16,"eatingHours":8},
+             "reminderPrefs":{"windowClosingEnabled":false,"fastCompleteEnabled":false,
+             "leadMinutes":30,"quietHoursEnabled":false,"quietStartMinutes":1320,"quietEndMinutes":480},
+             "venues":[{"name":"Cafe","lat":1.0,"lng":2.0,"lastUsedAt":9}]}
+        """.trimIndent()
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("v1", 1L, "0.12.0", json.length.toLong()), json)
+        val venueRepo = FakeVenueRepository()
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store, venueRepo).restore("v1")
+
+        val restored = venueRepo.stored.single()
+        assertNull(restored.address)
+        assertEquals(listOf(restored.id, restored.id), eat.state.value.sortedBy { it.time }.map { it.venue?.id })
+    }
+
+    @Test fun restore_aVenueKeyTakesPrecedenceOverTheName() = runTest {
+        val snapshot = BackupDocument(
+            schemaVersion = BackupDocument.SCHEMA_VERSION, createdAt = 1L, appVersionName = "0.6.2",
+            meals = listOf(BackupMeal(1, 100L, null, null, emptyList(), venueName = "Cafe", venueKey = "b")),
+            fastingTypes = emptyList(),
+            dietSettings = BackupDietSettings(16, 8),
+            reminderPrefs = BackupReminderPrefs(false, false, 30, false, 1320, 480),
+            venues = listOf(
+                BackupVenue("Cafe", 1.0, 1.0, 1L, key = "a"),
+                BackupVenue("Cafe", 2.0, 2.0, 2L, key = "b"),
+            ),
+        )
+        val json = BackupJson.encodeToString(BackupDocument.serializer(), snapshot)
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.6.2", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("s")
+
+        assertEquals(2.0, eat.state.value.single().venue!!.lat!!, 0.0001)
+    }
+
+    @Test fun restore_aVenueKeyNamingNoBackedUpVenue_comesBackWithoutOne() = runTest {
+        val snapshot = BackupDocument(
+            schemaVersion = BackupDocument.SCHEMA_VERSION, createdAt = 1L, appVersionName = "0.6.2",
+            meals = listOf(BackupMeal(1, 100L, null, null, emptyList(), venueName = "Cafe", venueKey = "ghost")),
+            fastingTypes = emptyList(),
+            dietSettings = BackupDietSettings(16, 8),
+            reminderPrefs = BackupReminderPrefs(false, false, 30, false, 1320, 480),
+            venues = listOf(BackupVenue("Cafe", 1.0, 1.0, 1L, key = "a")),
+        )
+        val json = BackupJson.encodeToString(BackupDocument.serializer(), snapshot)
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.6.2", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("s")
+
+        assertNull(eat.state.value.single().venue)
     }
 
     @Test fun restore_attachesOneVenueToEveryMealThatNamesIt_matchingCaseInsensitively() = runTest {
