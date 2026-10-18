@@ -1,24 +1,13 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.lifecycle.SavedStateHandle
-import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
-import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
-import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
-import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
-import com.crazystudio.sportrecorder.fake.FakeLocationProvider
-import com.crazystudio.sportrecorder.fake.FakeMapsLinkResolver
-import com.crazystudio.sportrecorder.fake.FakePhotoFileStore
-import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
-import com.crazystudio.sportrecorder.fake.FakePhotoImporter
-import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
-import com.crazystudio.sportrecorder.fake.FakeVenueRepository
+import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -29,56 +18,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-// What Google Maps hands over when a place is shared: name, address, and a short link (#84).
-private const val SHARE_TEXT = "鼎泰豐 信義店\n106臺北市大安區信義路二段194號\nhttps://maps.app.goo.gl/3oUGbkxLYE6jt7L29"
-
-// The full URL that short link redirects to: pin and camera both at the restaurant.
-private const val FULL_URL = "https://www.google.com/maps/place/" +
-    "%E9%BC%8E%E6%B3%B0%E8%B1%90+%E4%BF%A1%E7%BE%A9%E5%BA%97/" +
-    "@25.0335035,121.530118,17z/data=!4m6!3m5!1s0x3442a9821392326d:0x93faef9e2359365c!8m2!3d25.0335035" +
-    "!4d121.530118!16s%2Fg%2F1td2dltc?entry=tts"
-
 /**
- * The venue part of the meal editor: picking, creating, clearing, renaming (and merging), and
- * opening it from a place shared out of Google Maps.
+ * The venue part of the meal editor: picking, creating, clearing, and opening it from a place
+ * shared out of Google Maps. Editing, merging and deleting venues: [EatTimeEditorViewModelVenueEditTest].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EatTimeEditorViewModelTest {
 
     @get:Rule
     val mainRule = MainDispatcherRule()
-
-    private val pastMeal = 1_700_000_000_000L
-    private val home = GeoPoint(24.0, 120.0)
-    private val daHuWu = Venue(id = 1, name = "大戶屋", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
-
-    private class Editor(records: List<EatRecord> = emptyList(), venues: List<Venue> = emptyList()) {
-        val records = FakeEatRecordRepository(records)
-        val venues = FakeVenueRepository(venues)
-        val locationProvider = FakeLocationProvider()
-        val resolver = FakeMapsLinkResolver(location = FULL_URL)
-
-        fun viewModel(
-            eatTimeId: Int? = null,
-            sharedText: String? = null,
-            handle: SavedStateHandle = SavedStateHandle(
-                listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
-            ),
-        ) = EatTimeEditorViewModel(
-            loadEatRecord = LoadEatRecordUseCase(records),
-            saveEatRecord = SaveEatRecordUseCase(records, FakeRemindersRescheduler()),
-            locationProvider = locationProvider,
-            venueRepository = venues,
-            photoImporter = FakePhotoImporter(),
-            photoFileStore = FakePhotoFileStore(),
-            photoImageSource = FakePhotoImageSource(),
-            savedStateHandle = handle,
-            mapsLinkResolver = resolver,
-        )
-    }
-
-    private fun mealAt(venue: Venue?, location: GeoPoint? = home) =
-        EatRecord(id = 1, time = pastMeal, location = location, note = "午餐", photos = emptyList(), venue = venue)
 
     @Test
     fun pickingAVenue_doesNotTouchTheRecordsOwnLocation() = runTest(mainRule.testDispatcher.scheduler) {
@@ -222,110 +170,6 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun renamingToABlankName_isRefused() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(venues = listOf(daHuWu))
-        val vm = editor.viewModel()
-
-        vm.requestRename(daHuWu, "  　 ")
-        advanceUntilIdle()
-
-        assertEquals("大戶屋", editor.venues.stored.single().name)
-        assertNull(vm.uiState.value.pendingMerge)
-    }
-
-    @Test
-    fun renamingWithoutACollision_renamesAtOnceAndFollowsTheSelectedVenue() =
-        runTest(mainRule.testDispatcher.scheduler) {
-            val editor = Editor(venues = listOf(daHuWu))
-            val vm = editor.viewModel()
-            vm.selectVenue(daHuWu)
-
-            vm.requestRename(daHuWu, "大戶屋 信義店")
-            advanceUntilIdle()
-
-            assertNull(vm.uiState.value.pendingMerge)
-            assertEquals("大戶屋 信義店", editor.venues.stored.single().name)
-            assertEquals("大戶屋 信義店", vm.uiState.value.venue?.name)
-        }
-
-    @Test
-    fun renamingOntoAnExistingName_asksBeforeMoving() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        editor.venues.recordCounts[typo.id] = 7
-
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        val pending = requireNotNull(vm.uiState.value.pendingMerge)
-        assertEquals("大戶屋", pending.intoName)
-        // The dialog's whole job: say how many records are about to change hands.
-        assertEquals(7, pending.movedRecords)
-        // Nothing has moved yet — the user has not said yes.
-        assertEquals(2, editor.venues.observeAll().first().size)
-    }
-
-    @Test
-    fun cancellingAMerge_leavesEverythingWhereItWas() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        vm.cancelRename()
-        advanceUntilIdle()
-
-        assertNull(vm.uiState.value.pendingMerge)
-        assertEquals(2, editor.venues.stored.size)
-    }
-
-    @Test
-    fun confirmingAMerge_movesTheRecordsAndSwapsTheSelectedVenueForTheSurvivor() =
-        runTest(mainRule.testDispatcher.scheduler) {
-            val editor = Editor()
-            val vm = editor.viewModel()
-            val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-            val keeper = editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-            editor.venues.recordCounts[typo.id] = 3
-            vm.selectVenue(typo)
-            vm.requestRename(typo, "大戶屋")
-            advanceUntilIdle()
-
-            vm.confirmRename()
-            advanceUntilIdle()
-
-            assertNull(vm.uiState.value.pendingMerge)
-            assertEquals(listOf(keeper.id), editor.venues.stored.map { it.id })
-            assertEquals(3, editor.venues.recordCount(keeper.id))
-            assertEquals(keeper.id, vm.uiState.value.venue?.id)
-        }
-
-    @Test
-    fun confirmingAMergeTwice_mergesOnlyOnce() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor()
-        val vm = editor.viewModel()
-        val typo = editor.venues.findOrCreate("大户屋", null, null, now = 1L)
-        val keeper = editor.venues.findOrCreate("大戶屋", null, null, now = 2L)
-        editor.venues.recordCounts[typo.id] = 3
-        vm.requestRename(typo, "大戶屋")
-        advanceUntilIdle()
-
-        // A double tap: the second must find nothing pending instead of renaming a venue that the
-        // first one is about to delete.
-        vm.confirmRename()
-        vm.confirmRename()
-        advanceUntilIdle()
-
-        assertNull(vm.uiState.value.pendingMerge)
-        assertEquals(listOf(keeper.id), editor.venues.stored.map { it.id })
-        assertEquals(3, editor.venues.recordCount(keeper.id))
-    }
-
-    @Test
     fun useThisPositionFor_correctsTheVenueFromTheRecordsFix() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
         val vm = editor.viewModel(eatTimeId = 1)
@@ -381,9 +225,6 @@ class EatTimeEditorViewModelTest {
     }
 
     // --- Opening the editor from a place shared out of Google Maps (#84) ---
-
-    private val mapsPosition = GeoPoint(25.0335035, 121.530118)
-    private val dinTaiFung = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
 
     @Test
     fun sharedShortLink_createsTheVenueWithTheMapsPosition() = runTest(mainRule.testDispatcher.scheduler) {
@@ -464,57 +305,118 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun existingVenueFarAway_asksBeforeMoving() = runTest(mainRule.testDispatcher.scheduler) {
+    fun aFarSameNameVenue_asksWhichStore() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(dinTaiFung))
         editor.venues.recordCounts[dinTaiFung.id] = 12
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        val pending = requireNotNull(vm.uiState.value.pendingMove)
+        val pending = requireNotNull(vm.uiState.value.pendingStore)
         assertEquals(dinTaiFung, pending.venue)
         assertEquals(mapsPosition, pending.to)
-        // The dialog's whole job: moving a venue moves its marker for every record at it.
+        // The saved one is about 53.5 km from the link's pin.
+        assertEquals(RoundedDistance.Kilometers(535), pending.distance)
+        // Moving a venue moves its marker for every record at it, so the question carries the count.
         assertEquals(12, pending.movedRecords)
+        assertEquals("鼎泰豐 信義店", pending.sharedName)
         assertEquals(dinTaiFung.id, vm.uiState.value.venue?.id)
-        // Nothing has moved yet — the user has not said yes.
-        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertNull(vm.uiState.value.pendingMove)
+        // Nothing is written yet — the user has not answered.
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
     }
 
     @Test
-    fun confirmMove_movesIt_cancelMove_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
-        val confirming = Editor(venues = listOf(dinTaiFung))
-        confirming.venues.recordCounts[dinTaiFung.id] = 2
-        val yes = confirming.viewModel(sharedText = SHARE_TEXT)
-        val cancelling = Editor(venues = listOf(dinTaiFung))
-        cancelling.venues.recordCounts[dinTaiFung.id] = 2
-        val no = cancelling.viewModel(sharedText = SHARE_TEXT)
+    fun anotherBranch_createsANewVenueAtThePin_andSelectsIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerAnotherBranch()
         advanceUntilIdle()
 
-        yes.confirmMove()
-        no.cancelMove()
+        assertNull(vm.uiState.value.pendingStore)
+        val branch = editor.venues.stored.last()
+        assertEquals(2, editor.venues.stored.size)
+        assertEquals("鼎泰豐 信義店", branch.name)
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(branch.lat), requireNotNull(branch.lng)))
+        assertEquals(branch, vm.uiState.value.venue)
+        // The other branch stays exactly where it was.
+        assertEquals(dinTaiFung, editor.venues.stored.first())
+    }
+
+    @Test
+    fun sameStoreMove_movesIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung.copy(address = "舊地址")))
+        editor.venues.recordCounts[dinTaiFung.id] = 2
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerSameStoreMove()
         advanceUntilIdle()
 
-        val moved = confirming.venues.stored.single()
+        assertNull(vm.uiState.value.pendingStore)
+        val moved = editor.venues.stored.single()
+        assertEquals(dinTaiFung.id, moved.id)
         assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
-        assertEquals(moved, yes.uiState.value.venue)
-        assertNull(yes.uiState.value.pendingMove)
-
-        assertEquals(dinTaiFung, cancelling.venues.stored.single())
-        assertEquals(dinTaiFung, no.uiState.value.venue)
-        assertNull(no.uiState.value.pendingMove)
+        // The old address described the old position.
+        assertNull(moved.address)
+        assertEquals(moved, vm.uiState.value.venue)
     }
 
     @Test
-    fun existingVenueFarAwayButUnused_movesWithoutAsking() = runTest(mainRule.testDispatcher.scheduler) {
-        // No record is at it yet, so no marker moves: there is nothing to ask about.
+    fun sameStoreKeep_keepsIt() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(dinTaiFung))
+        editor.venues.recordCounts[dinTaiFung.id] = 2
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        requireNotNull(vm.uiState.value.pendingStore)
+
+        vm.answerSameStoreKeep()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.pendingStore)
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
+        assertEquals(dinTaiFung, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun zeroRecords_stillAsks() = runTest(mainRule.testDispatcher.scheduler) {
+        // Even with no record at it, the user is asked: it may be another branch (#84 moved it silently).
         val editor = Editor(venues = listOf(dinTaiFung))
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
 
-        val moved = dinTaiFung.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
-        assertNull(vm.uiState.value.pendingMove)
-        assertEquals(moved, editor.venues.stored.single())
-        assertEquals(moved, vm.uiState.value.venue)
+        val pending = requireNotNull(vm.uiState.value.pendingStore)
+        assertEquals(dinTaiFung, pending.venue)
+        assertEquals(0, pending.movedRecords)
+        assertEquals(listOf(dinTaiFung), editor.venues.stored)
+        assertEquals(dinTaiFung, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aCreatedOrMovedVenue_getsItsAddressFilled() = runTest(mainRule.testDispatcher.scheduler) {
+        val address = "信義路二段 194號"
+        val creating = Editor()
+        val branching = Editor(venues = listOf(dinTaiFung))
+        val moving = Editor(venues = listOf(dinTaiFung))
+        listOf(creating, branching, moving).forEach { it.lookup.address = address }
+        creating.viewModel(sharedText = SHARE_TEXT)
+        val branched = branching.viewModel(sharedText = SHARE_TEXT)
+        val moved = moving.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        // Asking which store looks nothing up: only what the VM creates or moves gets an address.
+        assertTrue(branching.lookup.asked.isEmpty())
+
+        branched.answerAnotherBranch()
+        moved.answerSameStoreMove()
+        advanceUntilIdle()
+
+        assertEquals(address, creating.venues.stored.single().address)
+        assertEquals(listOf(null, address), branching.venues.stored.map { it.address })
+        assertEquals(address, moving.venues.stored.single().address)
+        assertEquals(listOf(mapsPosition), moving.lookup.asked)
     }
 
     @Test
@@ -527,7 +429,7 @@ class EatTimeEditorViewModelTest {
         val learned = unplaced.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
         assertEquals(learned, editor.venues.stored.single())
         assertEquals(learned, vm.uiState.value.venue)
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
     }
 
     @Test
@@ -582,7 +484,7 @@ class EatTimeEditorViewModelTest {
         advanceUntilIdle()
 
         assertEquals(daHuWu, vm.uiState.value.venue)
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
         assertFalse(vm.uiState.value.resolvingLink)
         assertEquals(listOf(daHuWu, dinTaiFung.copy(id = 2)), editor.venues.stored)
     }
@@ -612,18 +514,20 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun pickingAVenueWhileAskedToMove_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
+    fun pickingAVenueWhileAsked_withdrawsTheQuestion() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu, dinTaiFung.copy(id = 2)))
         editor.venues.recordCounts[2] = 4
         val vm = editor.viewModel(sharedText = SHARE_TEXT)
         advanceUntilIdle()
-        requireNotNull(vm.uiState.value.pendingMove)
+        requireNotNull(vm.uiState.value.pendingStore)
 
         vm.selectVenue(daHuWu)
+        advanceUntilIdle()
 
-        assertNull(vm.uiState.value.pendingMove)
+        assertNull(vm.uiState.value.pendingStore)
         assertEquals(daHuWu, vm.uiState.value.venue)
-        assertEquals(dinTaiFung.copy(id = 2), editor.venues.stored.last()) // not moved
+        // Neither moved nor branched.
+        assertEquals(listOf(daHuWu, dinTaiFung.copy(id = 2)), editor.venues.stored)
     }
 
     @Test
@@ -652,22 +556,30 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
-    fun aMoveAlreadyDeclined_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(venues = listOf(dinTaiFung))
-        editor.venues.recordCounts[dinTaiFung.id] = 5
-        val handle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
-        val before = editor.viewModel(handle = handle)
+    fun anAnsweredQuestion_isNotAskedAgainAfterProcessDeath() = runTest(mainRule.testDispatcher.scheduler) {
+        val keeping = Editor(venues = listOf(dinTaiFung))
+        val branching = Editor(venues = listOf(dinTaiFung))
+        val keepHandle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
+        val branchHandle = SavedStateHandle(mapOf("sharedText" to SHARE_TEXT))
+        val kept = keeping.viewModel(handle = keepHandle)
+        val branched = branching.viewModel(handle = branchHandle)
         advanceUntilIdle()
-        requireNotNull(before.uiState.value.pendingMove)
-        before.cancelMove()
+        kept.answerSameStoreKeep()
+        branched.answerAnotherBranch()
+        advanceUntilIdle()
 
         // The process dies; the route (with its shared text) and the saved state come back.
-        val after = editor.viewModel(handle = handle)
+        val keptAgain = keeping.viewModel(handle = keepHandle)
+        val branchedAgain = branching.viewModel(handle = branchHandle)
         advanceUntilIdle()
 
-        assertEquals(dinTaiFung, after.uiState.value.venue)
-        assertNull(after.uiState.value.pendingMove)
-        assertEquals(dinTaiFung, editor.venues.stored.single())
+        assertNull(keptAgain.uiState.value.pendingStore)
+        assertEquals(dinTaiFung, keptAgain.uiState.value.venue)
+        assertEquals(listOf(dinTaiFung), keeping.venues.stored)
+        // The new branch is at the pin now: it is the one picked, and no third venue appears.
+        assertNull(branchedAgain.uiState.value.pendingStore)
+        assertEquals(2, branching.venues.stored.size)
+        assertEquals(branching.venues.stored.last().id, branchedAgain.uiState.value.venue?.id)
     }
 
     @Test
@@ -681,7 +593,7 @@ class EatTimeEditorViewModelTest {
         val venue = editor.venues.stored.single()
         assertEquals(venue.id, first.uiState.value.venue?.id)
         assertEquals(venue.id, second.uiState.value.venue?.id)
-        assertNull(second.uiState.value.pendingMove)
+        assertNull(second.uiState.value.pendingStore)
     }
 
     @Test

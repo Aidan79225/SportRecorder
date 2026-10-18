@@ -9,12 +9,13 @@ import kotlinx.coroutines.flow.map
 
 /**
  * In-memory [VenueRepository] following the contracts `VenueRepositoryImpl` documents: names are
- * normalized and unique case-insensitively, [observeAll] is most-recently-used first, and
- * [replaceAll] **assigns fresh ids** — the property a restore depends on.
+ * normalized but not unique, [findOrCreate] picks the most recently used same-name venue,
+ * [setPosition] clears the address, [observeAll] is most-recently-used first, and [replaceAll]
+ * **assigns fresh ids** and returns the inserted venues in order — the property a restore depends on.
  *
  * Ids only ever grow, even across [replaceAll] (like Room's AUTOINCREMENT), so a venue that is
- * backed up, wiped and restored comes back with a different id; a test that re-attaches by id
- * instead of by name would therefore fail.
+ * backed up, wiped and restored comes back with a different id; a test that re-attaches by the old
+ * id instead of the returned one would therefore fail. Records are not modelled: [recordCount] is 0.
  */
 class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository {
     private val state = MutableStateFlow(initial)
@@ -28,41 +29,78 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
 
     override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue {
         val normalized = VenueName.normalize(name)
-        val existing = state.value.firstOrNull { VenueName.sameAs(it.name, normalized) }
+        val existing = state.value.filter { VenueName.sameAs(it.name, normalized) }.maxByOrNull { it.lastUsedAt }
         if (existing != null) {
             val learned = if (existing.lat == null && lat != null) {
-                existing.copy(lat = lat, lng = lng, lastUsedAt = now)
+                existing.copy(lat = lat, lng = lng, address = null, lastUsedAt = now)
             } else {
                 existing.copy(lastUsedAt = now)
             }
             replace(learned)
             return learned
         }
-        val created = Venue(id = nextId++, name = normalized, lat = lat, lng = lng, lastUsedAt = now)
+        return create(normalized, lat, lng, now)
+    }
+
+    override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue {
+        val created = Venue(id = nextId++, name = VenueName.normalize(name), lat = lat, lng = lng, lastUsedAt = now)
         state.value = state.value + created
         return created
     }
 
     override suspend fun touch(venueId: Int, now: Long) {
-        state.value.firstOrNull { it.id == venueId }?.let { replace(it.copy(lastUsedAt = now)) }
+        find(venueId)?.let { replace(it.copy(lastUsedAt = now)) }
     }
 
     override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?) {
-        state.value.firstOrNull { it.id == venueId }?.let { replace(it.copy(lat = lat, lng = lng)) }
+        find(venueId)?.takeIf { it.lat != lat || it.lng != lng }
+            ?.let { replace(it.copy(lat = lat, lng = lng, address = null)) }
+    }
+
+    override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean {
+        val venue = find(venueId)?.takeIf { it.lat == lat && it.lng == lng && it.address == null }
+        venue?.let { replace(it.copy(address = address)) }
+        return venue != null
+    }
+
+    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
+        val normalized = VenueName.normalize(name)
+        require(normalized.isNotEmpty()) { "a venue needs a name" }
+        val edited = state.value.first { it.id == venueId }.copy(
+            name = normalized,
+            address = address?.trim()?.ifEmpty { null },
+            lastUsedAt = now,
+        )
+        replace(edited)
+        return edited
+    }
+
+    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
+        require(fromId != intoId) { "cannot merge venue $fromId into itself" }
+        val from = state.value.first { it.id == fromId }
+        val into = state.value.first { it.id == intoId }
+        val survivor = if (into.lat == null && from.lat != null) {
+            into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
+        } else {
+            into.copy(lastUsedAt = now)
+        }
+        state.value = state.value.filterNot { it.id == fromId }.map { if (it.id == intoId) survivor else it }
+        return survivor
+    }
+
+    override suspend fun delete(venueId: Int) {
+        state.value = state.value.filterNot { it.id == venueId }
     }
 
     override suspend fun recordCount(venueId: Int): Int = 0
 
-    override suspend fun rename(venueId: Int, newName: String, now: Long): Venue {
-        val normalized = VenueName.normalize(newName)
-        val renamed = state.value.first { it.id == venueId }.copy(name = normalized, lastUsedAt = now)
-        replace(renamed)
-        return renamed
+    override suspend fun replaceAll(venues: List<Venue>): List<Venue> {
+        val inserted = venues.map { it.copy(id = nextId++, name = VenueName.normalize(it.name)) }
+        state.value = inserted
+        return inserted
     }
 
-    override suspend fun replaceAll(venues: List<Venue>) {
-        state.value = venues.map { it.copy(id = nextId++, name = VenueName.normalize(it.name)) }
-    }
+    private fun find(venueId: Int): Venue? = state.value.firstOrNull { it.id == venueId }
 
     private fun replace(venue: Venue) {
         state.value = state.value.map { if (it.id == venue.id) venue else it }

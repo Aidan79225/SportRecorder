@@ -45,6 +45,7 @@
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string name="insights_map_venues">店家：%1$s</string>
     <string name="insights_map_venues_more">店家：%1$s，另外還有 %2$d 家</string>
+    <string name="insights_venue_with_address">%1$s（%2$s）</string>
     <string name="insights_map_expand_hint">點一下可放大</string>
     <string name="insights_map_close">關閉地圖</string>
     <string-array name="insights_weekday_initials">
@@ -252,16 +253,18 @@
     <string name="editor_venue_pick">選擇店家</string>
     <string name="editor_venue_new">使用「%1$s」</string>
     <string name="editor_venue_clear">清除店家</string>
-    <string name="editor_venue_rename">改名</string>
-    <string name="editor_venue_more">更多選項</string>
     <string name="editor_venue_use_here">用這筆紀錄的位置更新</string>
-    <string name="editor_venue_merge_title">要和「%1$s」合併嗎?</string>
+    <string name="editor_venue_same_name_title">已經有一家「%1$s」了</string>
     <plurals name="editor_venue_merge_body">
         <item quantity="other">有 %1$d 筆紀錄會移到「%2$s」。</item>
     </plurals>
     <string name="editor_venue_position_updated">已更新店家位置</string>
-    <string name="editor_venue_merge_confirm">合併</string>
+    <string name="editor_venue_merge_confirm">合併成同一家</string>
     <string name="editor_venue_resolving">正在讀取地圖連結…</string>
+    <string name="editor_venue_paste">貼上地圖連結</string>
+    <string name="editor_paste_title">貼上地圖連結</string>
+    <string name="editor_paste_hint">把 Google 地圖連結貼在這裡</string>
+    <string name="editor_paste_use">使用</string>
     <string name="editor_link_unreadable">沒辦法讀取這個地圖連結，可以手動選擇店家。</string>
     <string name="editor_not_map_link">這看起來不是 Google 地圖的連結。</string>
     <string name="editor_move_title">要更新「%1$s」的位置嗎？</string>
@@ -270,4 +273,33 @@
     </plurals>
     <string name="editor_move_confirm">更新</string>
     <string name="editor_move_keep">保留</string>
+    <string name="editor_store_title">「%1$s」是同一家嗎？</string>
+    <string name="editor_store_body_at">你存過的「%1$s」在 %2$s，和這個連結的位置相距約 %3$s。</string>
+    <string name="editor_store_body">你存過的「%1$s」和這個連結的位置相距約 %2$s。</string>
+    <string name="distance_meters">%1$d 公尺</string>
+    <string name="distance_kilometers">%1$s 公里</string>
+    <string name="editor_store_branch">是另一家分店</string>
+    <plurals name="editor_store_move">
+        <item quantity="other">同一家，更新位置（%1$d 筆紀錄會跟著移動）</item>
+    </plurals>
+    <string name="editor_store_move_none">同一家，更新位置</string>
+    <string name="editor_store_keep">同一家，位置不變</string>
+    <string name="venue_no_position">沒有位置</string>
+    <string name="editor_venue_edit">編輯店家</string>
+    <string name="editor_venue_edit_named">編輯「%1$s」</string>
+    <string name="editor_venue_name">店名</string>
+    <string name="editor_venue_address">地址</string>
+    <string name="editor_venue_position">位置：%1$s, %2$s</string>
+    <plurals name="editor_venue_records">
+        <item quantity="other">%1$d 筆紀錄</item>
+    </plurals>
+    <string name="editor_venue_use_link">貼上地圖連結更新</string>
+    <string name="editor_venue_delete">刪除</string>
+    <string name="editor_venue_save">儲存</string>
+    <string name="editor_delete_title">要刪除「%1$s」嗎？</string>
+    <plurals name="editor_delete_body">
+        <item quantity="other">有 %1$d 筆紀錄用了這家店。刪除後，這些紀錄還在，只是店家會變成「未設定」。</item>
+    </plurals>
+    <string name="editor_venue_merge_keep">兩家都保留</string>
+    <string name="editor_venue_merge_where">那一家在 %1$s。</string>
 </resources>

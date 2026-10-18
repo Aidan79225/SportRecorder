@@ -45,6 +45,7 @@
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string name="insights_map_venues">Venues: %1$s</string>
     <string name="insights_map_venues_more">Venues: %1$s and %2$d more</string>
+    <string name="insights_venue_with_address">%1$s (%2$s)</string>
     <string name="insights_map_expand_hint">Tap to enlarge</string>
     <string name="insights_map_close">Close map</string>
     <string-array name="insights_weekday_initials">
@@ -252,17 +253,19 @@
     <string name="editor_venue_pick">Choose a place</string>
     <string name="editor_venue_new">Use "%1$s"</string>
     <string name="editor_venue_clear">Clear place</string>
-    <string name="editor_venue_rename">Rename</string>
-    <string name="editor_venue_more">More options</string>
     <string name="editor_venue_use_here">Set its position from this record</string>
-    <string name="editor_venue_merge_title">Merge with "%1$s"?</string>
+    <string name="editor_venue_same_name_title">There's already a %1$s</string>
     <plurals name="editor_venue_merge_body">
         <item quantity="one">%1$d record will move to "%2$s".</item>
         <item quantity="other">%1$d records will move to "%2$s".</item>
     </plurals>
     <string name="editor_venue_position_updated">Place position updated</string>
-    <string name="editor_venue_merge_confirm">Merge</string>
+    <string name="editor_venue_merge_confirm">Merge into one</string>
     <string name="editor_venue_resolving">Reading the map link…</string>
+    <string name="editor_venue_paste">Paste a map link</string>
+    <string name="editor_paste_title">Paste a map link</string>
+    <string name="editor_paste_hint">Paste a Google Maps link here</string>
+    <string name="editor_paste_use">Use</string>
     <string name="editor_link_unreadable">Couldn't read this map link — you can choose a place.</string>
     <string name="editor_not_map_link">This doesn't look like a Google Maps link.</string>
     <string name="editor_move_title">Update %1$s's position?</string>
@@ -272,4 +275,36 @@
     </plurals>
     <string name="editor_move_confirm">Update</string>
     <string name="editor_move_keep">Keep</string>
+    <string name="editor_store_title">Is this the same %1$s?</string>
+    <string name="editor_store_body_at">The %1$s you saved is at %2$s, about %3$s from this link.</string>
+    <string name="editor_store_body">The %1$s you saved is about %2$s from this link.</string>
+    <string name="distance_meters">%1$d m</string>
+    <string name="distance_kilometers">%1$s km</string>
+    <string name="editor_store_branch">It's another branch</string>
+    <plurals name="editor_store_move">
+        <item quantity="one">Same place — update its position (%1$d past record will move)</item>
+        <item quantity="other">Same place — update its position (%1$d past records will move)</item>
+    </plurals>
+    <string name="editor_store_move_none">Same place — update its position</string>
+    <string name="editor_store_keep">Same place — keep its position</string>
+    <string name="venue_no_position">No position</string>
+    <string name="editor_venue_edit">Edit place</string>
+    <string name="editor_venue_edit_named">Edit %1$s</string>
+    <string name="editor_venue_name">Name</string>
+    <string name="editor_venue_address">Address</string>
+    <string name="editor_venue_position">Position: %1$s, %2$s</string>
+    <plurals name="editor_venue_records">
+        <item quantity="one">%1$d record</item>
+        <item quantity="other">%1$d records</item>
+    </plurals>
+    <string name="editor_venue_use_link">Update from a map link</string>
+    <string name="editor_venue_delete">Delete</string>
+    <string name="editor_venue_save">Save</string>
+    <string name="editor_delete_title">Delete %1$s?</string>
+    <plurals name="editor_delete_body">
+        <item quantity="one">%1$d record uses this place. It stays — its place just becomes "Not set".</item>
+        <item quantity="other">%1$d records use this place. They stay — their place just becomes "Not set".</item>
+    </plurals>
+    <string name="editor_venue_merge_keep">Keep both</string>
+    <string name="editor_venue_merge_where">That one is at %1$s.</string>
 </resources>

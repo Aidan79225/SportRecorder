@@ -5,10 +5,13 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Room row for a venue. The domain type is `domain.model.Venue`. */
+/**
+ * Room row for a venue. The domain type is `domain.model.Venue`. The name index is for lookup
+ * only: branches of a chain share a name (#89).
+ */
 @Entity(
     tableName = VenueEntity.tableName,
-    indices = [Index(value = ["name"], unique = true)],
+    indices = [Index(value = ["name"])],
 )
 data class VenueEntity(
     @PrimaryKey(autoGenerate = true)
@@ -26,6 +29,9 @@ data class VenueEntity(
 
     @ColumnInfo(name = "last_used_at")
     val lastUsedAt: Long,
+
+    @ColumnInfo(name = "address")
+    val address: String? = null,
 ) {
     companion object {
         const val tableName = "venue"

@@ -47,8 +47,13 @@ import com.crazystudio.sportrecorder.domain.usecase.QuickRecordMealUseCase
 import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
+import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
+import com.crazystudio.sportrecorder.platform.AddressLookup
+import com.crazystudio.sportrecorder.platform.AndroidClipboardReader
 import com.crazystudio.sportrecorder.platform.AndroidLocationProvider
 import com.crazystudio.sportrecorder.platform.AndroidPhotoImporter
+import com.crazystudio.sportrecorder.platform.ClipboardReader
+import com.crazystudio.sportrecorder.platform.GeocoderAddressLookup
 import com.crazystudio.sportrecorder.platform.LocationProvider
 import com.crazystudio.sportrecorder.platform.MapsLinkResolver
 import com.crazystudio.sportrecorder.platform.OkHttpMapsLinkResolver
@@ -95,8 +100,11 @@ val appModule = module {
     single<PhotoFileStore> { AndroidPhotoFileStore(androidContext()) }
     single<PhotoImageSource> { AndroidPhotoImageSource(androidContext()) }
     single<LocationProvider> { AndroidLocationProvider(androidContext()) }
+    single<AddressLookup> { GeocoderAddressLookup(androidContext()) }
+    single { VenueAddressFiller(get(), get()) }
     single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
     single<MapsLinkResolver> { OkHttpMapsLinkResolver(OkHttpClient()) }
+    single<ClipboardReader> { AndroidClipboardReader(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
     single<FastingTypeRepository> { FastingTypeRepositoryImpl(get(), get()) }
@@ -142,6 +150,6 @@ val appModule = module {
     viewModel { SettingsViewModel(get(), get()) }
     viewModel { SelectFastingTypeViewModel(get(), get()) }
     viewModel { CreateFastingTypeViewModel(get()) }
-    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { BackupViewModel(get(), get(), get(), get(), get(), get()) }
 }

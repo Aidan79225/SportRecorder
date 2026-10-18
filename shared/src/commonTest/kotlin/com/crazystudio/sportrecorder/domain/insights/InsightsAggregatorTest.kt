@@ -405,6 +405,29 @@ class InsightsAggregatorTest {
         assertEquals(setOf("A", "B"), result.locations.map { it.name }.toSet())
     }
 
+    /** Branches share a name but not an id: each is its own marker, and each carries where it is. */
+    @Test fun twoBranches_stayTwoMarkersWithTheirAddresses() {
+        val now = at(2026, 3, 15, 12)
+        val xinyi = Venue(id = 1, name = "麥當勞", lat = 25.03, lng = 121.56, lastUsedAt = 1L, address = "信義路")
+        val zhongxiao = Venue(id = 2, name = "麥當勞", lat = 25.04, lng = 121.54, lastUsedAt = 1L, address = "忠孝東路")
+        val result = InsightsAggregator.compute(
+            listOf(
+                rec(at(2026, 3, 10, 12)).copy(venue = xinyi),
+                rec(at(2026, 3, 11, 12)).copy(venue = zhongxiao),
+                rec(at(2026, 3, 12, 12)).copy(venue = zhongxiao),
+            ),
+            settings, now, Period.MONTH, now, zone,
+        )
+
+        assertEquals(
+            listOf(
+                LocationCount(25.04, 121.54, 2, "麥當勞", "忠孝東路"),
+                LocationCount(25.03, 121.56, 1, "麥當勞", "信義路"),
+            ),
+            result.locations,
+        )
+    }
+
     @Test fun compute_lateNightMealIsOneDayEverywhere() {
         val now = at(2026, 3, 15, 12)
         val records = listOf(rec(at(2026, 3, 12, 20)), rec(at(2026, 3, 13, 0, 30)))

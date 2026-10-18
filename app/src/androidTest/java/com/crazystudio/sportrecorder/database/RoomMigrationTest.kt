@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.useReaderConnection
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.crazystudio.sportrecorder.entity.VenueEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -84,7 +85,7 @@ class RoomMigrationTest {
         assertNull(records[0].eatTime.note)
         assertTrue(records[0].photos.isEmpty())
         assertTrue(migrated.getFastingTypeDao().flowLast(10).first().isEmpty())
-        assertEquals(8, migrated.userVersion())
+        assertEquals(9, migrated.userVersion())
     }
 
     @Test fun v3_toCurrent_dropsFoodRecord_andAddsFastingTypeName() = runBlocking {
@@ -117,7 +118,7 @@ class RoomMigrationTest {
         assertEquals(18L, types[0].fastingHours)
         assertNull(types[0].name)
         assertEquals(2000L, migrated.getEatTimeDao().flowAll().first().single().time)
-        assertEquals(8, migrated.userVersion())
+        assertEquals(9, migrated.userVersion())
     }
 
     @Test fun v4_toCurrent_keepsPhotoRelation() = runBlocking {
@@ -152,7 +153,7 @@ class RoomMigrationTest {
         assertNull(record.eatTime.note)
         assertEquals(listOf("a.webp"), record.photos.map { it.fileName })
         assertEquals(7L, record.photos.single().createdAt)
-        assertEquals(8, migrated.userVersion())
+        assertEquals(9, migrated.userVersion())
     }
 
     @Test fun migrates7to8_keepsRowsAndAcceptsTheNewSchema() = runBlocking {
@@ -180,6 +181,43 @@ class RoomMigrationTest {
         assertNull(records.single().venueId)
         // And the new table is there and usable.
         assertTrue(opened.getVenueDao().flowAll().first().isEmpty())
-        assertEquals(8, opened.userVersion())
+        assertEquals(9, opened.userVersion())
+    }
+
+    @Test fun migrates8to9_keepsVenuesAndAllowsSameNames() = runBlocking {
+        createLegacy(
+            version = 8,
+            ddl = listOf(
+                "CREATE TABLE IF NOT EXISTS `eat_time` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`time` INTEGER NOT NULL, `lat` REAL, `lng` REAL, `note` TEXT, `venue_id` INTEGER)",
+                "CREATE TABLE IF NOT EXISTS `fasting_type` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`fasting_hours` INTEGER NOT NULL DEFAULT 0, `eating_hours` INTEGER NOT NULL DEFAULT 0, " +
+                    "`timestamp` INTEGER NOT NULL DEFAULT 0, `name` TEXT)",
+                "CREATE TABLE IF NOT EXISTS `photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`eat_time_id` INTEGER NOT NULL, `file_name` TEXT NOT NULL, " +
+                    "`created_at` INTEGER NOT NULL DEFAULT 0)",
+                "CREATE TABLE IF NOT EXISTS `venue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `lat` REAL, `lng` REAL, `last_used_at` INTEGER NOT NULL DEFAULT 0)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_venue_name` ON `venue` (`name`)",
+            ),
+            seed = listOf(
+                "INSERT INTO `venue` (`id`, `name`, `lat`, `lng`, `last_used_at`) " +
+                    "VALUES (1, '麥當勞', 25.03, 121.56, 5)",
+                "INSERT INTO `eat_time` (`time`, `venue_id`) VALUES (222, 1)",
+            ),
+        )
+
+        val opened = openMigrated()
+
+        assertEquals(1, opened.getEatTimeDao().flowAll().first().single().venueId)
+        val kept = opened.getVenueDao().findById(1)!!
+        assertEquals("麥當勞", kept.name)
+        assertEquals(25.03, kept.lat!!, 0.0)
+        assertNull(kept.address)
+        // The unique index is gone: a second branch with the same name is a new row.
+        val second = opened.getVenueDao().insert(VenueEntity(name = "麥當勞", lastUsedAt = 6L))
+        assertTrue(second > 1L)
+        assertEquals(2, opened.getVenueDao().flowAll().first().size)
+        assertEquals(9, opened.userVersion())
     }
 }

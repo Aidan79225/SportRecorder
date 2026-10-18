@@ -62,6 +62,28 @@ class MarkerClustersTest {
         assertEquals("大戶屋", clusters.single().name)
     }
 
+    /** Two branches with one label merged into one marker: the name is true of both, so it stays. */
+    @Test fun sameLabelBranches_inOneCluster_keepTheLabel() {
+        val clusters = clusterPlaces(
+            listOf(LocationCount(25.0340, 121.5645, 2, "麥當勞"), LocationCount(25.03401, 121.56451, 1, "麥當勞")),
+            viewport, 40f,
+        )
+        assertEquals(listOf("麥當勞"), clusters.map { it.name })
+        assertEquals(3, clusters.single().count)
+    }
+
+    /** Branches told apart by address carry different labels, so a merged marker names neither. */
+    @Test fun differentlyLabelledBranches_inOneCluster_haveNoSingleName() {
+        val clusters = clusterPlaces(
+            listOf(
+                LocationCount(25.0340, 121.5645, 2, "麥當勞（信義路）"),
+                LocationCount(25.03401, 121.56451, 1, "麥當勞（忠孝東路）"),
+            ),
+            viewport, 40f,
+        )
+        assertEquals(listOf<String?>(null), clusters.map { it.name })
+    }
+
     @Test fun anonymousSeed_absorbingANamedVenue_stillKeepsTheName() {
         val clusters = clusterPlaces(
             listOf(place(25.0340, 121.5645, 5), LocationCount(25.03401, 121.56451, 1, "大戶屋")),

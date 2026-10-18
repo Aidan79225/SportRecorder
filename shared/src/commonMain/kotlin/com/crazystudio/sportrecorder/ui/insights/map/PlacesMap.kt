@@ -18,10 +18,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.domain.insights.LocationCount
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.insights_map_expand_hint
 import com.crazystudio.sportrecorder.shared.resources.insights_map_venues
 import com.crazystudio.sportrecorder.shared.resources.insights_map_venues_more
+import com.crazystudio.sportrecorder.shared.resources.insights_venue_with_address
 import org.jetbrains.compose.resources.stringResource
 
 private val MAP_HEIGHT = 220.dp
@@ -45,13 +47,45 @@ internal fun describedVenueNames(
 }
 
 /**
+ * What each location is called on the map: its name, or `withAddress(name, address)` when another
+ * location has the same name (`VenueName.sameAs`) and this one's address is known and differs — two
+ * branches of one chain are told apart by where they are. Same names with no address to tell them
+ * apart stay as they are; null for an anonymous point.
+ */
+internal fun venueLabels(
+    locations: List<LocationCount>,
+    withAddress: (name: String, address: String) -> String,
+): List<String?> = locations.mapIndexed { i, place ->
+    val name = place.name
+    val address = place.address
+    val isOneOfSeveral = name != null && address != null && locations.withIndex().any { (j, other) ->
+        j != i && other.name != null && VenueName.sameAs(other.name, name) && other.address != address
+    }
+    if (isOneOfSeveral) withAddress(checkNotNull(name), checkNotNull(address)) else name
+}
+
+/** [locations] with each name replaced by its [venueLabels] label, so pills and description agree. */
+@Composable
+internal fun labeledLocations(locations: List<LocationCount>): List<LocationCount> {
+    // stringResource is composable, so the few strings that might be needed are formatted up front.
+    val formatted = locations
+        .mapNotNull { place -> place.name?.let { name -> place.address?.let { name to it } } }
+        .distinct()
+        .associateWith { (name, address) -> stringResource(Res.string.insights_venue_with_address, name, address) }
+    return remember(locations, formatted) {
+        val labels = venueLabels(locations) { name, address -> formatted.getValue(name to address) }
+        locations.zip(labels) { place, label -> place.copy(name = label) }
+    }
+}
+
+/**
  * The map's text equivalent: [summary], plus, when any marker carries a venue's name, the
  * biggest few names (and how many more), so a screen reader hears what a sighted user reads off
  * the map without a long list on every focus. With no named venue this is [summary] unchanged.
  */
 @Composable
 internal fun placesMapDescription(summary: String, locations: List<LocationCount>): String {
-    val (names, more) = describedVenueNames(locations)
+    val (names, more) = describedVenueNames(labeledLocations(locations))
     if (names.isEmpty()) return summary
     val joined = names.joinToString(NAME_SEPARATOR)
     val venues = if (more == 0) {
@@ -80,6 +114,7 @@ fun PlacesMap(
     onClick: (() -> Unit)? = null,
 ) {
     val density = LocalDensity.current
+    val labeled = labeledLocations(locations)
     val description = if (onClick == null) {
         contentDescription
     } else {
@@ -110,8 +145,8 @@ fun PlacesMap(
             )
         }
         if (viewport != null) {
-            val clusters = remember(locations, viewport, mergeDistancePx) {
-                clusterPlaces(locations, viewport, mergeDistancePx)
+            val clusters = remember(labeled, viewport, mergeDistancePx) {
+                clusterPlaces(labeled, viewport, mergeDistancePx)
             }
             TileLayer(remember(viewport) { viewport.tiles() })
             ClusterMarkers(viewport, clusters)

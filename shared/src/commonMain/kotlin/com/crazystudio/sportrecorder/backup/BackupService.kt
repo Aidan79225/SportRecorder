@@ -114,18 +114,17 @@ class BackupService(
     }
 
     private suspend fun apply(doc: BackupDocument) {
-        // Venues first. Meals reference their venue by NAME because a restore does not preserve
-        // ids: Room hands out fresh ones. So insert the venues, read them back to learn the ids
-        // they have on THIS device, and attach those objects to the meals before they are written
-        // — the venueId stored on each meal then always points at a venue that exists here.
-        venueRepo.replaceAll(doc.venues.map { Venue(0, it.name, it.lat, it.lng, it.lastUsedAt) })
-        val local = venueRepo.observeAll().first()
+        // Venues first. Meals reference their venue by a per-snapshot key (or, in schema 1, by NAME)
+        // because a restore does not preserve ids: Room hands out fresh ones. replaceAll returns the
+        // inserted venues in order, so zipping them with the snapshot's venues maps each key to the
+        // venue as it exists on THIS device — the venueId stored on each meal then always points at
+        // a venue that exists here, even when two branches share a name.
+        val local = venueRepo.replaceAll(
+            doc.venues.map { Venue(0, it.name, it.lat, it.lng, it.lastUsedAt, it.address) },
+        )
+        val byKey = doc.venues.zip(local).mapNotNull { (backed, venue) -> backed.key?.let { it to venue } }.toMap()
         eatRepo.replaceAll(
-            doc.meals.map { meal ->
-                // A name the snapshot's venues do not list yields no venue, never a dangling id.
-                val venue = meal.venueName?.let { name -> local.firstOrNull { VenueName.sameAs(it.name, name) } }
-                meal.toDomain().copy(venue = venue)
-            },
+            doc.meals.map { meal -> meal.toDomain().copy(venue = venueFor(meal, byKey, local)) },
         )
         fastingRepo.replaceAllCustom(doc.fastingTypes.map { it.toDomain() })
         settingsRepo.setSelection(
@@ -139,6 +138,17 @@ class BackupService(
         prefsRepo.setQuietHours(prefs.quietStartMinutes, prefs.quietEndMinutes)
         rescheduler.reschedule()
     }
+
+    /**
+     * The key wins; the name is only for schema-1 snapshots, which carry none. Anything the snapshot's
+     * venues do not list yields no venue, never a dangling id.
+     */
+    private fun venueFor(meal: BackupMeal, byKey: Map<String, Venue>, local: List<Venue>): Venue? =
+        if (meal.venueKey != null) {
+            byKey[meal.venueKey]
+        } else {
+            meal.venueName?.let { name -> local.firstOrNull { VenueName.sameAs(it.name, name) } }
+        }
 
     companion object {
         /**

@@ -1,0 +1,187 @@
+package com.crazystudio.sportrecorder.ui.diet.editor
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
+import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit_named
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_body
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_keep
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_where
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_name
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_position
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_records
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_same_name_title
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_save
+import com.crazystudio.sportrecorder.shared.resources.venue_no_position
+import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.PluralStringResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
+import org.jetbrains.compose.resources.getString
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Renders [VenuePickerSheet] directly over a recording [VenuePickerActions]: the rows' address
+ * lines, the ✎ edit dialog, the delete confirmation and the merge-or-keep question (#89).
+ */
+@RunWith(AndroidJUnit4::class)
+class VenuePickerSheetTest {
+    @get:Rule val compose = createComposeRule()
+
+    private val actions = RecordingActions()
+
+    private val placed = Venue(
+        id = 1, name = "鼎泰豐 信義店", lat = 25.0335035, lng = 121.530118, lastUsedAt = 3L, address = "信義路二段 194 號",
+    )
+    private val unplaced = Venue(id = 2, name = "大戶屋", lat = null, lng = null, lastUsedAt = 2L)
+    private val waiting = Venue(id = 3, name = "一蘭", lat = 25.0418, lng = 121.5503, lastUsedAt = 1L)
+
+    private var state by mutableStateOf(EatTimeEditorUiState(venueOptions = listOf(placed, unplaced, waiting)))
+
+    private fun str(res: StringResource, vararg args: Any) = runBlocking { getString(res, *args) }
+
+    private fun plural(res: PluralStringResource, quantity: Int, vararg more: Any) =
+        runBlocking { getPluralString(res, quantity, quantity, *more) }
+
+    private fun show() {
+        compose.setContent {
+            SportRecorderTheme {
+                VenuePickerSheet(state = state, actions = actions, onDismiss = {})
+            }
+        }
+    }
+
+    @Test
+    fun aRowShowsTheAddress_orNoPosition() {
+        show()
+
+        compose.onNodeWithText(placed.name).assertIsDisplayed()
+        compose.onNodeWithText("信義路二段 194 號").assertIsDisplayed()
+        // Neither address nor position says so; one still waiting for its lookup shows its name alone.
+        compose.onAllNodesWithText(str(Res.string.venue_no_position)).assertCountEquals(1)
+        compose.onNodeWithText(unplaced.name).assertIsDisplayed()
+        compose.onNodeWithText(waiting.name).assertIsDisplayed()
+    }
+
+    @Test
+    fun thePencilOpensTheEditDialog() {
+        actions.records = 12
+        show()
+
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+
+        compose.onNodeWithText(str(Res.string.editor_venue_edit)).assertIsDisplayed()
+        val position = str(Res.string.editor_venue_position, "25.0335", "121.5301")
+        compose.onNodeWithText("$position · ${plural(Res.plurals.editor_venue_records, 12)}").assertIsDisplayed()
+        // The drafts: a blank name cannot be saved, a real one is handed over with the address.
+        val nameField = compose.onNode(hasText(str(Res.string.editor_venue_name)) and hasSetTextAction())
+        nameField.assert(hasText(placed.name))
+        nameField.performTextReplacement("  ")
+        saveButton().assertIsNotEnabled()
+        nameField.performTextReplacement("鼎泰豐 101 店")
+        saveButton().performClick()
+
+        assertEquals(listOf(Triple(placed, "鼎泰豐 101 店", "信義路二段 194 號")), actions.saved)
+        compose.onAllNodesWithText(str(Res.string.editor_venue_edit)).assertCountEquals(0)
+    }
+
+    @Test
+    fun deleteConfirmation_mentionsTheRecordCount() {
+        show()
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, unplaced.name)).performClick()
+        compose.onNodeWithText(str(Res.string.editor_venue_delete)).performClick()
+        assertEquals(listOf(unplaced), actions.deleteRequests)
+
+        state = state.copy(pendingDelete = EatTimeEditorUiState.PendingDelete(unplaced, records = 12))
+        compose.onNodeWithText(str(Res.string.editor_delete_title, unplaced.name)).assertIsDisplayed()
+        compose.onNodeWithText(plural(Res.plurals.editor_delete_body, 12)).assertIsDisplayed()
+
+        // With no record at it, only the question is asked.
+        state = state.copy(pendingDelete = EatTimeEditorUiState.PendingDelete(unplaced, records = 0))
+        compose.onNodeWithText(str(Res.string.editor_delete_title, unplaced.name)).assertIsDisplayed()
+        compose.onAllNodesWithText(plural(Res.plurals.editor_delete_body, 0)).assertCountEquals(0)
+    }
+
+    @Test
+    fun mergeOrKeep_namesTheOtherOne_andWhereItIs() {
+        val pending = EatTimeEditorUiState.PendingMerge(
+            from = unplaced,
+            into = placed,
+            movedRecords = 0,
+            newName = placed.name,
+            newAddress = null,
+        )
+        state = state.copy(pendingMerge = pending)
+        show()
+
+        compose.onNodeWithText(str(Res.string.editor_venue_same_name_title, placed.name)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.editor_venue_merge_where, "信義路二段 194 號")).assertIsDisplayed()
+        // No record would move: the count is not said.
+        compose.onAllNodesWithText(plural(Res.plurals.editor_venue_merge_body, 0, placed.name)).assertCountEquals(0)
+        compose.onNodeWithText(str(Res.string.editor_venue_merge_keep)).performClick()
+        assertEquals(1, actions.keptBoth)
+
+        state = state.copy(pendingMerge = pending.copy(movedRecords = 4))
+        compose.onNodeWithText(plural(Res.plurals.editor_venue_merge_body, 4, placed.name)).assertIsDisplayed()
+    }
+
+    private fun saveButton() = compose.onNode(hasText(str(Res.string.editor_venue_save)) and hasClickAction())
+
+    /** Records what the picker asks for; answers [records] for every venue's record count. */
+    private class RecordingActions : VenuePickerActions {
+        var records = 0
+        val saved = mutableListOf<Triple<Venue, String, String?>>()
+        val deleteRequests = mutableListOf<Venue>()
+        var keptBoth = 0
+
+        override fun selectVenue(venue: Venue) = Unit
+        override fun createVenue(name: String) = Unit
+        override suspend fun pasteMapsLink() = false
+        override fun pasteText(text: String) = Unit
+        override fun dismissPasteDialog() = Unit
+        override fun consumeMessage() = Unit
+        override suspend fun recordCount(venue: Venue) = records
+        override fun useThisPositionFor(venue: Venue) = Unit
+        override suspend fun repositionFromClipboard(venue: Venue) = false
+        override fun closeVenueEdit() = Unit
+        override fun confirmMove() = Unit
+        override fun cancelMove() = Unit
+        override fun saveVenue(venue: Venue, name: String, address: String?) {
+            saved += Triple(venue, name, address)
+        }
+        override fun mergeVenues() = Unit
+        override fun keepBothVenues() {
+            keptBoth++
+        }
+        override fun cancelMerge() = Unit
+        override fun requestDelete(venue: Venue) {
+            deleteRequests += venue
+        }
+        override fun confirmDelete() = Unit
+        override fun cancelDelete() = Unit
+    }
+}

@@ -6,6 +6,10 @@ package com.crazystudio.sportrecorder.domain.model
  *
  * A venue is NOT where the user was: that stays on [EatRecord.location]. Takeaway eaten at home is
  * "at home + that restaurant", and both facts are kept.
+ *
+ * Names are not unique: two branches of a chain are two venues with the same [name], told apart by
+ * [address] (#89). Identity is [id]. [address] is a short human-readable line, null when unknown;
+ * it describes the current position, so moving the venue clears it.
  */
 data class Venue(
     val id: Int,
@@ -13,6 +17,7 @@ data class Venue(
     val lat: Double?,
     val lng: Double?,
     val lastUsedAt: Long,
+    val address: String? = null,
 )
 
 /** How two venue names are compared and stored. Pure, so it is identical on every platform. */
@@ -39,7 +44,10 @@ object VenueName {
         return result.toString()
     }
 
-    /** Uniqueness is case-insensitive: `Starbucks` and `starbucks` are one venue. */
+    /**
+     * Whether two names are the same name, case-insensitively: `Starbucks` and `starbucks`. Since
+     * #89 the same name no longer means the same venue (branches share a name).
+     */
     fun sameAs(a: String, b: String): Boolean =
         normalize(a).equals(normalize(b), ignoreCase = true)
 }
