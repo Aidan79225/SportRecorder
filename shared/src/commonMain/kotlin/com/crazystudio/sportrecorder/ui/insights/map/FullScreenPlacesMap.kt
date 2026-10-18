@@ -68,7 +68,7 @@ fun FullScreenPlacesMap(
     ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant)) {
             ZoomableMap(
-                locations = locations,
+                locations = labeledLocations(locations),
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
             )

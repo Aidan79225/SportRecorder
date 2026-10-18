@@ -149,7 +149,13 @@ object InsightsAggregator {
             .groupBy { it.venue!!.id }
             .map { (_, visits) ->
                 val venue = visits.first().venue!!
-                LocationCount(lat = venue.lat!!, lng = venue.lng!!, count = visits.size, name = venue.name)
+                LocationCount(
+                    lat = venue.lat!!,
+                    lng = venue.lng!!,
+                    count = visits.size,
+                    name = venue.name,
+                    address = venue.address,
+                )
             }
 
         val pointLocations = elsewhere

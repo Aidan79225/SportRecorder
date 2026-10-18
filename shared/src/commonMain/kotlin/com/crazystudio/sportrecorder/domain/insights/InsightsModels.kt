@@ -78,7 +78,13 @@ data class InsightsStats(
  * **and** that venue knows where it is; null means an anonymous point at the record's own
  * coordinates — which is what every record was before venues existed.
  */
-data class LocationCount(val lat: Double, val lng: Double, val count: Int, val name: String? = null)
+data class LocationCount(
+    val lat: Double,
+    val lng: Double,
+    val count: Int,
+    val name: String? = null,
+    val address: String? = null,
+)
 
 /**
  * Neutral summary of the period the calendar is showing: how many days hold a record, and how

@@ -45,6 +45,7 @@
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string name="insights_map_venues">店家：%1$s</string>
     <string name="insights_map_venues_more">店家：%1$s，另外還有 %2$d 家</string>
+    <string name="insights_venue_with_address">%1$s（%2$s）</string>
     <string name="insights_map_expand_hint">點一下可放大</string>
     <string name="insights_map_close">關閉地圖</string>
     <string-array name="insights_weekday_initials">

@@ -45,6 +45,7 @@
     <string name="insights_map_attribution">© OpenStreetMap contributors</string>
     <string name="insights_map_venues">Venues: %1$s</string>
     <string name="insights_map_venues_more">Venues: %1$s and %2$d more</string>
+    <string name="insights_venue_with_address">%1$s (%2$s)</string>
     <string name="insights_map_expand_hint">Tap to enlarge</string>
     <string name="insights_map_close">Close map</string>
     <string-array name="insights_weekday_initials">

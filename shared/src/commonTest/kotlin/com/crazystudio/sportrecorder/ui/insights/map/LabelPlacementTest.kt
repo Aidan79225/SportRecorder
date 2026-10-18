@@ -96,4 +96,35 @@ class LabelPlacementTest {
     @Test fun describedVenueNames_fewNamesAreAllListed() {
         assertEquals(listOf("a") to 0, describedVenueNames(listOf(LocationCount(1.0, 1.0, 1, "a"), LocationCount(2.0, 2.0, 1))))
     }
+
+    private fun branch(name: String?, address: String?) = LocationCount(25.0, 121.0, 1, name, address)
+
+    private fun labels(vararg locations: LocationCount) =
+        venueLabels(locations.toList()) { name, address -> "$name ($address)" }
+
+    @Test fun uniqueNames_areUnchanged() {
+        assertEquals(
+            listOf("a", "b", null),
+            labels(branch("a", "x road"), branch("b", "y road"), branch(null, null)),
+        )
+    }
+
+    @Test fun sameNames_getTheirAddresses() {
+        assertEquals(
+            listOf("m (x road)", "M (y road)", "other"),
+            labels(branch("m", "x road"), branch("M", "y road"), branch("other", "z road")),
+        )
+    }
+
+    @Test fun sameNames_withoutAddresses_areUnchanged() {
+        assertEquals(listOf("m", "m"), labels(branch("m", null), branch("m", null)))
+    }
+
+    @Test fun sameNames_withTheSameAddress_areUnchanged() {
+        assertEquals(listOf("m", "m"), labels(branch("m", "x road"), branch("m", "x road")))
+    }
+
+    @Test fun sameNames_onlyTheOneWithAnAddressIsLabelled() {
+        assertEquals(listOf("m (x road)", "m"), labels(branch("m", "x road"), branch("m", null)))
+    }
 }
