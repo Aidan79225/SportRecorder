@@ -44,18 +44,10 @@ class VenueRepositoryImpl(
     override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue =
         insertNew(VenueName.normalize(name), lat, lng, now)
 
-    override suspend fun touch(venueId: Int, now: Long) {
-        val row = venueDao.findById(venueId) ?: return
-        venueDao.update(row.copy(lastUsedAt = now))
-    }
+    override suspend fun touch(venueId: Int, now: Long) = venueDao.setLastUsedAt(id = venueId, now = now)
 
-    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?) {
-        val row = venueDao.findById(venueId) ?: return
-        // Re-applying the same position is not a move, so it keeps the address.
-        if (row.lat != lat || row.lng != lng) {
-            venueDao.update(row.copy(lat = lat, lng = lng, address = null))
-        }
-    }
+    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?) =
+        venueDao.setPosition(id = venueId, lat = lat, lng = lng)
 
     override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean =
         venueDao.setAddressIfUnchanged(id = venueId, lat = lat, lng = lng, address = address) > 0
@@ -63,10 +55,14 @@ class VenueRepositoryImpl(
     override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
         val normalized = VenueName.normalize(name)
         require(normalized.isNotEmpty()) { "a venue needs a name" }
-        val row = venueDao.findById(venueId) ?: error("venue $venueId is gone")
-        val edited = row.copy(name = normalized, address = address?.trim()?.ifEmpty { null }, lastUsedAt = now)
-        venueDao.update(edited)
-        return edited.toDomain()
+        val written = venueDao.setNameAndAddress(
+            id = venueId,
+            name = normalized,
+            address = address?.trim()?.ifEmpty { null },
+            now = now,
+        )
+        check(written > 0) { "venue $venueId is gone" }
+        return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
     }
 
     override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {

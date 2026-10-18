@@ -115,6 +115,27 @@ class VenueRepositoryTest {
         assertNull("the old address described the old position", moved.address)
     }
 
+    @Test fun setPosition_toTheSameCoordinates_keepsTheAddress() = runBlocking {
+        val v = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
+        repo.edit(v.id, "麥當勞", address = "信義路二段 194 號", now = 2L)
+
+        repo.setPosition(v.id, lat = 25.03, lng = 121.56)
+
+        val same = repo.observeAll().first().single()
+        assertEquals(25.03, same.lat!!, 0.0)
+        assertEquals("re-applying the same position is not a move", "信義路二段 194 號", same.address)
+    }
+
+    @Test fun setPosition_fromNoPosition_placesTheVenue() = runBlocking {
+        val v = repo.create("麥當勞", lat = null, lng = null, now = 1L)
+
+        repo.setPosition(v.id, lat = 25.03, lng = 121.56)
+
+        val placed = repo.observeAll().first().single()
+        assertEquals(25.03, placed.lat!!, 0.0)
+        assertEquals(121.56, placed.lng!!, 0.0)
+    }
+
     @Test fun setAddressIfUnchanged_writesOnlyWhenPositionAndEmptyAddressStillMatch() = runBlocking {
         // Matches: still at the looked-up position, address still empty → written.
         val a = repo.create("A", lat = 25.0, lng = 121.0, now = 1L)

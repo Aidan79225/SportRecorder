@@ -26,6 +26,31 @@ interface VenueDao {
     @Update
     suspend fun update(venue: VenueEntity)
 
+    /*
+     * Targeted writes: each sets only the columns it owns, so an interleaved write to another
+     * column of the same venue is never undone by a stale whole-row rewrite.
+     */
+
+    /** Returns the number of rows written (0 when the venue is gone). */
+    @Query(
+        "UPDATE ${VenueEntity.tableName} SET name = :name, address = :address, last_used_at = :now " +
+            "WHERE id = :id",
+    )
+    suspend fun setNameAndAddress(id: Int, name: String, address: String?, now: Long): Int
+
+    /**
+     * Moves the venue and clears its address (it described the old position). Re-applying the same
+     * position is not a move, so it writes nothing and keeps the address.
+     */
+    @Query(
+        "UPDATE ${VenueEntity.tableName} SET lat = :lat, lng = :lng, address = NULL " +
+            "WHERE id = :id AND (lat IS NOT :lat OR lng IS NOT :lng)",
+    )
+    suspend fun setPosition(id: Int, lat: Double?, lng: Double?)
+
+    @Query("UPDATE ${VenueEntity.tableName} SET last_used_at = :now WHERE id = :id")
+    suspend fun setLastUsedAt(id: Int, now: Long)
+
     /**
      * Writes a looked-up [address] only while the venue is still at the looked-up position and has
      * no address — so a slow lookup never overwrites an edit or describes a stale position.
