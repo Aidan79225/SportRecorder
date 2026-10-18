@@ -271,7 +271,7 @@ class BackupServiceTest {
         assertEquals(121.0, restoredVenue.lng!!, 0.0001)
     }
 
-    @Test fun backup_writesVenuesAndReferencesMealsByName_notById() = runTest {
+    @Test fun backup_writesVenuesWithKeysAndReferencesMealsByKey() = runTest {
         val venueRepo = FakeVenueRepository()
         val venue = venueRepo.findOrCreate("Cafe", lat = null, lng = null, now = 5L)
         val store = FakeBackupStore()

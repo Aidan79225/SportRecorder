@@ -14,7 +14,10 @@ class VenueAddressFiller(
     private val lookup: AddressLookup,
     private val venues: VenueRepository,
 ) {
-    /** For each venue with a position and no address, look it up and write it with setAddressIfUnchanged. Sequential; failures skipped. */
+    /**
+     * For each venue with a position and no address, look it up and write it with
+     * setAddressIfUnchanged. Sequential; failures skipped.
+     */
     suspend fun fill(venues: List<Venue>) {
         venues.forEach { venue -> fillOne(venue) }
     }

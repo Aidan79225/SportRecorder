@@ -65,6 +65,13 @@ class SharedVenueTest {
         assertEquals(SharedVenueMatch.Use(recentUnplaced, fillPosition = MAPS), result)
     }
 
+    @Test fun aPlacedVenueWithinFiftyMetres_beatsAnUnplacedNamesake() {
+        val near = venue(northOfMaps(30.0), id = 1, lastUsedAt = 100L)
+        val unplaced = venue(null, id = 2, lastUsedAt = 900L)
+        val result = SharedVenue.match(NAME, MAPS, listOf(unplaced, near))
+        assertEquals(SharedVenueMatch.Use(near, fillPosition = null), result)
+    }
+
     @Test fun allFar_asksAboutTheNearest() {
         val farther = venue(northOfMaps(5_000.0), id = 1)
         val nearer = venue(northOfMaps(1_200.0), id = 2)

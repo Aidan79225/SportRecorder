@@ -80,11 +80,12 @@ class GeocoderAddressLookup(private val context: Context) : AddressLookup {
 
 /**
  * The part of an address worth showing under a venue name: road plus number when the geocoder
- * knows both ("信義路二段 194號"), the road alone, else the first address line. Blank is null.
+ * knows both ("信義路二段 194號"), the road alone, else the first address line — a house number
+ * without its road says nothing. Blank is null.
  */
 internal fun shortAddress(thoroughfare: String?, subThoroughfare: String?, firstLine: String?): String? {
     val road = thoroughfare?.trim()?.ifEmpty { null }
     val number = subThoroughfare?.trim()?.ifEmpty { null }
     val line = firstLine?.trim()?.ifEmpty { null }
-    return if (road != null || number != null) listOfNotNull(road, number).joinToString(" ") else line
+    return if (road != null) listOfNotNull(road, number).joinToString(" ") else line
 }

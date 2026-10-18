@@ -37,7 +37,8 @@ object VenuePicker {
 
     /**
      * Whether to offer "use <query>" as a new venue: only for a name that is not blank once
-     * normalized and is not already one of [venues] (names are unique case-insensitively).
+     * normalized and matches none of [venues] by name ([VenueName.sameAs]) — a typed name that does
+     * match is one of the listed venues, so that one is offered instead.
      */
     fun canCreate(venues: List<Venue>, query: String): Boolean {
         val typed = VenueName.normalize(query)

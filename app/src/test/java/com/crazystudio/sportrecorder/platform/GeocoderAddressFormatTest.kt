@@ -17,6 +17,11 @@ class GeocoderAddressFormatTest {
         assertEquals("台北市中正區", shortAddress(null, null, " 台北市中正區 "))
     }
 
+    @Test fun numberWithoutRoad_fallsBackToTheFirstLine() {
+        assertEquals("台北市中正區忠孝西路一段49號", shortAddress(null, "49號", "台北市中正區忠孝西路一段49號"))
+        assertNull(shortAddress(null, "49號", null))
+    }
+
     @Test fun nothingIsNull() {
         assertNull(shortAddress(null, " ", ""))
     }
