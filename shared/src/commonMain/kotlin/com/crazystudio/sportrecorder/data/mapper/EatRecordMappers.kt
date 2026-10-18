@@ -12,7 +12,7 @@ import com.crazystudio.sportrecorder.entity.VenueEntity
 fun Photo.toDomain(): EatPhoto = EatPhoto(id = id, fileName = fileName, createdAt = createdAt)
 
 fun VenueEntity.toDomain(): Venue =
-    Venue(id = id, name = name, lat = lat, lng = lng, lastUsedAt = lastUsedAt)
+    Venue(id = id, name = name, lat = lat, lng = lng, lastUsedAt = lastUsedAt, address = address)
 
 fun EatTime.toDomain(photos: List<EatPhoto> = emptyList(), venue: Venue? = null): EatRecord = EatRecord(
     id = id,
