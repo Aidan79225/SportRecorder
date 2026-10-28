@@ -98,7 +98,7 @@ class VenuePickerSheetTest {
         actions.records = 12
         show()
 
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+        openEditDialog(placed)
 
         compose.onNodeWithText(str(Res.string.editor_venue_edit)).assertIsDisplayed()
         val position = str(Res.string.editor_venue_position, "25.0335", "121.5301")
@@ -117,7 +117,7 @@ class VenuePickerSheetTest {
     @Test
     fun deleteConfirmation_mentionsTheRecordCount() {
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, unplaced.name)).performClick()
+        openEditDialog(unplaced)
         compose.onNodeWithText(str(Res.string.editor_venue_delete)).performClick()
         assertEquals(listOf(unplaced), actions.deleteRequests)
 
@@ -161,9 +161,9 @@ class VenuePickerSheetTest {
             state = state.copy(repositionDraft = EatTimeEditorUiState.RepositionDraft(venue.id, "鼎泰豐 101 店"))
         }
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+        openEditDialog(placed)
 
-        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+        tapUpdateFromLink()
 
         nameField().assert(hasText("鼎泰豐 101 店"))
         assertEquals(1, actions.draftsTaken)
@@ -176,9 +176,9 @@ class VenuePickerSheetTest {
     fun whileALinkIsRead_saveIsDisabled() {
         actions.onReposition = { state = state.copy(repositioning = true) }
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+        openEditDialog(placed)
 
-        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+        tapUpdateFromLink()
 
         // A save now would drop the move the link is about to make.
         compose.onNodeWithText(str(Res.string.editor_venue_resolving)).assertIsDisplayed()
@@ -197,9 +197,9 @@ class VenuePickerSheetTest {
             )
         }
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, unplaced.name)).performClick()
+        openEditDialog(unplaced)
 
-        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+        tapUpdateFromLink()
 
         nameField().assert(hasText("鼎泰豐 信義店"))
         addressField().assert(hasText(linkAddress))
@@ -213,14 +213,24 @@ class VenuePickerSheetTest {
         // What the view model does for a title the split left whole and the geocoder can't place.
         actions.onReposition = { state = state.copy(repositionNotice = RepositionNotice.NotLocatedUnchanged) }
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+        openEditDialog(placed)
 
-        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+        tapUpdateFromLink()
 
         compose.onNodeWithText(str(Res.string.editor_link_no_position_unchanged)).assertIsDisplayed()
         nameField().assert(hasText(placed.name))
         addressField().assert(hasText("信義路二段 194 號"))
         assertEquals(0, actions.draftsTaken)
+    }
+
+    /** Taps [venue]'s ✎, which opens its edit dialog. */
+    private fun openEditDialog(venue: Venue) {
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, venue.name)).performClick()
+    }
+
+    /** Taps the open edit dialog's 「貼上地圖連結更新」. */
+    private fun tapUpdateFromLink() {
+        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
     }
 
     private fun saveButton() = compose.onNode(hasText(str(Res.string.editor_venue_save)) and hasClickAction())
@@ -232,6 +242,10 @@ class VenuePickerSheetTest {
     /**
      * Records what the picker asks for; answers [records] for every venue's record count. Updating
      * from a link runs [onReposition], which stands in for the view model reading it.
+     *
+     * Unlike the view model, [consumeRepositionDraft] only counts: `state.repositionDraft` stays set.
+     * What stops the dialog taking that leftover draft twice is then its `LaunchedEffect(draft)` key,
+     * not a cleared draft, so [draftsTaken] counts how often the dialog took it.
      */
     private class RecordingActions : VenuePickerActions {
         var records = 0
