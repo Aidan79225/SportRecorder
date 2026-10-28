@@ -193,7 +193,7 @@ class VenuePickerSheetTest {
         actions.onReposition = { venue ->
             state = state.copy(
                 repositionDraft = EatTimeEditorUiState.RepositionDraft(venue.id, "鼎泰豐 信義店", linkAddress),
-                repositionNotice = ShareNotice.PlaceNotLocated,
+                repositionNotice = RepositionNotice.NotLocated,
             )
         }
         show()
@@ -211,7 +211,7 @@ class VenuePickerSheetTest {
     @Test
     fun aWholeTitleThatCantBeLocated_keepsTheDrafts_andSaysNothingChanged() {
         // What the view model does for a title the split left whole and the geocoder can't place.
-        actions.onReposition = { state = state.copy(repositionNotice = ShareNotice.PlaceNotLocatedUnchanged) }
+        actions.onReposition = { state = state.copy(repositionNotice = RepositionNotice.NotLocatedUnchanged) }
         show()
         compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
 

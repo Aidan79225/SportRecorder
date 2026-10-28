@@ -32,7 +32,7 @@ data class EatTimeEditorUiState(
     /** Set while the user is asked to paste a Maps link by hand: the clipboard held none (#89). */
     val pasteDialog: PasteTarget? = null,
     /** Why a map link moved no venue; shown inside the edit dialog, never under the editor's venue row. */
-    val repositionNotice: ShareNotice? = null,
+    val repositionNotice: RepositionNotice? = null,
     /** True while the edit dialog's map link is being read; said inside that dialog, whose 儲存 waits for it. */
     val repositioning: Boolean = false,
     /** What the edit dialog's map link offers its drafts; the dialog takes it once via `consumeRepositionDraft`. */
@@ -110,17 +110,28 @@ enum class ShareNotice {
 
     /** Shared text held no Google Maps link at all. */
     NotAMapLink,
+}
+
+/**
+ * Why the edit dialog's map link (「貼上地圖連結更新」) moved no venue — the UI maps each to a localized
+ * line inside that dialog (#89).
+ */
+enum class RepositionNotice {
+    /** The text held no Google Maps link at all. */
+    NotAMapLink,
+
+    /** It held a Maps link, but no place could be read from it. */
+    Unreadable,
 
     /**
-     * The edit dialog's map link names a place whose position could not be found: its name and
-     * address fill the drafts, and nothing moves. (A share needs no such line: a venue can do without
-     * a position.)
+     * The link names a place whose position could not be found: its name and address fill the drafts,
+     * and nothing moves. (A share needs no such line: a venue can do without a position.)
      */
-    PlaceNotLocated,
+    NotLocated,
 
     /**
-     * As [PlaceNotLocated], for a link whose title could not be split into a name and an address: that
-     * whole title is no 店名, so nothing fills the drafts, and nothing moves.
+     * As [NotLocated], for a link whose title could not be split into a name and an address: that whole
+     * title is no 店名, so nothing fills the drafts, and nothing moves.
      */
-    PlaceNotLocatedUnchanged,
+    NotLocatedUnchanged,
 }

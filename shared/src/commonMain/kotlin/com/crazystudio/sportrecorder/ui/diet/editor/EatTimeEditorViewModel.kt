@@ -438,8 +438,8 @@ class EatTimeEditorViewModel constructor(
             val link = MapsLink.find(text)
             val place = link?.let { mapsPlaceReader.read(it) }
             when {
-                link == null -> showRepositionNotice(ShareNotice.NotAMapLink)
-                place == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
+                link == null -> showRepositionNotice(RepositionNotice.NotAMapLink)
+                place == null -> showRepositionNotice(RepositionNotice.Unreadable)
                 else -> repositionTo(venue, place)
             }
         } finally {
@@ -463,11 +463,11 @@ class EatTimeEditorViewModel constructor(
             // Nowhere to put it: the drafts take the name and address the link splits into, and nothing moves.
             name != null && address != null -> {
                 offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, name, address))
-                showRepositionNotice(ShareNotice.PlaceNotLocated)
+                showRepositionNotice(RepositionNotice.NotLocated)
             }
             // Nowhere to put it, and nothing to trust as a name: the line says nothing was changed.
-            place.name != null -> showRepositionNotice(ShareNotice.PlaceNotLocatedUnchanged)
-            else -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
+            place.name != null -> showRepositionNotice(RepositionNotice.NotLocatedUnchanged)
+            else -> showRepositionNotice(RepositionNotice.Unreadable)
         }
     }
 
@@ -483,7 +483,7 @@ class EatTimeEditorViewModel constructor(
         }
     }
 
-    private fun showRepositionNotice(notice: ShareNotice) = _uiState.update { it.copy(repositionNotice = notice) }
+    private fun showRepositionNotice(notice: RepositionNotice) = _uiState.update { it.copy(repositionNotice = notice) }
 
     override fun consumeRepositionDraft() = _uiState.update { it.copy(repositionDraft = null) }
 

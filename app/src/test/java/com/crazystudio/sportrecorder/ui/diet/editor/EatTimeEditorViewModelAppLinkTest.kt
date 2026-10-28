@@ -319,7 +319,7 @@ class EatTimeEditorViewModelAppLinkTest {
             EatTimeEditorUiState.RepositionDraft(old.id, "鼎泰豐 信義店", APP_ADDRESS),
             vm.uiState.value.repositionDraft,
         )
-        assertEquals(ShareNotice.PlaceNotLocated, vm.uiState.value.repositionNotice)
+        assertEquals(RepositionNotice.NotLocated, vm.uiState.value.repositionNotice)
         assertFalse(vm.uiState.value.repositioning)
         assertEquals(listOf(APP_FULL_ADDRESS), editor.lookup.queried)
 
@@ -373,7 +373,7 @@ class EatTimeEditorViewModelAppLinkTest {
             // Nowhere to move it to and no name to trust: the drafts keep what the user has, and the
             // line says nothing was changed rather than that a name was filled in.
             assertNull(vm.uiState.value.repositionDraft)
-            assertEquals(ShareNotice.PlaceNotLocatedUnchanged, vm.uiState.value.repositionNotice)
+            assertEquals(RepositionNotice.NotLocatedUnchanged, vm.uiState.value.repositionNotice)
             assertNull(vm.uiState.value.pendingMove)
             assertEquals(listOf(bultanWang), editor.venues.stored)
             assertEquals(listOf(KO_TITLE), editor.lookup.queried)

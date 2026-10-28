@@ -30,10 +30,14 @@ import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_unchanged
+import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_move_body
 import com.crazystudio.sportrecorder.shared.resources.editor_move_confirm
 import com.crazystudio.sportrecorder.shared.resources.editor_move_keep
 import com.crazystudio.sportrecorder.shared.resources.editor_move_title
+import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_address
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
@@ -65,7 +69,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun VenueEditDialog(
     venue: Venue,
     canUseThisPosition: Boolean,
-    notice: ShareNotice?,
+    notice: RepositionNotice?,
     resolving: Boolean,
     draft: EatTimeEditorUiState.RepositionDraft?,
     actions: VenuePickerActions,
@@ -129,7 +133,7 @@ private fun VenueEditFields(
     address: String,
     onAddressChange: (String) -> Unit,
     positionLine: String,
-    notice: ShareNotice?,
+    notice: RepositionNotice?,
     resolving: Boolean,
     onUseThisPosition: (() -> Unit)?,
     onUseLink: () -> Unit,
@@ -161,7 +165,7 @@ private fun VenueEditFields(
             TextButton(onClick = onClick) { Text(stringResource(Res.string.editor_venue_use_here)) }
         }
         TextButton(onClick = onUseLink) { Text(stringResource(Res.string.editor_venue_use_link)) }
-        val status = if (resolving) Res.string.editor_venue_resolving else notice?.let { shareNoticeRes(it) }
+        val status = if (resolving) Res.string.editor_venue_resolving else notice?.let { repositionNoticeRes(it) }
         status?.let {
             Text(
                 text = stringResource(it),
@@ -170,6 +174,13 @@ private fun VenueEditFields(
             )
         }
     }
+}
+
+private fun repositionNoticeRes(notice: RepositionNotice) = when (notice) {
+    RepositionNotice.NotAMapLink -> Res.string.editor_not_map_link
+    RepositionNotice.Unreadable -> Res.string.editor_link_unreadable
+    RepositionNotice.NotLocated -> Res.string.editor_link_no_position
+    RepositionNotice.NotLocatedUnchanged -> Res.string.editor_link_no_position_unchanged
 }
 
 /** 「位置：25.0335, 121.5301 · 12 筆紀錄」, or 「沒有位置」; the count joins once it is known. */
