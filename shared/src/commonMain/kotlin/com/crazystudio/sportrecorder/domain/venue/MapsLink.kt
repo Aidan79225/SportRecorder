@@ -84,8 +84,9 @@ private const val SEARCH = "/maps/search/"
 // Characters a URL may contain (RFC 3986 unreserved + reserved + `%`); anything else ends it.
 private const val URL_SYMBOLS = "-._~:/?#[]@!\$&'()*+,;=%"
 
-// Punctuation that, at the very end, belongs to the sentence around the link, not to the link.
-private const val TRAILING_PUNCTUATION = ".,;:!?)'"
+// Punctuation that, at the very end, belongs to the sentence around the link, not to the link. So may a
+// `)`, but only one the link opened no `(` for ([urlAt]).
+private const val TRAILING_PUNCTUATION = ".,;:!?'"
 
 private val PIN = Regex("""!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)""")
 private val CAMERA = Regex("""@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)""")
@@ -126,16 +127,24 @@ private class MapsUrl(url: String) {
 
 /**
  * The URL starting at [start]: it runs until whitespace or any non-URL character (CJK text, `。`),
- * then sheds trailing sentence punctuation, so "(https://…/abc)." gives ".../abc".
+ * then sheds trailing sentence punctuation, so "(https://…/abc)." gives ".../abc". A `)` goes only
+ * while the URL has more of them than `(` — the rule linkifiers use — so a label that ends the link,
+ * `?q=25.03,121.53(Din+Tai+Fung)`, keeps its own.
  */
 private fun urlAt(text: String, start: Int): String {
     var end = start
     while (end < text.length && text[end].isUrlChar()) end++
-    while (end > start && text[end - 1] in TRAILING_PUNCTUATION) end--
+    var strayClosers = (start until end).count { text[it] == ')' } - (start until end).count { text[it] == '(' }
+    while (end > start && text[end - 1].endsTheSentence(strayClosers > 0)) {
+        if (text[end - 1] == ')') strayClosers--
+        end--
+    }
     return text.substring(start, end)
 }
 
 private fun Char.isUrlChar() = this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9' || this in URL_SYMBOLS
+
+private fun Char.endsTheSentence(strayCloser: Boolean) = this in TRAILING_PUNCTUATION || this == ')' && strayCloser
 
 /** Exact scheme + host + path match; never `contains`/`endsWith`, so lookalike hosts fall out. */
 private fun classify(candidate: String): MapsLink? {

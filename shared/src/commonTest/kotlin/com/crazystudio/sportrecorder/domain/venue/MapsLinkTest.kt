@@ -239,6 +239,18 @@ class MapsLinkTest {
         assertEquals(unnamed, MapsLink.parse(shared.url))
     }
 
+    @Test fun aLabelEndingThePastedLink_keepsItsParenthesis_andNamesThePlace() {
+        // Its ")" closes the link's own "(": it is the link's, not the sentence's, however the text goes on.
+        mapOf(
+            "https://maps.google.com/?q=25.0335,121.5301(Din+Tai+Fung)" to "Din Tai Fung",
+            "https://maps.google.com/?q=25.0335,121.5301(%E9%BC%8E%E6%B3%B0%E8%B1%90)" to "鼎泰豐",
+            "(去 https://maps.google.com/?q=25.0335,121.5301(Din+Tai+Fung))." to "Din Tai Fung",
+        ).forEach { (text, name) ->
+            val found = MapsLink.find(text)!!
+            assertEquals(MapsPlace(name, 25.0335, 121.5301), MapsLink.parse(found.url), text)
+        }
+    }
+
     @Test fun coordinatesOnlyPlace_hasNoName() {
         val droppedPin = "https://www.google.com/maps/place/42.578496,1.895566/data=!4m6!3m5!1s0!7e2!8m2" +
             "!3d42.5784957!4d1.8955661?utm_source=mstt_1&entry=gps&coh=192189"
