@@ -6,11 +6,17 @@ import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Test [AddressLookup]: answers every point with [address] (null models "could not look it up")
- * and records the points asked about. Set [gate] to hold the answer back, like a slow geocoder,
- * until the test completes it.
+ * and records the points asked about. Answers a place query from [positions] (a missing or null
+ * entry models "could not find it") and records the queries. Set [gate] to hold the address answer
+ * back, like a slow geocoder, until the test completes it.
  */
-class FakeAddressLookup(var address: String? = null) : AddressLookup {
+class FakeAddressLookup(
+    var address: String? = null,
+    var positions: Map<String, GeoPoint?> = emptyMap(),
+) : AddressLookup {
     val asked = mutableListOf<GeoPoint>()
+
+    val queried = mutableListOf<String>()
 
     var gate: CompletableDeferred<Unit>? = null
 
@@ -18,5 +24,10 @@ class FakeAddressLookup(var address: String? = null) : AddressLookup {
         asked += point
         gate?.await()
         return address
+    }
+
+    override suspend fun positionOf(query: String): GeoPoint? {
+        queried += query
+        return positions[query]
     }
 }

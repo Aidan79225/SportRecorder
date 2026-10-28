@@ -47,6 +47,7 @@ import com.crazystudio.sportrecorder.domain.usecase.QuickRecordMealUseCase
 import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
+import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
 import com.crazystudio.sportrecorder.platform.AddressLookup
 import com.crazystudio.sportrecorder.platform.AndroidClipboardReader
@@ -104,6 +105,7 @@ val appModule = module {
     single { VenueAddressFiller(get(), get()) }
     single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
     single<MapsLinkResolver> { OkHttpMapsLinkResolver(OkHttpClient()) }
+    single { MapsPlaceReader(get(), get()) }
     single<ClipboardReader> { AndroidClipboardReader(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
