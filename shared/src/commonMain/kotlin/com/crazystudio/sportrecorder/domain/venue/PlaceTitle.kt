@@ -58,7 +58,8 @@ private const val NUMBER = """\d+號(?:$ZHI)?"""
 // B1 and 3F must end there, so a name that only starts like one (「B2B咖啡」, "5Fun Bar") keeps its start.
 private const val LATIN_FLOOR = """(?:[Bb]\d+(?![\dA-Za-z])|\d+[Ff](?![A-Za-z]))"""
 private const val DIGIT_FLOOR = """(?:地下)?\d+ ?樓"""
-private const val FLOOR_FORM = """(?:$LATIN_FLOOR|(?:地下)?(?:\d+|[一二三四五六七八九十]+) ?樓)(?:$ZHI)?"""
+private const val CJK_NUMERAL_FLOOR = """(?:地下)?[一二三四五六七八九十]+ ?樓"""
+private const val FLOOR_FORM = """(?:$LATIN_FLOOR|$DIGIT_FLOOR|$CJK_NUMERAL_FLOOR)(?:$ZHI)?"""
 
 // Maybe a floor after the number, right after it or after a space: 「194號2樓」, 「194號 B1」.
 private const val FLOOR = """(?: ?$FLOOR_FORM)?"""
@@ -67,16 +68,28 @@ private const val FLOOR = """(?: ?$FLOOR_FORM)?"""
 // left over when the title is only an address — 「…5號之1」 names nothing.
 private const val NAME = """(?! ?之\d)(.+)"""
 
-// zh: postcode, maybe 台灣/臺灣, a city or county (臺北市, 屏東縣), the rest of the address with no space
-// up to its first 號, then the name glued on — 「106台灣臺北市大安區…194號鼎泰豐 信義店」.
-private val ZH_ADDRESS_FIRST = Regex("""$POSTCODE(?:台灣|臺灣)?([^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR)$NAME""")
+// The addresses the apps write, each spelled once so that splitting a title and recognising a title
+// that is only an address can never drift apart.
+private const val TAIWAN = """(?:台灣|臺灣)"""
+
+// zh: a city or county (臺北市, 屏東縣), then the rest of the address with no space up to its first 號.
+private const val ZH_ADDRESS = """[^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR"""
+
+// en, city first: "Taichung City, …, Taiping Rd, 15號".
+private const val EN_CITY_ADDRESS = """[A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER$FLOOR"""
+
+// en, number first: "No. …" — or its floor first, "2F, No. …" — up to the country.
+private const val EN_NUMBER_ADDRESS = """(?:$FLOOR_FORM, )?No\. .+?"""
+private const val EN_COUNTRY_TAIL = """, Taiwan(?: \d{3,6})?"""
+
+// zh: postcode, maybe 台灣/臺灣, the address, then the name glued on — 「106台灣臺北市大安區…194號鼎泰豐 信義店」.
+private val ZH_ADDRESS_FIRST = Regex("""$POSTCODE$TAIWAN?($ZH_ADDRESS)$NAME""")
 
 // The same order with the address in English — 「404, Taichung City, …, Taiping Rd, 15號高沐手作料理餐廳」.
-private val EN_ADDRESS_FIRST = Regex("""$POSTCODE, ([A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER$FLOOR)$NAME""")
+private val EN_ADDRESS_FIRST = Regex("""$POSTCODE, ($EN_CITY_ADDRESS)$NAME""")
 
-// en: the name, then an address that starts with "No." — or with its floor, "2F, No. …" — and ends
-// with the country and postcode.
-private val NAME_FIRST = Regex("""(.+?), ((?:$FLOOR_FORM, )?No\. .+?)(, Taiwan(?: \d{3,6})?)""")
+// en: the name, then the address, and it ends with the country and postcode.
+private val NAME_FIRST = Regex("""(.+?), ($EN_NUMBER_ADDRESS)($EN_COUNTRY_TAIL)""")
 
 // A floor the app put after the name belongs to the address: 「…7號癒所vegvísir｜預約制私廚1 樓」, or
 // 「…私廚地下1樓」, 「…私廚 B1」. The name is the shortest start that leaves only a floor, so a 地下 goes
@@ -90,11 +103,11 @@ private val TRAILING_FLOORS = listOf(
 // What is left after an address that has no name: 「…194號2樓」 names nothing.
 private val FLOOR_ONLY = Regex(FLOOR_FORM)
 
-// A whole title that is the address alone, in each of the orders above.
+// A whole title that is the address alone, in each of the orders above (the postcode optional).
 private val ADDRESS_ONLY = listOf(
-    Regex("""(?:$POSTCODE)?(?:台灣|臺灣)?[^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR"""),
-    Regex("""(?:$POSTCODE, )?[A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER$FLOOR"""),
-    Regex("""(?:$FLOOR_FORM, )?No\. .+?, Taiwan(?: \d{3,6})?"""),
+    Regex("""(?:$POSTCODE)?$TAIWAN?$ZH_ADDRESS"""),
+    Regex("""(?:$POSTCODE, )?$EN_CITY_ADDRESS"""),
+    Regex("""$EN_NUMBER_ADDRESS$EN_COUNTRY_TAIL"""),
 )
 
 // What follows the address may be only a floor (「…194號 地下1樓」): that is no name, not even in part.
