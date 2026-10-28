@@ -126,20 +126,21 @@ class EatTimeEditorViewModelTest {
         assertEquals(daHuWu, saved.venue)
     }
 
-    // A venue named by a glued Maps-app title, and the same store within 50 m: the repair at app start
-    // merges the first into the second in the background, while the editor may have it open.
-    private val glued = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.03350, lng = 121.5301, lastUsedAt = 1L)
+    // A venue the repair at app start has just renamed from a glued Maps-app title, and the same store
+    // within 50 m: the repair next merges the first into the second in the background, while the
+    // editor may have it open.
+    private val mergedAway = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.03350, lng = 121.5301, lastUsedAt = 1L)
     private val store = Venue(id = 2, name = "鼎泰豐 信義店", lat = 25.03352, lng = 121.5301, lastUsedAt = 2L)
 
     @Test
     fun aVenueMergedAwayWhileItsMealIsOpen_isShownAndSavedAsTheOneItWentInto() =
         runTest(mainRule.testDispatcher.scheduler) {
-            val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
+            val editor = Editor(listOf(mealAt(venue = mergedAway)), listOf(mergedAway, store))
             val vm = editor.viewModel(eatTimeId = 1)
             advanceUntilIdle()
-            assertEquals(glued, vm.uiState.value.venue)
+            assertEquals(mergedAway, vm.uiState.value.venue)
 
-            val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 2L)
+            val survivor = editor.venues.merge(fromId = mergedAway.id, intoId = store.id, now = 2L)
             advanceUntilIdle()
 
             // The editor follows the meal's records to where they went…
@@ -153,13 +154,13 @@ class EatTimeEditorViewModelTest {
 
     @Test
     fun aVenueMergedAwayJustBeforeTheSave_isSavedAsTheOneItWentInto() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(venues = listOf(glued, store))
+        val editor = Editor(venues = listOf(mergedAway, store))
         val vm = editor.viewModel()
         advanceUntilIdle()
-        vm.selectVenue(glued)
+        vm.selectVenue(mergedAway)
 
         // Merged with no chance for the list to show it: the save asks for the venue by id.
-        editor.venues.merge(fromId = glued.id, intoId = store.id, now = 2L)
+        editor.venues.merge(fromId = mergedAway.id, intoId = store.id, now = 2L)
         assertTrue(vm.save())
 
         assertEquals(store.id, editor.records.stored.single().venue?.id)
