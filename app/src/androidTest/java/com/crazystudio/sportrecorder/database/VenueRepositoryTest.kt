@@ -103,6 +103,38 @@ class VenueRepositoryTest {
         assertNull(db.getVenueDao().findById(v.id)!!.address)
     }
 
+    @Test fun findOrCreate_writesTheAddressOnInsert_andOnlyFillsAnEmptyOneOnReuse() = runBlocking {
+        // Inserted: with the link's address, trimmed.
+        val created = repo.findOrCreate("鼎泰豐 信義店", 25.03, 121.53, now = 1L, address = " 臺北市大安區信義路二段194號 ")
+        assertEquals("臺北市大安區信義路二段194號", created.address)
+        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(created.id)!!.address)
+
+        // Reused: an address it already has is never replaced.
+        val again = repo.findOrCreate("鼎泰豐 信義店", 25.03, 121.53, now = 2L, address = "別的地址")
+        assertEquals(created.id, again.id)
+        assertEquals("臺北市大安區信義路二段194號", again.address)
+        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(created.id)!!.address)
+
+        // Reused with none: it takes this one, and its position stays as it was.
+        val empty = repo.create("一蘭", lat = 25.04, lng = 121.55, now = 3L)
+        val filled = repo.findOrCreate("一蘭", lat = 25.0, lng = 121.0, now = 4L, address = "松壽路11號")
+        assertEquals(empty.id, filled.id)
+        assertEquals("松壽路11號", filled.address)
+        val stored = db.getVenueDao().findById(empty.id)!!
+        assertEquals("松壽路11號", stored.address)
+        assertEquals(25.04, stored.lat!!, 0.0)
+
+        // Learning its first position: the old address goes with the old (no) position, the link's comes with the new.
+        val unplaced = repo.create("摩斯", null, null, now = 5L, address = "沒有位置時打的地址")
+        val placed = repo.findOrCreate("摩斯", lat = 25.05, lng = 121.52, now = 6L, address = "忠孝東路四段5號")
+        assertEquals(unplaced.id, placed.id)
+        assertEquals("忠孝東路四段5號", db.getVenueDao().findById(unplaced.id)!!.address)
+
+        // A blank address is none.
+        assertNull(repo.findOrCreate("大戶屋", null, null, now = 7L, address = "   ").address)
+        assertEquals(4, repo.observeAll().first().size)
+    }
+
     @Test fun setPosition_clearsTheAddress() = runBlocking {
         val v = repo.create("麥當勞", lat = 25.03, lng = 121.56, now = 1L)
         repo.edit(v.id, "麥當勞", address = "信義路二段 194 號", now = 2L)

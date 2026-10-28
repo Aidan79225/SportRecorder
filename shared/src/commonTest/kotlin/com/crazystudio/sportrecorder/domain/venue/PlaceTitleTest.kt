@@ -4,6 +4,9 @@ import com.crazystudio.sportrecorder.domain.venue.PlaceTitle.Split
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.measureTimedValue
 
 /**
  * The titles in links made by the Google Maps apps glue the address to the name. The split is
@@ -155,5 +158,19 @@ class PlaceTitleTest {
             Split("鼎泰豐 信義店", "106台灣臺北市大安區福住里信義路二段194號", "臺北市大安區福住里信義路二段194號"),
             PlaceTitle.split("  106台灣臺北市大安區福住里信義路二段194號 鼎泰豐　 信義店 "),
         )
+    }
+
+    @Test fun anOverLongTitle_isNotSplit_andReturnsQuickly() {
+        // Every real title is well under 200 characters: past the limit even a well-shaped one stays whole.
+        val address = "106台灣臺北市大安區福住里信義路二段194號"
+        val name = "鼎".repeat(PlaceTitle.MAX_LENGTH - address.length)
+        assertEquals(name, PlaceTitle.split(address + name)?.name)
+        assertNull(PlaceTitle.split(address + name + "鼎"))
+
+        // Crafted so the address patterns would backtrack over every digit; it is refused unread.
+        val crafted = "100臺北市" + "1".repeat(50_000 - "100臺北市".length)
+        val (split, elapsed) = measureTimedValue { PlaceTitle.split(crafted) }
+        assertNull(split)
+        assertTrue(elapsed < 200.milliseconds, "took $elapsed")
     }
 }

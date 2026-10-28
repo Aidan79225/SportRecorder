@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.map
 
 /**
  * In-memory [VenueRepository] following the contracts `VenueRepositoryImpl` documents: names are
- * normalized but not unique, [findOrCreate] picks the most recently used same-name venue, a real
+ * normalized but not unique, [findOrCreate] picks the most recently used same-name venue (whose
+ * address it only fills when empty, or replaces when the venue adopts a first position), a real
  * [setPosition] move replaces the address with the one given (none by default), [setAddressIfEmpty]
  * never overwrites, [observeAll] is most-recently-used first, and [replaceAll]
  * **assigns fresh ids** and returns the inserted venues in order — the property a restore depends on.
@@ -28,19 +29,19 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     override fun observeAll(): Flow<List<Venue>> =
         state.map { venues -> venues.sortedByDescending { it.lastUsedAt } }
 
-    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue {
+    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
         val existing = state.value.filter { VenueName.sameAs(it.name, normalized) }.maxByOrNull { it.lastUsedAt }
         if (existing != null) {
             val learned = if (existing.lat == null && lat != null) {
-                existing.copy(lat = lat, lng = lng, address = null, lastUsedAt = now)
+                existing.copy(lat = lat, lng = lng, address = cleaned(address), lastUsedAt = now)
             } else {
-                existing.copy(lastUsedAt = now)
+                existing.copy(address = existing.address ?: cleaned(address), lastUsedAt = now)
             }
             replace(learned)
             return learned
         }
-        return create(normalized, lat, lng, now)
+        return create(normalized, lat, lng, now, address)
     }
 
     override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {

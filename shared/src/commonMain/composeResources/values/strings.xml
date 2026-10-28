@@ -272,8 +272,8 @@
     <string name="editor_link_no_position_unchanged">Couldn't find where this place is — nothing was changed.</string>
     <string name="editor_move_title">Update %1$s's position?</string>
     <plurals name="editor_move_body">
-        <item quantity="one">%1$d past record will move to where Google Maps puts it.</item>
-        <item quantity="other">%1$d past records will move to where Google Maps puts it.</item>
+        <item quantity="one">%1$d past record will move to this link's place.</item>
+        <item quantity="other">%1$d past records will move to this link's place.</item>
     </plurals>
     <string name="editor_move_confirm">Update</string>
     <string name="editor_move_keep">Keep</string>

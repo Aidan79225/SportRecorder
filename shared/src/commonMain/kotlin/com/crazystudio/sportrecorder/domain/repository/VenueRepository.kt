@@ -12,15 +12,19 @@ interface VenueRepository {
     fun observeAll(): Flow<List<Venue>>
 
     /**
-     * For typed names: the most recently used venue with this name (compared by `VenueName.sameAs`),
-     * else a new one. [lat]/[lng] are only adopted when that venue has no position yet: a later
-     * mention without a fix must never erase one the venue already learned.
+     * For typed names, and a shared place no venue was named for: the most recently used venue with
+     * this name (compared by `VenueName.sameAs`), else a new one. The look and the insert are one
+     * transaction, so a same-name venue another writer adds meanwhile is reused, never duplicated.
+     * [lat]/[lng] are only adopted when that venue has no position yet: a later mention without a fix
+     * must never erase one the venue already learned. [address] — a Maps link's own, stored trimmed
+     * (blank → none) — is written on insert; a reused venue only takes it when it has none, and one
+     * adopting a position loses its old address with the old position, so it takes [address] instead.
      */
-    suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue
+    suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String? = null): Venue
 
     /**
-     * Always a new venue, even if the name exists (a new branch). [address] — a Maps link's own — is
-     * stored trimmed (blank → none).
+     * Always a new venue, even if the name exists (a new branch, as the user said). [address] — a Maps
+     * link's own — is stored trimmed (blank → none).
      */
     suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String? = null): Venue
 

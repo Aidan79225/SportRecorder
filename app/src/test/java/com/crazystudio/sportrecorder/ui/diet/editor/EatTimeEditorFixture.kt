@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
@@ -76,7 +77,8 @@ internal fun mealAt(venue: Venue?, location: GeoPoint? = home) =
 
 /**
  * An editor over fakes; every short link resolves to [FULL_URL] unless a test says otherwise. Links are
- * read by a real [MapsPlaceReader], so a pinless one is placed by [lookup]'s `positions`.
+ * read by a real [MapsPlaceReader], so a pinless one is placed by [lookup]'s `positions`. A test may
+ * hand the view model its own [VenueRepository] over [venues] (one that races it, say).
  */
 internal class Editor(records: List<EatRecord> = emptyList(), venues: List<Venue> = emptyList()) {
     val records = FakeEatRecordRepository(records)
@@ -92,11 +94,12 @@ internal class Editor(records: List<EatRecord> = emptyList(), venues: List<Venue
         handle: SavedStateHandle = SavedStateHandle(
             listOfNotNull(eatTimeId?.let { "eatTimeId" to it }, sharedText?.let { "sharedText" to it }).toMap(),
         ),
+        venueRepository: VenueRepository = venues,
     ) = EatTimeEditorViewModel(
         loadEatRecord = LoadEatRecordUseCase(records),
         saveEatRecord = SaveEatRecordUseCase(records, FakeRemindersRescheduler()),
         locationProvider = locationProvider,
-        venueRepository = venues,
+        venueRepository = venueRepository,
         photoImporter = FakePhotoImporter(),
         photoFileStore = FakePhotoFileStore(),
         photoImageSource = FakePhotoImageSource(),

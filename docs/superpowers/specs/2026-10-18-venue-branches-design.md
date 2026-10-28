@@ -265,12 +265,22 @@ So today a paste creates a venue named by the whole glued string, with no positi
   `AddressLookup.positionOf(query)` (same platform service as the reverse lookup, 10 s bound, never
   throws). No second request to Google is made; the #84 network rule is unchanged. If the lookup fails,
   the place has a name and address but no position (the existing "name, no coordinates" Failure row).
+- *(builder's call)* A title longer than 300 characters (normalized) is neither split nor looked up:
+  every real one is under 200, and the split's patterns backtrack quadratically on crafted text while
+  a shared link is parsed on the main thread. Such a title stays whole and has no position.
 
 ### Using a read place
 
 - **Paste / share:** matching is unchanged (now on the clean name). A created venue gets the link's
   trimmed address; a used venue with no address gets it; "same store, move" writes it with the pin.
   The reverse lookup still fills an address only when the venue has none.
+  *(builder's call)* "No venue by that name" still creates through `findOrCreate` (now taking the
+  address), whose name check and insert are one transaction: a same-name venue another writer added
+  after the match read the venues (the glued-name repair at app start, a second editor) is reused, and
+  takes the link's address only if it has none. Only "another branch" always creates.
+- *(builder's call)* The move question no longer says the records move to "where Google Maps puts it":
+  for a pinless link the position is the phone geocoder's estimate. It now reads
+  「有 %1$d 筆過去的紀錄會移到這個連結的位置。」 / "… will move to this link's place."
 - **「貼上地圖連結更新」 in ✎:** the pin moves as today (asking first when the venue has records), and
   the link's **trimmed address is written with the move** (an address belongs to its position). The
   link's **name fills the 店名 draft**; 儲存 keeps it, 取消 keeps the old name *(builder's call: the

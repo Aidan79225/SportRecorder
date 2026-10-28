@@ -245,8 +245,17 @@ class EatTimeEditorViewModel constructor(
 
     // Not createVenue: that adopts the record's device fix, and a shared place is where Maps says.
     // The link's own address comes with it; only without one is it looked up from the pin.
+    // findOrCreate, not create: another writer (the glued-name repair at app start, a second editor)
+    // may have added this name since the match read the venues; its check and insert are one
+    // transaction, so that venue is reused, never duplicated (and takes the address only if it has none).
     private suspend fun createSharedVenue(match: SharedVenueMatch.Create, address: String?) {
-        val venue = venueRepository.create(match.name, match.position?.lat, match.position?.lng, now(), address)
+        val venue = venueRepository.findOrCreate(
+            name = match.name,
+            lat = match.position?.lat,
+            lng = match.position?.lng,
+            now = now(),
+            address = address,
+        )
         showVenue(venue)
         fillAddress(venue)
     }

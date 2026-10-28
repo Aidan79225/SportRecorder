@@ -2,6 +2,8 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.repository.VenueRepository
+import com.crazystudio.sportrecorder.fake.FakeVenueRepository
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -103,6 +105,23 @@ class EatTimeEditorViewModelAppLinkTest {
             assertEquals(venue.id, vm.uiState.value.venue?.id)
             assertNull(vm.uiState.value.pendingStore)
         }
+    }
+
+    @Test
+    fun aSameNameVenueAddedJustBeforeTheInsert_isReused_notDuplicated() = runTest(mainRule.testDispatcher.scheduler) {
+        // Another writer (the glued-name repair at app start, a second editor) adds the same name after
+        // this share looked and found none: one venue, which takes the link's address since it has none.
+        val editor = appLinkEditor()
+        val racing = RacingVenues(editor.venues) { create("鼎泰豐 信義店", mapsPosition.lat, mapsPosition.lng, now = 5L) }
+        val vm = editor.viewModel(sharedText = APP_LINK, venueRepository = racing)
+        advanceUntilIdle()
+
+        val venue = editor.venues.stored.single()
+        assertEquals(racing.added?.id, venue.id)
+        assertEquals(APP_ADDRESS, venue.address)
+        assertEquals(mapsPosition, GeoPoint(requireNotNull(venue.lat), requireNotNull(venue.lng)))
+        assertEquals(venue, vm.uiState.value.venue)
+        assertTrue(editor.lookup.asked.isEmpty())
     }
 
     @Test
@@ -347,4 +366,38 @@ class EatTimeEditorViewModelAppLinkTest {
             assertEquals(listOf(bultanWang), editor.venues.stored)
             assertEquals(listOf(KO_TITLE), editor.lookup.queried)
         }
+
+    /**
+     * [venues], raced by another writer: [write] runs once, just before the editor's first insert —
+     * after the editor read the venues, so what it [added] is not in what the editor saw.
+     */
+    private class RacingVenues(
+        private val venues: FakeVenueRepository,
+        private val write: suspend FakeVenueRepository.() -> Venue,
+    ) : VenueRepository by venues {
+        var added: Venue? = null
+            private set
+
+        private suspend fun race() {
+            if (added == null) {
+                added = venues.write()
+            }
+        }
+
+        override suspend fun findOrCreate(
+            name: String,
+            lat: Double?,
+            lng: Double?,
+            now: Long,
+            address: String?,
+        ): Venue {
+            race()
+            return venues.findOrCreate(name, lat, lng, now, address)
+        }
+
+        override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
+            race()
+            return venues.create(name, lat, lng, now, address)
+        }
+    }
 }

@@ -19,21 +19,23 @@ class VenueRepositoryImpl(
     override fun observeAll(): Flow<List<Venue>> =
         venueDao.flowAll().map { rows -> rows.map { it.toDomain() } }
 
-    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue {
+    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
+        val given = cleaned(address)
         // One transaction: names are no longer unique in SQL, so two racing calls must not both
-        // miss and create two venues for one typed name.
+        // miss and create two venues for one name.
         return inTransaction {
             val existing = mostRecentlyUsedNamed(normalized)
             if (existing == null) {
-                insertNew(normalized, lat, lng, now)
+                insertNew(normalized, lat, lng, now, given)
             } else {
                 // Teach it a position only if it has none; never overwrite one it already knows.
-                // Gaining a position is a position change, so any address goes with it.
+                // Gaining a position is a position change, so any address goes with it and the given
+                // one (if any) comes with the new position. Otherwise it only fills an empty address.
                 val learned = if (existing.lat == null && lat != null) {
-                    existing.copy(lat = lat, lng = lng, address = null, lastUsedAt = now)
+                    existing.copy(lat = lat, lng = lng, address = given, lastUsedAt = now)
                 } else {
-                    existing.copy(lastUsedAt = now)
+                    existing.copy(address = existing.address ?: given, lastUsedAt = now)
                 }
                 venueDao.update(learned)
                 learned.toDomain()

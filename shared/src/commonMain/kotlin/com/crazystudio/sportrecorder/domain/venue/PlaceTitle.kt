@@ -14,16 +14,25 @@ import com.crazystudio.sportrecorder.domain.model.VenueName
 object PlaceTitle {
 
     /**
+     * The longest title worth reading, normalized. Every real one is under 200 characters; the patterns
+     * below backtrack quadratically on crafted text, and a shared link is parsed on the main thread.
+     */
+    const val MAX_LENGTH = 300
+
+    /**
      * [address] is the address exactly as the title gives it (what to geocode); [trimmedAddress] is the
      * same without the leading postcode and 台灣/臺灣, or the trailing ", Taiwan <postcode>" (what a
      * venue stores).
      */
     data class Split(val name: String, val address: String, val trimmedAddress: String)
 
-    /** The name and address in [segment], or null when it is not in a shape the Maps apps make. */
+    /**
+     * The name and address in [segment], or null when it is not in a shape the Maps apps make — or is
+     * longer than [MAX_LENGTH], which no real title is.
+     */
     fun split(segment: String): Split? {
-        val title = VenueName.normalize(segment)
-        val split = addressFirst(title) ?: nameFirst(title)
+        val title = VenueName.normalize(segment).takeIf { it.length <= MAX_LENGTH }
+        val split = title?.let { addressFirst(it) ?: nameFirst(it) }
         return split?.takeIf { it.name.any(Char::isLetterOrDigit) && !FLOOR_ONLY.matches(it.name) }
     }
 }

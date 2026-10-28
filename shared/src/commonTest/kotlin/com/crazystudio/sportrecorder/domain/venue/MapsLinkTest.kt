@@ -145,6 +145,17 @@ class MapsLinkTest {
         assertNull(MapsLink.parse(ADDRESS_ONLY)!!.cleanName)
     }
 
+    @Test fun anOverLongPinlessTitle_isLeftWhole_withNothingToLookUp() {
+        val atTheLimit = "鼎".repeat(PlaceTitle.MAX_LENGTH)
+        assertEquals(atTheLimit, MapsLink.parse("https://www.google.com/maps/place/$atTheLimit/")!!.geocodeQuery)
+
+        // No real title is this long: it is not split, nor sent to the geocoder, nor taken for a clean name.
+        val overLong = atTheLimit + "鼎"
+        val place = MapsLink.parse("https://www.google.com/maps/place/$overLong/")!!
+        assertEquals(MapsPlace(overLong, null, null, address = null, geocodeQuery = null), place)
+        assertNull(place.cleanName)
+    }
+
     @Test fun pinlessAddressOnlySegment_staysWhole() {
         assertEquals(
             MapsPlace(ADDRESS_ONLY_TITLE, null, null, address = null, geocodeQuery = ADDRESS_ONLY_TITLE),
