@@ -107,6 +107,7 @@ class GluedVenueRepairTest {
             Venue(4, "鼎泰豐 信義店", null, null, lastUsedAt = 4),
         )
         val repo = FakeVenueRepository(typed)
+        // A trap: any name the repair wrongly looked up would be placed, and the venue would change.
         lookup.positions = typed.associate { it.name to DIN_TAI_FUNG }
 
         GluedVenueRepair(repo, lookup).run()
@@ -176,13 +177,17 @@ class GluedVenueRepairTest {
     }
 
     @Test fun aVenueTheUserRenamesBeforeItsTurn_isNeverLookedUp() = runTest {
+        // run() repairs in observeAll order, which the fake sorts most recently used first: id 1
+        // (lastUsedAt 5) is repaired before id 2 (lastUsedAt 4). With those swapped, id 2 would be
+        // looked up first, before the user renames it.
         val repo = FakeVenueRepository(
             listOf(Venue(1, GLUED_ZH, null, null, lastUsedAt = 5), Venue(2, GLUED_EN, null, null, lastUsedAt = 4)),
         )
         lookup.positionGate = CompletableDeferred()
 
         val job = launch { GluedVenueRepair(repo, lookup).run() }
-        runCurrent() // the first venue waits for its position
+        runCurrent() // id 1 waits for its position
+        // Renamed with its lastUsedAt kept, so the order above still holds.
         repo.edit(2, "我的鼎泰豐", null, now = 4)
         lookup.positionGate?.complete(Unit)
         job.join()
