@@ -81,6 +81,14 @@
    `BackupJobRunner`(commonMain,app 等級 scope)+ Android `BackupForegroundService` 讓備份離開頁面、
    關螢幕也會跑完;進度條與通知;照片並行傳輸、還原跳過本機已有照片;Drive 列表分頁;
    還原前先自動備份一份安全快照。spec:`2026-09-27-backup-optimization-design.md`。
+6. **待重構(PR #91 的 code-review-loop 記下、超過一次小修範圍的項目)**
+   - `EatTimeEditorViewModel` 約 780 行(壓著 `TooManyFunctions`):把分享／貼上／✎ 更新的「讀連結 → 比對 → 寫入」
+     抽成 domain 服務(例如 `SharedPlaceOpener`),店家編輯另成一個 helper;`save()` 的「不存已消失的店家」也屬應用層。
+   - 位置改用值物件:`MapsPlace`、`VenueRepository.setPosition/findOrCreate` 仍是兩個獨立的 `Double?`,應統一為 `GeoPoint?`。
+   - 「地址跟著位置走」的規則散在 `VenueRepositoryImpl`、`VenueDao` SQL 與兩份 fake;應有單一歸屬(`Venue` 聚合或 `VenueAddress`)。
+   - `GluedVenueRepair` 以多次 repository 呼叫做 check-then-act;改成一個交易性的 repository 操作,合併的 from→into 對應也不該只存在記憶體。
+   - 兩份 `FakeVenueRepository`(`app/src/test` 與 `shared/src/commonTest`)會漂移;`GluedVenueRepairTest`、`MapsPlaceReaderTest`
+     測的是 commonMain 純邏輯,依 CLAUDE.md 應移到 `commonTest` 並共用一份 fake。
 
 ## 5. 建置、測試與發布
 
