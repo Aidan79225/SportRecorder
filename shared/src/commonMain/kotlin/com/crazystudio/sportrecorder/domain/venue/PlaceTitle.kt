@@ -35,6 +35,15 @@ object PlaceTitle {
         val split = title?.let { addressFirst(it) ?: nameFirst(it) }
         return split?.takeIf { it.name.any(Char::isLetterOrDigit) && !FLOOR_ONLY.matches(it.name) }
     }
+
+    /**
+     * Whether [title] is only an address, with no name, in the shapes above (the postcode optional): the
+     * title of a link to an address searched on the Maps website, 「106台北市大安區信義路二段194號」.
+     */
+    fun isAddressOnly(title: String): Boolean {
+        val normalized = VenueName.normalize(title)
+        return normalized.length <= MAX_LENGTH && ADDRESS_ONLY.any { it.matches(normalized) }
+    }
 }
 
 // A Taiwanese postcode: 3 digits, or the 3+2 / 3+3 forms.
@@ -80,6 +89,13 @@ private val TRAILING_FLOORS = listOf(
 
 // What is left after an address that has no name: 「…194號2樓」 names nothing.
 private val FLOOR_ONLY = Regex(FLOOR_FORM)
+
+// A whole title that is the address alone, in each of the orders above.
+private val ADDRESS_ONLY = listOf(
+    Regex("""(?:$POSTCODE)?(?:台灣|臺灣)?[^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR"""),
+    Regex("""(?:$POSTCODE, )?[A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER$FLOOR"""),
+    Regex("""(?:$FLOOR_FORM, )?No\. .+?, Taiwan(?: \d{3,6})?"""),
+)
 
 // What follows the address may be only a floor (「…194號 地下1樓」): that is no name, not even in part.
 private fun addressFirst(title: String): PlaceTitle.Split? {

@@ -422,7 +422,8 @@ class EatTimeEditorViewModel constructor(
 
     // The address belongs to its position: it travels with the move, and is only offered as a draft
     // when there is no position to move to. Only a clean name is offered: a title the split left whole
-    // may be the address glued to the name, and must not replace the name the user gave the venue.
+    // may be the address glued to the name, and one that is only an address (a searched address, pin
+    // or not) names nothing; neither may replace the name the user gave the venue.
     private suspend fun repositionTo(venue: Venue, place: MapsPlace) {
         val to = place.position()
         val name = place.cleanName

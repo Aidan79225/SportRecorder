@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.domain.venue
 import com.crazystudio.sportrecorder.domain.venue.PlaceTitle.Split
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
@@ -216,6 +217,31 @@ class PlaceTitleTest {
             "404, Taichung City, North District, Taiping Rd, 15號2樓",
             "2F, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
         ).forEach { assertNull(PlaceTitle.split(it), it) }
+    }
+
+    @Test fun aTitleThatIsOnlyAnAddress_isKnownAsOne() {
+        listOf(
+            // An address searched on the Maps website, with or without its postcode and country.
+            "106台北市大安區信義路二段194號",
+            "台北市大安區信義路二段194號",
+            "106台灣臺北市大安區福住里信義路二段194號2樓",
+            "100台灣臺北市中正區重慶南路一段5號之1",
+            "106台灣臺北市大安區信義路二段194號 地下1樓",
+            "110台北市信義區市府路45號B1",
+            "404, Taichung City, North District, Alley 3, Lane 19, Taiping Rd, 15號",
+            "No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
+            "2F, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
+        ).forEach { assertTrue(PlaceTitle.isAddressOnly(it), it) }
+        listOf(
+            "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店",
+            "Din Tai Fung Xinyi Branch, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
+            "106台灣臺北市大安區福住里信義路二段194號 | ",
+            "鼎泰豐 信義店",
+            "85度C",
+            "101大樓5號店",
+            "100號咖啡",
+            "Bar, No. 5",
+        ).forEach { assertFalse(PlaceTitle.isAddressOnly(it), it) }
     }
 
     @Test fun whitespaceIsNormalized() {

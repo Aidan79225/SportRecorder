@@ -56,9 +56,13 @@ data class MapsPlace(
      * [name] when it is the place's name alone; null when it is a pinless link's whole title, which
      * [PlaceTitle] could not split and so may be the address glued to the name. Being placed by
      * looking that title up does not change what it is; nor does being too long to look up (it then
-     * has no position either).
+     * has no position either). Null too for a title that is only an address — a link to an address
+     * searched on the Maps website — pin or not: it names nothing.
      */
-    val cleanName: String? get() = name.takeUnless { address == null && (geocodeQuery != null || lat == null) }
+    val cleanName: String?
+        get() = name?.takeUnless {
+            PlaceTitle.isAddressOnly(it) || address == null && (geocodeQuery != null || lat == null)
+        }
 }
 
 private const val HTTPS = "https://"

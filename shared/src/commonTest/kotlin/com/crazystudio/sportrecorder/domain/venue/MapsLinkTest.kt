@@ -145,6 +145,18 @@ class MapsLinkTest {
         assertNull(MapsLink.parse(ADDRESS_ONLY)!!.cleanName)
     }
 
+    @Test fun aPinnedLinkToAnAddress_hasNoCleanName() {
+        // An address searched on the Maps website: the pin is the place, but its title names nothing.
+        val zh = "https://www.google.com/maps/place/106%E5%8F%B0%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89%E5%8D%80" +
+            "%E4%BF%A1%E7%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5194%E8%99%9F/@25.03,121.53,17z/data=!3d25.0335!4d121.5301"
+        val zhPlace = MapsLink.parse(zh)!!
+        assertEquals(MapsPlace("106台北市大安區信義路二段194號", 25.0335, 121.5301), zhPlace)
+        assertNull(zhPlace.cleanName)
+        val en = "https://www.google.com/maps/place/No.%20194%E8%99%9F,%20Section%202,%20Xinyi%20Rd," +
+            "%20Da%E2%80%99an%20District,%20Taipei%20City,%20Taiwan%20106/data=!3d25.0335!4d121.5301"
+        assertNull(MapsLink.parse(en)!!.cleanName)
+    }
+
     @Test fun anOverLongPinlessTitle_isLeftWhole_withNothingToLookUp() {
         val atTheLimit = "鼎".repeat(PlaceTitle.MAX_LENGTH)
         assertEquals(atTheLimit, MapsLink.parse("https://www.google.com/maps/place/$atTheLimit/")!!.geocodeQuery)

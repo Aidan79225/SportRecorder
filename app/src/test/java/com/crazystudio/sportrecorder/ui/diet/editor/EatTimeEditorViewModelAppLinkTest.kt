@@ -367,6 +367,31 @@ class EatTimeEditorViewModelAppLinkTest {
             assertEquals(listOf(KO_TITLE), editor.lookup.queried)
         }
 
+    @Test
+    fun repositionFromALinkToAnAddress_movesTheVenue_butNeverOffersTheAddressAsItsName() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            // A stall with no Maps listing: its address searched on the Maps website, and that link copied.
+            val stall = Venue(id = 1, name = "阿婆麵店", lat = 25.0, lng = 121.0, lastUsedAt = 1L)
+            val editor = Editor(venues = listOf(stall)).apply {
+                clipboard.text = "https://www.google.com/maps/place/106%E5%8F%B0%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89" +
+                    "%E5%8D%80%E4%BF%A1%E7%BE%A9%E8%B7%AF%E4%BA%8C%E6%AE%B5194%E8%99%9F/@25.03,121.53,17z" +
+                    "/data=!3d25.0335!4d121.5301"
+                lookup.address = geocoderAddress
+            }
+            val vm = editor.viewModel()
+
+            assertTrue(vm.repositionFromClipboard(stall))
+            advanceUntilIdle()
+
+            // The pin moves it (no record at it, so at once); the name the user gave it stays theirs.
+            assertEquals(
+                stall.copy(lat = 25.0335, lng = 121.5301, address = geocoderAddress),
+                editor.venues.stored.single(),
+            )
+            assertNull(vm.uiState.value.repositionDraft)
+            assertNull(vm.uiState.value.repositionNotice)
+        }
+
     /**
      * [venues], raced by another writer: [write] runs once, just before the editor's first insert —
      * after the editor read the venues, so what it [added] is not in what the editor saw.
