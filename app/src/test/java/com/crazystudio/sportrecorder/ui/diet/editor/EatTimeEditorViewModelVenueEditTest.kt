@@ -340,7 +340,7 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
-    fun repositionFromALink_takesOnlyThePin_notTheName() = runTest(mainRule.testDispatcher.scheduler) {
+    fun repositionFromAWebLink_movesThePin_andOnlyOffersTheName() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu.copy(address = "舊地址")))
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel()
@@ -351,8 +351,11 @@ class EatTimeEditorViewModelVenueEditTest {
         // No records at it: moved at once, without asking.
         assertNull(vm.uiState.value.pendingMove)
         val moved = editor.venues.stored.single()
+        // The link's name fills the dialog's 店名 draft; only 儲存 would write it.
         assertEquals("大戶屋", moved.name)
+        assertEquals(EatTimeEditorUiState.RepositionDraft(daHuWu.id, "鼎泰豐 信義店"), vm.uiState.value.repositionDraft)
         assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
+        // A web-made link carries no address: the old one went with the old position.
         assertNull(moved.address)
         // Editing a venue never picks it for this meal.
         assertNull(vm.uiState.value.venue)
@@ -379,8 +382,9 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
-    fun repositionFromALinkWithoutAPin_saysSoInTheDialog() = runTest(mainRule.testDispatcher.scheduler) {
+    fun repositionFromALinkThatCantBeLocated_saysSoInTheDialog() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu))
+        // No pin and no address in a shape the Maps apps write: a name the geocoder can't place.
         editor.resolver.location = "https://www.google.com/maps/place/Ichiran"
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel()
@@ -389,7 +393,10 @@ class EatTimeEditorViewModelVenueEditTest {
         vm.repositionFromClipboard(daHuWu)
         advanceUntilIdle()
 
-        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.repositionNotice)
+        // Only the name is offered, so the line does not claim an address was filled in.
+        assertEquals(ShareNotice.PlaceNotLocatedNameOnly, vm.uiState.value.repositionNotice)
+        assertEquals(EatTimeEditorUiState.RepositionDraft(daHuWu.id, "Ichiran"), vm.uiState.value.repositionDraft)
+        assertEquals(listOf("Ichiran"), editor.lookup.queried)
         // The editor's own notice line and the meal's venue are left alone.
         assertNull(vm.uiState.value.shareNotice)
         assertEquals(daHuWu, vm.uiState.value.venue)
@@ -397,6 +404,23 @@ class EatTimeEditorViewModelVenueEditTest {
 
         vm.closeVenueEdit()
         assertNull(vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
+    }
+
+    @Test
+    fun repositionFromALinkNamingNoPlace_saysItCantBeRead() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(daHuWu))
+        // A full Maps URL with neither a place nor a position in it.
+        editor.resolver.location = "https://www.google.com/maps/dir/"
+        editor.clipboard.text = SHARE_TEXT
+        val vm = editor.viewModel()
+
+        vm.repositionFromClipboard(daHuWu)
+        advanceUntilIdle()
+
+        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
+        assertEquals(listOf(daHuWu), editor.venues.stored)
     }
 
     @Test

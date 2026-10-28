@@ -366,11 +366,13 @@ class EatTimeEditorViewModel constructor(
     }
 
     /**
-     * Moves [venue] to the pin of the Maps link on the clipboard, read now because the user tapped.
-     * Only the pin is taken, never the name. A venue with records asks first
-     * ([EatTimeEditorUiState.pendingMove]); a link without a pin says so in
-     * [EatTimeEditorUiState.repositionNotice]. False when the clipboard held no Maps link: the user is
-     * then asked to paste one by hand.
+     * Updates [venue] from the Maps link on the clipboard, read now because the user tapped. The
+     * place's position moves the venue, with the link's own address; a venue with records asks first
+     * ([EatTimeEditorUiState.pendingMove]). The link's name is offered to the edit dialog's 店名 draft
+     * ([EatTimeEditorUiState.repositionDraft]): only 儲存 writes it. A place with no position moves
+     * nothing: its name and address are offered instead, and
+     * [EatTimeEditorUiState.repositionNotice] says why. False when the clipboard held no Maps link:
+     * the user is then asked to paste one by hand.
      */
     override suspend fun repositionFromClipboard(venue: Venue): Boolean {
         val text = clipboardReader.text()?.takeIf { MapsLink.find(it) != null }
@@ -385,7 +387,7 @@ class EatTimeEditorViewModel constructor(
     private fun startReposition(text: String, venue: Venue) {
         val previous = repositionJob
         previous?.cancel()
-        _uiState.update { it.copy(repositionNotice = null) }
+        _uiState.update { it.copy(repositionNotice = null, repositionDraft = null) }
         repositionJob = viewModelScope.launch {
             // A cancelled run still clears repositioning on its way out; let it finish before this one starts.
             previous?.join()
@@ -397,31 +399,59 @@ class EatTimeEditorViewModel constructor(
         _uiState.update { it.copy(repositioning = true) }
         try {
             val link = MapsLink.find(text)
-            val to = link?.let { mapsPlaceReader.read(it) }?.position()
+            val place = link?.let { mapsPlaceReader.read(it) }
             when {
                 link == null -> showRepositionNotice(ShareNotice.NotAMapLink)
-                to == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
-                else -> askOrMove(venue, to)
+                place == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
+                else -> repositionTo(venue, place)
             }
         } finally {
             _uiState.update { it.copy(repositioning = false) }
         }
     }
 
-    private suspend fun askOrMove(venue: Venue, to: GeoPoint) {
+    // The address belongs to its position: it travels with the move, and is only offered as a draft
+    // when there is no position to move to.
+    private suspend fun repositionTo(venue: Venue, place: MapsPlace) {
+        val to = place.position()
+        val name = place.name
+        when {
+            to != null -> {
+                name?.let { offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, it)) }
+                askOrMove(venue, to, place.address)
+            }
+            // A name with nowhere to put it: the drafts take what the link says, and nothing moves.
+            name != null -> {
+                offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, name, place.address))
+                showRepositionNotice(notLocated(place))
+            }
+            else -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
+        }
+    }
+
+    private fun offerDraft(draft: EatTimeEditorUiState.RepositionDraft) =
+        _uiState.update { it.copy(repositionDraft = draft) }
+
+    // The line never claims an address was filled in when the link carried none.
+    private fun notLocated(place: MapsPlace) =
+        if (place.address != null) ShareNotice.PlaceNotLocated else ShareNotice.PlaceNotLocatedNameOnly
+
+    private suspend fun askOrMove(venue: Venue, to: GeoPoint, address: String?) {
         val records = venueRepository.recordCount(venue.id)
         if (records > 0) {
-            _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records)) }
+            _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records, address)) }
         } else {
-            moveVenue(venue, to)
+            moveVenue(venue, to, address)
         }
     }
 
     private fun showRepositionNotice(notice: ShareNotice) = _uiState.update { it.copy(repositionNotice = notice) }
 
+    override fun consumeRepositionDraft() = _uiState.update { it.copy(repositionDraft = null) }
+
     /**
      * The edit dialog is gone: a map link still being read for it moves nothing, and the question,
-     * paste dialog or notice it led to goes with it.
+     * paste dialog, notice or drafts it led to go with it.
      */
     override fun closeVenueEdit() {
         repositionJob?.cancel()
@@ -429,18 +459,19 @@ class EatTimeEditorViewModel constructor(
             state.copy(
                 repositionNotice = null,
                 repositioning = false,
+                repositionDraft = null,
                 pendingMove = null,
                 pasteDialog = state.pasteDialog.takeUnless { it is PasteTarget.Reposition },
             )
         }
     }
 
-    /** Move the venue to the link's pin — for every record at it. */
+    /** Move the venue to the link's pin — for every record at it — with the link's address. */
     override fun confirmMove() {
         val pending = _uiState.value.pendingMove ?: return
         // Clear first, so a second tap finds nothing pending.
         _uiState.update { it.copy(pendingMove = null) }
-        viewModelScope.launch { moveVenue(pending.venue, pending.to) }
+        viewModelScope.launch { moveVenue(pending.venue, pending.to, pending.address) }
     }
 
     /** Keep the venue where it is; a map link still being read for it moves nothing either. */

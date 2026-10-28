@@ -7,6 +7,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -197,5 +198,90 @@ class EatTimeEditorViewModelAppLinkTest {
         assertEquals(geocoderAddress, sharing.venues.stored.single().address)
         assertEquals(sharing.venues.stored.single(), shared.uiState.value.venue)
         assertEquals(daHuWu.copy(address = "仁愛路"), picked.uiState.value.venue)
+    }
+
+    @Test
+    fun repositionFromAnAppLink_movesWithTheLinksAddress_andOffersItsName() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            // No record at it, so it moves at once; its old address described its old position.
+            val old = daHuWu.copy(address = "舊地址")
+            val editor = appLinkEditor(listOf(old))
+            val vm = editor.viewModel()
+
+            assertTrue(vm.repositionFromClipboard(old))
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.pendingMove)
+            // The pin and the link's own address are written together; the name only fills the 店名 draft.
+            assertEquals(
+                old.copy(lat = mapsPosition.lat, lng = mapsPosition.lng, address = APP_ADDRESS),
+                editor.venues.stored.single(),
+            )
+            assertEquals(EatTimeEditorUiState.RepositionDraft(old.id, "鼎泰豐 信義店"), vm.uiState.value.repositionDraft)
+            assertEquals(listOf(APP_FULL_ADDRESS), editor.lookup.queried)
+            assertTrue(editor.lookup.asked.isEmpty())
+            assertNull(vm.uiState.value.repositionNotice)
+            // Editing a venue never picks it for this meal.
+            assertNull(vm.uiState.value.venue)
+
+            // The dialog took the name: it is not offered again.
+            vm.consumeRepositionDraft()
+            assertNull(vm.uiState.value.repositionDraft)
+        }
+
+    @Test
+    fun repositionWithRecords_asksFirst_thenWritesTheAddress() = runTest(mainRule.testDispatcher.scheduler) {
+        val old = daHuWu.copy(address = "舊地址")
+        val editor = appLinkEditor(listOf(old))
+        editor.venues.recordCounts[old.id] = 3
+        val vm = editor.viewModel()
+
+        assertTrue(vm.repositionFromClipboard(old))
+        advanceUntilIdle()
+
+        assertEquals(
+            EatTimeEditorUiState.PendingMove(old, to = mapsPosition, movedRecords = 3, address = APP_ADDRESS),
+            vm.uiState.value.pendingMove,
+        )
+        // Nothing is written until the user agrees; the name is offered all the same.
+        assertEquals(listOf(old), editor.venues.stored)
+        assertEquals(EatTimeEditorUiState.RepositionDraft(old.id, "鼎泰豐 信義店"), vm.uiState.value.repositionDraft)
+
+        vm.confirmMove()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(
+            old.copy(lat = mapsPosition.lat, lng = mapsPosition.lng, address = APP_ADDRESS),
+            editor.venues.stored.single(),
+        )
+        assertTrue(editor.lookup.asked.isEmpty())
+    }
+
+    @Test
+    fun repositionWhenUnlocatable_offersNameAndAddress_movesNothing() = runTest(mainRule.testDispatcher.scheduler) {
+        val old = daHuWu.copy(address = "舊地址")
+        val editor = appLinkEditor(listOf(old), locatable = false)
+        editor.venues.recordCounts[old.id] = 3
+        val vm = editor.viewModel()
+
+        assertTrue(vm.repositionFromClipboard(old))
+        advanceUntilIdle()
+
+        // Nowhere to move it to: nothing is asked or written, and the dialog says why.
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(listOf(old), editor.venues.stored)
+        assertEquals(
+            EatTimeEditorUiState.RepositionDraft(old.id, "鼎泰豐 信義店", APP_ADDRESS),
+            vm.uiState.value.repositionDraft,
+        )
+        assertEquals(ShareNotice.PlaceNotLocated, vm.uiState.value.repositionNotice)
+        assertFalse(vm.uiState.value.repositioning)
+        assertEquals(listOf(APP_FULL_ADDRESS), editor.lookup.queried)
+
+        // Closing the dialog drops what it was offered.
+        vm.closeVenueEdit()
+        assertNull(vm.uiState.value.repositionDraft)
+        assertNull(vm.uiState.value.repositionNotice)
     }
 }

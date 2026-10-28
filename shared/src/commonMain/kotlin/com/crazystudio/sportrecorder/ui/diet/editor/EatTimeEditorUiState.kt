@@ -33,8 +33,10 @@ data class EatTimeEditorUiState(
     val pasteDialog: PasteTarget? = null,
     /** Why a map link moved no venue; shown inside the edit dialog, never under the editor's venue row. */
     val repositionNotice: ShareNotice? = null,
-    /** True while the edit dialog's map link is being read; said inside that dialog. */
+    /** True while the edit dialog's map link is being read; said inside that dialog, whose 儲存 waits for it. */
     val repositioning: Boolean = false,
+    /** What the edit dialog's map link offers its drafts; the dialog takes it once via `consumeRepositionDraft`. */
+    val repositionDraft: RepositionDraft? = null,
     /** A transient result the UI shows once, then clears via `consumeMessage`. */
     val message: EditorMessage? = null,
 ) {
@@ -57,8 +59,18 @@ data class EatTimeEditorUiState(
     /** Deleting [venue] leaves its [records] records without a venue; none of them is deleted. */
     data class PendingDelete(val venue: Venue, val records: Int)
 
-    /** A map link puts [venue] at [to], far from where it is: [movedRecords] records' marker would move. */
-    data class PendingMove(val venue: Venue, val to: GeoPoint, val movedRecords: Int)
+    /**
+     * A map link puts [venue] at [to], far from where it is: [movedRecords] records' marker would move.
+     * The venue takes [address], the link's own, with the move; without one it is looked up again.
+     */
+    data class PendingMove(val venue: Venue, val to: GeoPoint, val movedRecords: Int, val address: String? = null)
+
+    /**
+     * The map link read by 「貼上地圖連結更新」 for venue [venueId] names it [name], which fills the
+     * edit dialog's 店名 draft (儲存 keeps it, 取消 the old one). [address] fills the 地址 draft only
+     * when the link could not be placed: a link that moves the venue writes its address with the move.
+     */
+    data class RepositionDraft(val venueId: Int, val name: String, val address: String? = null)
 
     /**
      * A place named [sharedName] was shared at [to], [distance] from [venue], the nearest saved venue
@@ -98,4 +110,14 @@ enum class ShareNotice {
 
     /** Shared text held no Google Maps link at all. */
     NotAMapLink,
+
+    /**
+     * The edit dialog's map link names a place whose position could not be found: its name and
+     * address fill the drafts, and nothing moves. (A share needs no such line: a venue can do without
+     * a position.)
+     */
+    PlaceNotLocated,
+
+    /** As [PlaceNotLocated], for a link that carries no address: only the name fills its draft. */
+    PlaceNotLocatedNameOnly,
 }

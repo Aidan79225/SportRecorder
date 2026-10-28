@@ -27,10 +27,13 @@ interface VenuePickerActions {
 
     fun useThisPositionFor(venue: Venue)
 
-    /** True when the clipboard held a Maps link and [venue] is being moved to its pin; else the paste dialog asks. */
+    /** True when the clipboard held a Maps link and [venue] is being updated from it; else the paste dialog asks. */
     suspend fun repositionFromClipboard(venue: Venue): Boolean
 
-    /** The edit dialog closed: drops a map link still being read for it, and what that link asked or said. */
+    /** The edit dialog took [EatTimeEditorUiState.repositionDraft] into its drafts; it is not offered again. */
+    fun consumeRepositionDraft()
+
+    /** The edit dialog closed: drops a map link still being read for it, and what that link asked, said or offered. */
     fun closeVenueEdit()
 
     fun confirmMove()

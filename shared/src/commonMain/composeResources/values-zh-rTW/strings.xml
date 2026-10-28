@@ -267,6 +267,8 @@
     <string name="editor_paste_use">使用</string>
     <string name="editor_link_unreadable">沒辦法讀取這個地圖連結，可以手動選擇店家。</string>
     <string name="editor_not_map_link">這看起來不是 Google 地圖的連結。</string>
+    <string name="editor_link_no_position">找不到這個地點的位置，店名和地址已經填好了。</string>
+    <string name="editor_link_no_position_name">找不到這個地點的位置，店名已經填好了。</string>
     <string name="editor_move_title">要更新「%1$s」的位置嗎？</string>
     <plurals name="editor_move_body">
         <item quantity="other">有 %1$d 筆過去的紀錄會移到 Google 地圖標示的位置。</item>

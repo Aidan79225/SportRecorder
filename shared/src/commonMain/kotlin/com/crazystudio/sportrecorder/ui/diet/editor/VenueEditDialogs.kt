@@ -14,6 +14,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -56,13 +57,17 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The ✎ dialog (#89). Name and address are drafts that only 儲存 writes; the two position actions
  * apply at once and the position line follows them (取消 does not undo a move). 刪除 asks first.
+ * 「貼上地圖連結更新」 also fills the drafts from the link ([draft]); 儲存 waits while it is read, so a
+ * save can't drop the move it is about to make.
  */
 @Composable
+@Suppress("LongParameterList") // Compose state and event slots
 internal fun VenueEditDialog(
     venue: Venue,
     canUseThisPosition: Boolean,
     notice: ShareNotice?,
     resolving: Boolean,
+    draft: EatTimeEditorUiState.RepositionDraft?,
     actions: VenuePickerActions,
     onClose: () -> Unit,
 ) {
@@ -73,6 +78,14 @@ internal fun VenueEditDialog(
     val address = typedAddress ?: venue.address.orEmpty()
     val records by produceState<Int?>(initialValue = null, venue.id) { value = actions.recordCount(venue) }
     val scope = rememberCoroutineScope()
+    // Taken once, so a draft the user then edits is never put back (on rotation, say).
+    LaunchedEffect(draft) {
+        if (draft != null && draft.venueId == venue.id) {
+            name = draft.name
+            draft.address?.let { typedAddress = it }
+            actions.consumeRepositionDraft()
+        }
+    }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(Res.string.editor_venue_edit)) },
@@ -96,7 +109,7 @@ internal fun VenueEditDialog(
         confirmButton = {
             VenueEditButtons(
                 // A name that is blank once normalized is not a name; the view model refuses it too.
-                canSave = VenueName.normalize(name).isNotEmpty(),
+                canSave = VenueName.normalize(name).isNotEmpty() && !resolving,
                 onDelete = { actions.requestDelete(venue) },
                 onCancel = onClose,
                 onSave = {
