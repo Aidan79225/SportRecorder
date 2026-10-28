@@ -18,13 +18,26 @@ interface VenueRepository {
      */
     suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue
 
-    /** Always a new venue, even if the name exists (a new branch). */
-    suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue
+    /**
+     * Always a new venue, even if the name exists (a new branch). [address] — a Maps link's own — is
+     * stored trimmed (blank → none).
+     */
+    suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String? = null): Venue
 
     suspend fun touch(venueId: Int, now: Long)
 
-    /** Moves the venue **and** clears its address: the old address described the old position. */
-    suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?)
+    /**
+     * Moves the venue, and the old address goes with the old position: it becomes [address] — the one a
+     * Maps link gives with its pin, stored trimmed — or none, to be looked up again. Re-applying the same
+     * position is not a move: nothing is written and the address stays.
+     */
+    suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String? = null)
+
+    /**
+     * Writes [address] (trimmed) only if the venue has none — a Maps link's address never replaces one
+     * the venue already has. True if written.
+     */
+    suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean
 
     /**
      * Writes [address] only if the venue is still at ([lat], [lng]) and its address is still null —

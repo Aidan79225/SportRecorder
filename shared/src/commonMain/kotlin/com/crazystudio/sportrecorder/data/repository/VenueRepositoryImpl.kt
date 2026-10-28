@@ -41,16 +41,21 @@ class VenueRepositoryImpl(
         }
     }
 
-    override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue =
-        insertNew(VenueName.normalize(name), lat, lng, now)
+    override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue =
+        insertNew(VenueName.normalize(name), lat, lng, now, cleaned(address))
 
     override suspend fun touch(venueId: Int, now: Long) = venueDao.setLastUsedAt(id = venueId, now = now)
 
-    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?) =
-        venueDao.setPosition(id = venueId, lat = lat, lng = lng)
+    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String?) =
+        venueDao.setPosition(id = venueId, lat = lat, lng = lng, address = cleaned(address))
 
     override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean =
         venueDao.setAddressIfUnchanged(id = venueId, lat = lat, lng = lng, address = address) > 0
+
+    override suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean {
+        val cleaned = cleaned(address) ?: return false
+        return venueDao.setAddressIfEmpty(id = venueId, address = cleaned) > 0
+    }
 
     override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
         val normalized = VenueName.normalize(name)
@@ -58,7 +63,7 @@ class VenueRepositoryImpl(
         venueDao.setNameAndAddress(
             id = venueId,
             name = normalized,
-            address = address?.trim()?.ifEmpty { null },
+            address = cleaned(address),
             now = now,
         )
         return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
@@ -108,10 +113,19 @@ class VenueRepositoryImpl(
             }
         }
 
-    private suspend fun insertNew(normalized: String, lat: Double?, lng: Double?, now: Long): Venue {
-        val row = VenueEntity(name = normalized, lat = lat, lng = lng, lastUsedAt = now)
+    private suspend fun insertNew(
+        normalized: String,
+        lat: Double?,
+        lng: Double?,
+        now: Long,
+        address: String? = null,
+    ): Venue {
+        val row = VenueEntity(name = normalized, lat = lat, lng = lng, lastUsedAt = now, address = address)
         return row.copy(id = venueDao.insert(row).toInt()).toDomain()
     }
+
+    /** An address as stored: trimmed, and blank is none. */
+    private fun cleaned(address: String?): String? = address?.trim()?.ifEmpty { null }
 
     /**
      * Of the venues whose name is the same as [normalized] by [VenueName], the most recently used.
