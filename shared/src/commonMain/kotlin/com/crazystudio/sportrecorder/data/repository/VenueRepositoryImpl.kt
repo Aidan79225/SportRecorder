@@ -5,6 +5,7 @@ import androidx.room.useWriterConnection
 import com.crazystudio.sportrecorder.dao.VenueDao
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.entity.VenueEntity
@@ -29,7 +30,7 @@ class VenueRepositoryImpl(
 
     override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
-        val given = cleaned(address)
+        val given = VenueAddress.clean(address)
         // One transaction: names are no longer unique in SQL, so two racing calls must not both
         // miss and create two venues for one name.
         return inTransaction {
@@ -52,18 +53,18 @@ class VenueRepositoryImpl(
     }
 
     override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue =
-        insertNew(VenueName.normalize(name), lat, lng, now, cleaned(address))
+        insertNew(VenueName.normalize(name), lat, lng, now, VenueAddress.clean(address))
 
     override suspend fun touch(venueId: Int, now: Long) = venueDao.setLastUsedAt(id = venueId, now = now)
 
     override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String?) =
-        venueDao.setPosition(id = venueId, lat = lat, lng = lng, address = cleaned(address))
+        venueDao.setPosition(id = venueId, lat = lat, lng = lng, address = VenueAddress.clean(address))
 
     override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean =
         venueDao.setAddressIfUnchanged(id = venueId, lat = lat, lng = lng, address = address) > 0
 
     override suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean {
-        val cleaned = cleaned(address) ?: return false
+        val cleaned = VenueAddress.clean(address) ?: return false
         return venueDao.setAddressIfEmpty(id = venueId, address = cleaned) > 0
     }
 
@@ -73,7 +74,7 @@ class VenueRepositoryImpl(
         venueDao.setNameAndAddress(
             id = venueId,
             name = normalized,
-            address = cleaned(address),
+            address = VenueAddress.clean(address),
             now = now,
         )
         return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
@@ -133,14 +134,11 @@ class VenueRepositoryImpl(
         lat: Double?,
         lng: Double?,
         now: Long,
-        address: String? = null,
+        address: String?,
     ): Venue {
         val row = VenueEntity(name = normalized, lat = lat, lng = lng, lastUsedAt = now, address = address)
         return row.copy(id = venueDao.insert(row).toInt()).toDomain()
     }
-
-    /** An address as stored: trimmed, and blank is none. */
-    private fun cleaned(address: String?): String? = address?.trim()?.ifEmpty { null }
 
     /**
      * Of the venues whose name is the same as [normalized] by [VenueName], the most recently used.

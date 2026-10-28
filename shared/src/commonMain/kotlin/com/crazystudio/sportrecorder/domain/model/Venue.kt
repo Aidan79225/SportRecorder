@@ -59,3 +59,9 @@ object VenueName {
     fun sameAs(a: String, b: String): Boolean =
         normalize(a).equals(normalize(b), ignoreCase = true)
 }
+
+/** How a venue's address is stored. Pure, so it is identical on every platform. */
+object VenueAddress {
+    /** [raw] as stored: trimmed, and blank is none. */
+    fun clean(raw: String?): String? = raw?.trim()?.ifEmpty { null }
+}

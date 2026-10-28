@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.domain.venue
 
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.platform.AddressLookup
 
@@ -26,7 +27,7 @@ class VenueAddressFiller(
         val lat = venue.lat
         val lng = venue.lng
         if (lat == null || lng == null || venue.address != null) return
-        val address = lookup.addressAt(GeoPoint(lat, lng))?.trim()?.takeIf { it.isNotEmpty() }
+        val address = VenueAddress.clean(lookup.addressAt(GeoPoint(lat, lng)))
         if (address != null) venues.setAddressIfUnchanged(venue.id, lat, lng, address)
     }
 }

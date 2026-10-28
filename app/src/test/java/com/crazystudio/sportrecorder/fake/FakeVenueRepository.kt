@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.fake
 
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import kotlinx.coroutines.flow.Flow
@@ -35,9 +36,9 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         val existing = state.value.filter { VenueName.sameAs(it.name, normalized) }.maxByOrNull { it.lastUsedAt }
         if (existing != null) {
             val learned = if (existing.lat == null && lat != null) {
-                existing.copy(lat = lat, lng = lng, address = cleaned(address), lastUsedAt = now)
+                existing.copy(lat = lat, lng = lng, address = VenueAddress.clean(address), lastUsedAt = now)
             } else {
-                existing.copy(address = existing.address ?: cleaned(address), lastUsedAt = now)
+                existing.copy(address = existing.address ?: VenueAddress.clean(address), lastUsedAt = now)
             }
             replace(learned)
             return learned
@@ -52,7 +53,7 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
             lat = lat,
             lng = lng,
             lastUsedAt = now,
-            address = cleaned(address),
+            address = VenueAddress.clean(address),
         )
         state.value = state.value + created
         return created
@@ -64,7 +65,7 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
 
     override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String?) {
         find(venueId)?.takeIf { it.lat != lat || it.lng != lng }
-            ?.let { replace(it.copy(lat = lat, lng = lng, address = cleaned(address))) }
+            ?.let { replace(it.copy(lat = lat, lng = lng, address = VenueAddress.clean(address))) }
     }
 
     override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean {
@@ -74,7 +75,7 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     }
 
     override suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean {
-        val cleaned = cleaned(address)
+        val cleaned = VenueAddress.clean(address)
         val venue = find(venueId)?.takeIf { cleaned != null && it.address == null }
         venue?.let { replace(it.copy(address = cleaned)) }
         return venue != null
@@ -85,7 +86,7 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         require(normalized.isNotEmpty()) { "a venue needs a name" }
         val edited = state.value.first { it.id == venueId }.copy(
             name = normalized,
-            address = cleaned(address),
+            address = VenueAddress.clean(address),
             lastUsedAt = now,
         )
         replace(edited)
@@ -124,8 +125,6 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     }
 
     private fun find(venueId: Int): Venue? = state.value.firstOrNull { it.id == venueId }
-
-    private fun cleaned(address: String?): String? = address?.trim()?.ifEmpty { null }
 
     private fun replace(venue: Venue) {
         state.value = state.value.map { if (it.id == venue.id) venue else it }

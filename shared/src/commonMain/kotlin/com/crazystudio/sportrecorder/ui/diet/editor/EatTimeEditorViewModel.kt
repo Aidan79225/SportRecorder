@@ -9,6 +9,7 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
@@ -554,7 +555,7 @@ class EatTimeEditorViewModel constructor(
             val into = VenueMerge.target(current, name, venues)
             // Saving what is already stored writes nothing, so the venue does not jump up the list.
             val unchanged = current.name == VenueName.normalize(name) &&
-                current.address == address?.trim()?.ifEmpty { null }
+                current.address == VenueAddress.clean(address)
             when {
                 into != null -> {
                     val pending = EatTimeEditorUiState.PendingMerge(
