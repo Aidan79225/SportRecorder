@@ -46,6 +46,63 @@ class PlaceTitleTest {
         )
     }
 
+    @Test fun aFloorInAnotherForm_staysInTheAddress() {
+        val expected = mapOf(
+            "110台灣台北市信義區市府路45號B1鼎泰豐" to
+                Split("鼎泰豐", "110台灣台北市信義區市府路45號B1", "台北市信義區市府路45號B1"),
+            "106台灣臺北市大安區信義路二段194號3F鼎泰豐" to
+                Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號3F", "臺北市大安區信義路二段194號3F"),
+            // A space after 號.
+            "106台灣臺北市大安區信義路二段194號 2樓鼎泰豐" to
+                Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號 2樓", "臺北市大安區信義路二段194號 2樓"),
+            // A Chinese-numeral floor, as the geocoder writes this building's.
+            "106台灣臺北市大安區信義路二段194號三樓鼎泰豐" to
+                Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號三樓", "臺北市大安區信義路二段194號三樓"),
+            "106台灣臺北市大安區信義路二段194號地下一樓之2鼎泰豐" to
+                Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號地下一樓之2", "臺北市大安區信義路二段194號地下一樓之2"),
+            // A name that only starts like B1 or 3F keeps its start.
+            "106台灣臺北市大安區信義路二段12號B2B咖啡" to
+                Split("B2B咖啡", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
+            "106台灣臺北市大安區信義路二段12號5Fun Bar" to
+                Split("5Fun Bar", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
+        )
+        expected.forEach { (title, split) -> assertEquals(split, PlaceTitle.split(title), title) }
+    }
+
+    @Test fun aFloorAfterTheName_joinsTheAddress_inAnyForm() {
+        val address = "108台北市萬華區雙園街49巷7號"
+        val trimmed = "台北市萬華區雙園街49巷7號"
+        val name = "癒所vegvísir｜預約制私廚"
+        listOf("地下1樓", "2樓之1", "B1", "3F").forEach { floor ->
+            assertEquals(Split(name, address + floor, trimmed + floor), PlaceTitle.split(address + name + floor), floor)
+        }
+        assertEquals(
+            Split(name, address + "B1", trimmed + "B1"),
+            PlaceTitle.split("$address$name B1"),
+        )
+        // Only letters and digits before it: the name's own end, not a floor.
+        assertEquals(Split("CLUB1", address, trimmed), PlaceTitle.split("${address}CLUB1"))
+    }
+
+    @Test fun enTitles_keepTheirFloorInTheAddress() {
+        listOf("2F", "1樓", "B1", "地下1樓").forEach { floor ->
+            val address = "$floor, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City"
+            assertEquals(
+                Split("Din Tai Fung", "$address, Taiwan 106", address),
+                PlaceTitle.split("Din Tai Fung, $address, Taiwan 106"),
+                floor,
+            )
+        }
+        listOf("2樓", "地下1樓", "B1").forEach { floor ->
+            val address = "Taichung City, North District, Taiping Rd, 15號$floor"
+            assertEquals(
+                Split("高沐手作料理餐廳", "404, $address", address),
+                PlaceTitle.split("404, ${address}高沐手作料理餐廳"),
+                floor,
+            )
+        }
+    }
+
     @Test fun zhiAfterTheNumber_staysInTheAddress() {
         assertEquals(
             Split("小王子咖啡", "100台灣臺北市中正區重慶南路一段5號之1", "臺北市中正區重慶南路一段5號之1"),
@@ -150,6 +207,14 @@ class PlaceTitleTest {
             "106台灣臺北市大安區福住里信義路二段194號地下1樓之2",
             "106臺北市大安區四維路208巷10號之1",
             "404, Taichung City, North District, Alley 3, Lane 19, Taiping Rd, 15號之1",
+            // The same, ending in a floor in another form, or after a space.
+            "106台灣臺北市大安區信義路二段194號 地下1樓",
+            "106台灣臺北市大安區信義路二段194號 2樓",
+            "110台灣台北市信義區市府路45號B1",
+            "106台灣臺北市大安區信義路二段194號3F",
+            "106台灣臺北市大安區信義路二段194號三樓",
+            "404, Taichung City, North District, Taiping Rd, 15號2樓",
+            "2F, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
         ).forEach { assertNull(PlaceTitle.split(it), it) }
     }
 
