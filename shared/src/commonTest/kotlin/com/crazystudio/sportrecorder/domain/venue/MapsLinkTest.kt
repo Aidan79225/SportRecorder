@@ -43,7 +43,13 @@ private const val IOS = "https://maps.google.com?q=106%E8%87%BA%E5%8C%97%E5%B8%8
     "&skid=738591ab-314f-4265-a56e-7309aae2f9c8&g_st=ipc"
 private const val IOS_QUERY = "q=106%E8%87%BA%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89%E5%8D%80" +
     "%E5%9B%9B%E7%B6%AD%E8%B7%AF208%E5%B7%B710%E8%99%9F%E6%9C%AA%E5%A4%AE%E5%92%96%E5%95%A1%E5%BA%97&entry=gps"
-private val IOS_PLACE = MapsPlace("未央咖啡店", null, null, "臺北市大安區四維路208巷10號", "106臺北市大安區四維路208巷10號")
+private val IOS_PLACE = MapsPlace(
+    name = "未央咖啡店",
+    lat = null,
+    lng = null,
+    address = "臺北市大安區四維路208巷10號",
+    geocodeQuery = "106臺北市大安區四維路208巷10號",
+)
 
 /**
  * The parser is the gate between arbitrary shared text and the network: only exact allowlisted
@@ -129,7 +135,7 @@ class MapsLinkTest {
         assertIs<MapsLink.Full>(MapsLink.find(ANDROID_ZH))
     }
 
-    @Test fun unrecognisedPinlessSegment_staysWhole() {
+    @Test fun unrecognisedPinlessTitle_staysWhole() {
         assertEquals(
             MapsPlace(KO_TITLE, null, null, address = null, geocodeQuery = KO_TITLE, nameIsWholeTitle = true),
             MapsLink.parse(ANDROID_KO),
@@ -174,7 +180,7 @@ class MapsLinkTest {
         assertNull(place.cleanName)
     }
 
-    @Test fun pinlessAddressOnlySegment_staysWhole() {
+    @Test fun pinlessAddressOnlyTitle_staysWhole() {
         assertEquals(
             MapsPlace(ADDRESS_ONLY_TITLE, null, null, geocodeQuery = ADDRESS_ONLY_TITLE, nameIsWholeTitle = true),
             MapsLink.parse(ADDRESS_ONLY),
@@ -197,10 +203,16 @@ class MapsLinkTest {
         assertEquals(MapsPlace("Café, Bar", 25.03, 121.53), MapsLink.parse(withComma))
     }
 
-    @Test fun iosLink_readsQ() {
+    @Test fun aQLink_isFoundInText_withItsWholeUrl() {
         assertIs<MapsLink.Full>(MapsLink.find("看看 $IOS"))
         assertEquals(IOS, MapsLink.find(IOS)!!.url)
+    }
+
+    @Test fun iosAppLink_splitsItsQIntoAddressAndName() {
         assertEquals(IOS_PLACE, MapsLink.parse(IOS))
+    }
+
+    @Test fun qOnEveryFullMapsHostAndPath_readsTheSamePlace() {
         assertEquals(IOS_PLACE, MapsLink.parse("https://maps.google.com/?$IOS_QUERY"))
         assertEquals(IOS_PLACE, MapsLink.parse("https://www.google.com?$IOS_QUERY"))
         assertEquals(IOS_PLACE, MapsLink.parse("https://www.google.com/maps?$IOS_QUERY"))
@@ -212,8 +224,10 @@ class MapsLinkTest {
         assertNull(MapsLink.find("https://maps.google.com?ftid=0x1:0x2&entry=gps"))
         assertNull(MapsLink.find("https://maps.google.com/?q="))
         assertNull(MapsLink.parse("https://www.google.com/?entry=gps"))
+    }
+
+    @Test fun qOnAnyOtherPath_isNoMapsLink() {
         assertNull(MapsLink.find("https://maps.google.com/search?q=x"))
-        assertNull(MapsLink.find("https://maps.google.com.evil.example?q=x"))
     }
 
     @Test fun searchCoordinates_giveAPin() {
@@ -225,6 +239,9 @@ class MapsLinkTest {
         val q = MapsPlace(null, 25.0335, 121.5301)
         assertEquals(q, MapsLink.parse("https://maps.google.com/maps?q=25.0335,121.5301"))
         assertEquals(q, MapsLink.parse("https://maps.google.com?q=25.0335,+121.5301"))
+    }
+
+    @Test fun aSearchOffTheEarthOrNotForCoordinates_givesNothing() {
         assertEquals(MapsPlace(null, null, null), MapsLink.parse("https://www.google.com/maps/search/95.0,+121.5"))
         assertEquals(MapsPlace(null, null, null), MapsLink.parse("https://www.google.com/maps/search/%E9%BC%8E"))
     }
@@ -309,6 +326,7 @@ class MapsLinkTest {
         assertNull(MapsLink.find("see https://evil.example/maps/place/X/@1,2"))
         assertNull(MapsLink.find("https://maps.app.goo.gl.evil.example/abc"))
         assertNull(MapsLink.find("https://www.google.com.evil.example/maps/place/X/"))
+        assertNull(MapsLink.find("https://maps.google.com.evil.example?q=x"))
         assertNull(MapsLink.find("https://maps.app.goo.gl@evil.example/abc"))
         assertNull(MapsLink.find("https://goo.gl/other/abc"))
         assertNull(MapsLink.find("https://www.google.com/search?q=maps"))

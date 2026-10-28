@@ -61,7 +61,13 @@ class PlaceTitleTest {
                 Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號三樓", "臺北市大安區信義路二段194號三樓"),
             "106台灣臺北市大安區信義路二段194號地下一樓之2鼎泰豐" to
                 Split("鼎泰豐", "106台灣臺北市大安區信義路二段194號地下一樓之2", "臺北市大安區信義路二段194號地下一樓之2"),
-            // A name that only starts like B1 or 3F keeps its start.
+        )
+        expected.forEach { (title, split) -> assertEquals(split, PlaceTitle.split(title), title) }
+    }
+
+    @Test fun aNameThatOnlyStartsLikeAFloor_keepsItsStart() {
+        val expected = mapOf(
+            // Like B1 or 3F.
             "106台灣臺北市大安區信義路二段12號B2B咖啡" to
                 Split("B2B咖啡", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
             "106台灣臺北市大安區信義路二段12號5Fun Bar" to
@@ -136,8 +142,14 @@ class PlaceTitleTest {
             Split(name, address + "B1", trimmed + "B1"),
             PlaceTitle.split("$address$name B1"),
         )
-        // Only letters and digits before it: the name's own end, not a floor.
-        assertEquals(Split("CLUB1", address, trimmed), PlaceTitle.split("${address}CLUB1"))
+    }
+
+    @Test fun aNameThatOnlyEndsLikeAFloor_keepsItsEnd() {
+        // Its B1 is glued to the letters before it: the name's own end, not a floor.
+        assertEquals(
+            Split("CLUB1", "108台北市萬華區雙園街49巷7號", "台北市萬華區雙園街49巷7號"),
+            PlaceTitle.split("108台北市萬華區雙園街49巷7號CLUB1"),
+        )
     }
 
     @Test fun enTitles_keepTheirFloorInTheAddress() {
@@ -181,7 +193,7 @@ class PlaceTitleTest {
         )
     }
 
-    @Test fun realTaiwaneseTitlesFromTheMapsApps() {
+    @Test fun realAppTitles_splitIntoNameAndAddress() {
         val expected = mapOf(
             // iOS app (q=), no country after the postcode.
             "106臺北市大安區四維路208巷10號未央咖啡店" to
@@ -309,13 +321,15 @@ class PlaceTitleTest {
         )
     }
 
-    @Test fun anOverLongTitle_isNotSplit_andReturnsQuickly() {
+    @Test fun anOverLongTitle_isNotSplit() {
         // Every real title is well under 200 characters: past the limit even a well-shaped one stays whole.
         val address = "106台灣臺北市大安區福住里信義路二段194號"
         val name = "鼎".repeat(PlaceTitle.MAX_LENGTH - address.length)
         assertEquals(name, PlaceTitle.split(address + name)?.name)
         assertNull(PlaceTitle.split(address + name + "鼎"))
+    }
 
+    @Test fun aCraftedOverLongTitle_isRefusedQuickly() {
         // Crafted so the address patterns would backtrack over every digit; it is refused unread.
         val crafted = "100臺北市" + "1".repeat(50_000 - "100臺北市".length)
         val (split, elapsed) = measureTimedValue { PlaceTitle.split(crafted) }
