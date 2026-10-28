@@ -319,7 +319,7 @@ class EatTimeEditorViewModel constructor(
     private fun Venue.isListed() = allVenues.any { it.id == id }
 
     // Neither merged away nor deleted, asked for by id: a venue the list has not caught up with yet remains.
-    private suspend fun Venue.remains() = venueRepository.resolve(id)?.id == id
+    private suspend fun Venue.remains() = venueRepository.find(id) != null
 
     // The venues the open questions are about: a merge's two, a move's and a share's.
     private fun EatTimeEditorUiState.questionedVenues() =

@@ -318,6 +318,20 @@ class VenueRepositoryTest {
         assertNull(db.getVenueDao().findById(into.id)!!.address)
     }
 
+    @Test fun find_isOnlyAVenueStillStored() = runBlocking {
+        val store = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 1L)
+        val merged = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 2L)
+        val deleted = repo.create("麥當勞", null, null, now = 3L)
+
+        assertEquals(store, repo.find(store.id))
+        repo.merge(fromId = merged.id, intoId = store.id, now = 4L)
+        repo.delete(deleted.id)
+
+        // Gone either way: where a merged-away venue's records went is resolve's to say.
+        assertNull(repo.find(merged.id))
+        assertNull(repo.find(deleted.id))
+    }
+
     @Test fun resolve_followsMerges_toWhereTheRecordsWent() = runBlocking {
         val a = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 1L)
         val b = repo.create("鼎泰豐 信義店", lat = 25.0336, lng = 121.5301, now = 2L)

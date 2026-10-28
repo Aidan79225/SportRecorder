@@ -31,14 +31,14 @@ class GluedVenueRepair(
     suspend fun run() {
         venues.observeAll().first()
             .filter { PlaceTitle.split(it.name) != null }
-            .forEach { stale -> current(stale.id)?.let { repair(it) } }
+            .forEach { stale -> venues.find(stale.id)?.let { repair(it) } }
     }
 
     private suspend fun repair(glued: Venue) {
         val split = PlaceTitle.split(glued.name) ?: return
         val point = if (glued.position == null) lookup.locate(split.fullAddress) else null
         // Renamed by the user while the lookup ran (or deleted): theirs now, left alone.
-        val venue = current(glued.id)?.takeIf { it.name == glued.name } ?: return
+        val venue = venues.find(glued.id)?.takeIf { it.name == glued.name } ?: return
         val address = venue.address ?: split.address
         venues.edit(venue.id, split.name, address, now = venue.lastUsedAt)
         if (point != null && venue.position == null) venues.setPosition(venue.id, point.lat, point.lng, address)
@@ -53,6 +53,4 @@ class GluedVenueRepair(
         venues.merge(fromId = venueId, intoId = store.id, now = maxOf(repaired.lastUsedAt, store.lastUsedAt))
         repaired.address?.let { venues.setAddressIfEmpty(store.id, it) }
     }
-
-    private suspend fun current(venueId: Int): Venue? = venues.observeAll().first().firstOrNull { it.id == venueId }
 }

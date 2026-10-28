@@ -12,6 +12,12 @@ interface VenueRepository {
     fun observeAll(): Flow<List<Venue>>
 
     /**
+     * The venue [venueId] as stored; null once merged away or deleted. Where a merged-away venue's
+     * records went is [resolve]'s question.
+     */
+    suspend fun find(venueId: Int): Venue?
+
+    /**
      * For typed names, and a shared place no venue was named for: the most recently used venue with
      * this name (compared by `VenueName.sameAs`), else a new one. The look and the insert are one
      * transaction, so a same-name venue another writer adds meanwhile is reused, never duplicated.

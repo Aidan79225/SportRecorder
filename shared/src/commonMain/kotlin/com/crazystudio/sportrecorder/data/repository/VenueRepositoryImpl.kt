@@ -28,6 +28,8 @@ class VenueRepositoryImpl(
     override fun observeAll(): Flow<List<Venue>> =
         venueDao.flowAll().map { rows -> rows.map { it.toDomain() } }
 
+    override suspend fun find(venueId: Int): Venue? = venueDao.findById(venueId)?.toDomain()
+
     override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
         val given = VenueAddress.clean(address)
@@ -102,8 +104,7 @@ class VenueRepositoryImpl(
     }
 
     // A merge never points at a venue that was gone, so the way from one venue to its survivor has no loop.
-    override suspend fun resolve(venueId: Int): Venue? =
-        venueDao.findById(venueId)?.toDomain() ?: mergedInto.value[venueId]?.let { resolve(it) }
+    override suspend fun resolve(venueId: Int): Venue? = find(venueId) ?: mergedInto.value[venueId]?.let { resolve(it) }
 
     override suspend fun delete(venueId: Int) {
         inTransaction {

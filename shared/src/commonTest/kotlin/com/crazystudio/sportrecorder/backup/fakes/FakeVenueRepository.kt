@@ -31,6 +31,8 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
     override fun observeAll(): Flow<List<Venue>> =
         state.map { venues -> venues.sortedByDescending { it.lastUsedAt } }
 
+    override suspend fun find(venueId: Int): Venue? = state.value.firstOrNull { it.id == venueId }
+
     override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
         val existing = state.value.filter { VenueName.sameAs(it.name, normalized) }.maxByOrNull { it.lastUsedAt }
@@ -120,8 +122,6 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         state.value = inserted
         return inserted
     }
-
-    private fun find(venueId: Int): Venue? = state.value.firstOrNull { it.id == venueId }
 
     private fun replace(venue: Venue) {
         state.value = state.value.map { if (it.id == venue.id) venue else it }
