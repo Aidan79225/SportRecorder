@@ -54,16 +54,20 @@ class MapsPlaceReaderTest {
         assertEquals(listOf(FULL_ADDRESS), lookup.queried)
     }
 
-    @Test fun aLookedUpPositionOffTheEarth_isNoPin() = runTest {
+    @Test fun aLookedUpLatitudeOffTheEarth_isNoPin() = runTest {
         lookup.positions = mapOf(FULL_ADDRESS to GeoPoint(95.0, 121.5))
-        assertNull(reader.read(link(SHORT))!!.lat)
 
+        val place = reader.read(link(SHORT))
+
+        assertEquals(MapsPlace("鼎泰豐 信義店", null, null, TRIMMED_ADDRESS, geocodeQuery = FULL_ADDRESS), place)
+    }
+
+    @Test fun aLookedUpLongitudeOffTheEarth_isNoPin() = runTest {
         lookup.positions = mapOf(FULL_ADDRESS to GeoPoint(25.0, 181.5))
-        val place = reader.read(link(SHORT))!!
-        assertNull(place.lat)
-        assertNull(place.lng)
-        assertEquals("鼎泰豐 信義店", place.name)
-        assertEquals(TRIMMED_ADDRESS, place.address)
+
+        val place = reader.read(link(SHORT))
+
+        assertEquals(MapsPlace("鼎泰豐 信義店", null, null, TRIMMED_ADDRESS, geocodeQuery = FULL_ADDRESS), place)
     }
 
     @Test fun aTitleThatDoesNotSplit_isLookedUpWhole() = runTest {

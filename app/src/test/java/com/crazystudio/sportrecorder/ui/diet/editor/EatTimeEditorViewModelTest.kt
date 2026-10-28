@@ -475,6 +475,33 @@ class EatTimeEditorViewModelTest {
     }
 
     @Test
+    fun aSharedVenue_showsTheAddressFilledInAfterIt() = runTest(mainRule.testDispatcher.scheduler) {
+        // A web-made link carries no address: the reverse lookup fills it after the venue is chosen.
+        val editor = Editor()
+        editor.lookup.address = "信義路二段 194 號"
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        assertEquals("信義路二段 194 號", editor.venues.stored.single().address)
+        assertEquals(editor.venues.stored.single(), vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aPickedVenue_showsTheAddressThePickerFillsIn() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(daHuWu))
+        editor.lookup.address = "仁愛路"
+        val vm = editor.viewModel()
+        advanceUntilIdle()
+
+        vm.selectVenue(daHuWu)
+        vm.onPickerShown()
+        advanceUntilIdle()
+
+        // A venue picked by hand gets its address when the picker back-fills it.
+        assertEquals(daHuWu.copy(address = "仁愛路"), vm.uiState.value.venue)
+    }
+
+    @Test
     fun existingVenueWithoutPosition_getsTheMapsPosition() = runTest(mainRule.testDispatcher.scheduler) {
         val unplaced = dinTaiFung.copy(lat = null, lng = null)
         val editor = Editor(venues = listOf(unplaced))

@@ -85,26 +85,39 @@ class EatTimeEditorViewModelAppLinkTest {
     }
 
     @Test
-    fun pastingItTwice_reusesOneVenue() = runTest(mainRule.testDispatcher.scheduler) {
-        val placed = appLinkEditor()
-        val unplaced = appLinkEditor(locatable = false)
-        val placedVm = placed.viewModel()
-        val unplacedVm = unplaced.viewModel()
+    fun pastingALocatableLinkTwice_reusesOneVenue() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = appLinkEditor()
+        val vm = editor.viewModel()
 
         repeat(2) {
-            assertTrue(placedVm.pasteMapsLink())
-            assertTrue(unplacedVm.pasteMapsLink())
+            assertTrue(vm.pasteMapsLink())
             advanceUntilIdle()
         }
 
-        // Found again at the same looked-up position, or (unlocatable) by its clean name.
-        listOf(placed to placedVm, unplaced to unplacedVm).forEach { (editor, vm) ->
-            val venue = editor.venues.stored.single()
-            assertEquals("鼎泰豐 信義店", venue.name)
-            assertEquals(APP_ADDRESS, venue.address)
-            assertEquals(venue.id, vm.uiState.value.venue?.id)
-            assertNull(vm.uiState.value.pendingStore)
+        // Found again at the same looked-up position.
+        val venue = editor.venues.stored.single()
+        assertEquals("鼎泰豐 信義店", venue.name)
+        assertEquals(APP_ADDRESS, venue.address)
+        assertEquals(venue.id, vm.uiState.value.venue?.id)
+        assertNull(vm.uiState.value.pendingStore)
+    }
+
+    @Test
+    fun pastingAnUnlocatableLinkTwice_reusesOneVenue() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = appLinkEditor(locatable = false)
+        val vm = editor.viewModel()
+
+        repeat(2) {
+            assertTrue(vm.pasteMapsLink())
+            advanceUntilIdle()
         }
+
+        // No position to match by: found again by its clean name.
+        val venue = editor.venues.stored.single()
+        assertEquals("鼎泰豐 信義店", venue.name)
+        assertEquals(APP_ADDRESS, venue.address)
+        assertEquals(venue.id, vm.uiState.value.venue?.id)
+        assertNull(vm.uiState.value.pendingStore)
     }
 
     @Test
@@ -144,29 +157,49 @@ class EatTimeEditorViewModelAppLinkTest {
             assertNull(vm.uiState.value.shareNotice)
         }
 
-    @Test
-    fun anExistingVenueWithoutAddress_getsTheLinksAddress() = runTest(mainRule.testDispatcher.scheduler) {
-        // Within 50 m of where the link's address is: the same store, used as it is.
-        val nearby = dinTaiFung.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
-        val near = appLinkEditor(listOf(nearby))
-        // Not placed yet: it learns the position and the address that goes with it.
-        val unplaced = appLinkEditor(listOf(dinTaiFung.copy(lat = null, lng = null)))
-        // An address the user typed is never replaced.
-        val typed = appLinkEditor(listOf(nearby.copy(address = "我打的地址")))
-        val nearVm = near.viewModel()
-        val unplacedVm = unplaced.viewModel()
-        val typedVm = typed.viewModel()
+    // Within 50 m of where the link's address is: the same store.
+    private val nearby = dinTaiFung.copy(lat = mapsPosition.lat, lng = mapsPosition.lng)
 
-        listOf(nearVm, unplacedVm, typedVm).forEach { assertTrue(it.pasteMapsLink()) }
+    @Test
+    fun aNearbyVenueWithoutAddress_getsTheLinksAddress() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = appLinkEditor(listOf(nearby))
+        val vm = editor.viewModel()
+
+        assertTrue(vm.pasteMapsLink())
         advanceUntilIdle()
 
-        assertEquals(nearby.copy(address = APP_ADDRESS), near.venues.stored.single())
-        assertEquals(nearby.copy(address = APP_ADDRESS), unplaced.venues.stored.single())
-        assertEquals(nearby.copy(address = "我打的地址"), typed.venues.stored.single())
-        assertEquals(near.venues.stored.single(), nearVm.uiState.value.venue)
-        assertEquals(unplaced.venues.stored.single(), unplacedVm.uiState.value.venue)
-        assertEquals(typed.venues.stored.single(), typedVm.uiState.value.venue)
-        listOf(near, unplaced, typed).forEach { assertTrue(it.lookup.asked.isEmpty()) }
+        // Used as it is, with the address it lacked.
+        assertEquals(nearby.copy(address = APP_ADDRESS), editor.venues.stored.single())
+        assertEquals(editor.venues.stored.single(), vm.uiState.value.venue)
+        assertTrue(editor.lookup.asked.isEmpty())
+    }
+
+    @Test
+    fun anUnplacedVenue_learnsPinAndAddress() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = appLinkEditor(listOf(dinTaiFung.copy(lat = null, lng = null)))
+        val vm = editor.viewModel()
+
+        assertTrue(vm.pasteMapsLink())
+        advanceUntilIdle()
+
+        // It learns the position, and the address that goes with it.
+        assertEquals(nearby.copy(address = APP_ADDRESS), editor.venues.stored.single())
+        assertEquals(editor.venues.stored.single(), vm.uiState.value.venue)
+        assertTrue(editor.lookup.asked.isEmpty())
+    }
+
+    @Test
+    fun aTypedAddress_isNeverReplaced() = runTest(mainRule.testDispatcher.scheduler) {
+        val typed = nearby.copy(address = "我打的地址")
+        val editor = appLinkEditor(listOf(typed))
+        val vm = editor.viewModel()
+
+        assertTrue(vm.pasteMapsLink())
+        advanceUntilIdle()
+
+        assertEquals(typed, editor.venues.stored.single())
+        assertEquals(typed, vm.uiState.value.venue)
+        assertTrue(editor.lookup.asked.isEmpty())
     }
 
     @Test
@@ -209,27 +242,6 @@ class EatTimeEditorViewModelAppLinkTest {
         assertEquals(mapsPosition, branch.position)
         assertEquals(branch, vm.uiState.value.venue)
         assertEquals(dinTaiFung, editor.venues.stored.first())
-    }
-
-    @Test
-    fun theSelectedVenue_showsItsFilledAddress() = runTest(mainRule.testDispatcher.scheduler) {
-        // A web-made link carries no address: the reverse lookup fills it after the venue is chosen.
-        val sharing = Editor()
-        sharing.lookup.address = geocoderAddress
-        val shared = sharing.viewModel(sharedText = SHARE_TEXT)
-        // A venue picked by hand gets its address when the picker back-fills it.
-        val picking = Editor(venues = listOf(daHuWu))
-        picking.lookup.address = "仁愛路"
-        val picked = picking.viewModel()
-        advanceUntilIdle()
-        picked.selectVenue(daHuWu)
-        picked.onPickerShown()
-
-        advanceUntilIdle()
-
-        assertEquals(geocoderAddress, sharing.venues.stored.single().address)
-        assertEquals(sharing.venues.stored.single(), shared.uiState.value.venue)
-        assertEquals(daHuWu.copy(address = "仁愛路"), picked.uiState.value.venue)
     }
 
     @Test
