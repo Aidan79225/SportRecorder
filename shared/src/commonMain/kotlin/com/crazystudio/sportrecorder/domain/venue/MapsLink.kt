@@ -88,6 +88,12 @@ private const val URL_SYMBOLS = "-._~:/?#[]@!\$&'()*+,;=%"
 // `)`, but only one the link opened no `(` for ([urlAt]).
 private const val TRAILING_PUNCTUATION = ".,;:!?'"
 
+// PIN, CAMERA and DECIMAL capture the latitude first and the longitude second, and DECIMAL its label
+// third: [coordinates] and [label] read them by these numbers. Every other group is non-capturing.
+private const val LAT_GROUP = 1
+private const val LNG_GROUP = 2
+private const val LABEL_GROUP = 3
+
 private val PIN = Regex("""!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)""")
 private val CAMERA = Regex("""@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)""")
 
@@ -105,13 +111,16 @@ private class MapsUrl(url: String) {
     val path = rest.substring(host.length).substringBefore('?')
     private val query = rest.substringAfter('?', "")
 
+    // The pathless `?q=` form's title; `q` on any other path is not one.
+    private val titleQuery = param("q")?.takeIf { path in Q_PATHS }
+
     /** `/maps…`, or the pathless `?q=` form the iOS app makes; nothing else on a full-Maps host. */
     val isFullMaps get() = path == "/maps" || path.startsWith("/maps/") || hasTitleQuery
 
-    private val hasTitleQuery get() = path in Q_PATHS && !param("q").isNullOrEmpty()
+    private val hasTitleQuery get() = !titleQuery.isNullOrEmpty()
 
     /** The decoded, normalized text the link names the place by: the `/place/` title, or `q`. */
-    val title: String? get() = decoded(segmentAfter(PLACE) ?: param("q")?.takeIf { path in Q_PATHS })
+    val title: String? get() = decoded(segmentAfter(PLACE) ?: titleQuery)
 
     /** The decoded `/maps/search/` text; only ever read as coordinates. */
     val search: String? get() = decoded(segmentAfter(SEARCH))
@@ -197,13 +206,14 @@ private fun coordinates(url: MapsUrl, coordinateTitle: MatchResult?): GeoPoint? 
         ?: url.search?.let(DECIMAL::matchEntire)
         ?: CAMERA.find(url.path)
     return GeoPoint.orNull(
-        lat = match?.groupValues?.get(1)?.toDoubleOrNull(),
-        lng = match?.groupValues?.get(2)?.toDoubleOrNull(),
+        lat = match?.groupValues?.get(LAT_GROUP)?.toDoubleOrNull(),
+        lng = match?.groupValues?.get(LNG_GROUP)?.toDoubleOrNull(),
     )
 }
 
 /** The label other apps put after the coordinates, `(鼎泰豐)`; null when there is none. */
-private fun label(coordinates: MatchResult): String? = VenueName.normalize(coordinates.groupValues[3]).ifEmpty { null }
+private fun label(coordinates: MatchResult): String? =
+    VenueName.normalize(coordinates.groupValues[LABEL_GROUP]).ifEmpty { null }
 
 /** `%XX` runs are UTF-8 bytes and `+` is a space. Hand-rolled: there is no `java.net` in commonMain. */
 private fun percentDecode(raw: String): String {
