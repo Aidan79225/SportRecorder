@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.domain.venue
 
+import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.VenueName
 
 /**
@@ -57,6 +58,10 @@ data class MapsPlace(
     val geocodeQuery: String? = null,
     val nameIsWholeTitle: Boolean = false,
 ) {
+    /** Where the place is: the link's pin, or where its [geocodeQuery] was looked up to; null when neither. */
+    val position: GeoPoint?
+        get() = if (lat != null && lng != null) GeoPoint(lat, lng) else null
+
     /**
      * [name] when it is the place's name alone; null when it is a whole title ([nameIsWholeTitle]),
      * and null too for a title that is only an address — a link to an address searched on the Maps
@@ -152,10 +157,10 @@ private fun placeOf(url: MapsUrl): MapsPlace {
     val title = url.title
     val coordinateTitle = title?.let(DECIMAL::matchEntire)
     val name = if (coordinateTitle != null) label(coordinateTitle) else title?.takeUnless(DMS::matches)
-    val (lat, lng) = coordinates(url, coordinateTitle)
-    val split = if (lat == null) name?.let(PlaceTitle::split) else null
+    val point = coordinates(url, coordinateTitle)
+    val split = if (point == null) name?.let(PlaceTitle::split) else null
     return when {
-        lat != null -> MapsPlace(name, lat, lng)
+        point != null -> MapsPlace(name, point.lat, point.lng)
         split != null -> MapsPlace(
             split.name,
             lat = null,
@@ -175,17 +180,17 @@ private fun placeOf(url: MapsUrl): MapsPlace {
 
 /**
  * The pin (`!3d…!4d…`) is the place itself, and so is a title or search that is only coordinates;
- * the `@` camera is only where the map was looking.
+ * the `@` camera is only where the map was looking. Null when none of them is a point on the Earth.
  */
-private fun coordinates(url: MapsUrl, coordinateTitle: MatchResult?): Pair<Double?, Double?> {
+private fun coordinates(url: MapsUrl, coordinateTitle: MatchResult?): GeoPoint? {
     val match = PIN.find(url.path)
         ?: coordinateTitle
         ?: url.search?.let(DECIMAL::matchEntire)
         ?: CAMERA.find(url.path)
-    val lat = match?.groupValues?.get(1)?.toDoubleOrNull()
-    val lng = match?.groupValues?.get(2)?.toDoubleOrNull()
-    val valid = lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0
-    return if (valid) lat to lng else null to null
+    return GeoPoint.orNull(
+        lat = match?.groupValues?.get(1)?.toDoubleOrNull(),
+        lng = match?.groupValues?.get(2)?.toDoubleOrNull(),
+    )
 }
 
 /** The label other apps put after the coordinates, `(鼎泰豐)`; null when there is none. */

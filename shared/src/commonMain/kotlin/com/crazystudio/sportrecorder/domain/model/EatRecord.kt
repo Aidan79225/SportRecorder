@@ -14,6 +14,4 @@ data class EatRecord(
     val venue: Venue? = null,
 )
 
-data class GeoPoint(val lat: Double, val lng: Double)
-
 data class EatPhoto(val id: Int, val fileName: String, val createdAt: Long)

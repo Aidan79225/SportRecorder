@@ -18,7 +18,11 @@ data class Venue(
     val lng: Double?,
     val lastUsedAt: Long,
     val address: String? = null,
-)
+) {
+    /** Where the venue is, or null until it learns that. */
+    val position: GeoPoint?
+        get() = if (lat != null && lng != null) GeoPoint(lat, lng) else null
+}
 
 /** How two venue names are compared and stored. Pure, so it is identical on every platform. */
 object VenueName {

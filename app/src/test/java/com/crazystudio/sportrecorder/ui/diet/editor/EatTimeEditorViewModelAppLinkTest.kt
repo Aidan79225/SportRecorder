@@ -63,7 +63,7 @@ class EatTimeEditorViewModelAppLinkTest {
         val venue = editor.venues.stored.single()
         assertEquals("鼎泰豐 信義店", venue.name)
         assertEquals(APP_ADDRESS, venue.address)
-        assertEquals(mapsPosition, GeoPoint(requireNotNull(venue.lat), requireNotNull(venue.lng)))
+        assertEquals(mapsPosition, venue.position)
         assertEquals(venue, vm.uiState.value.venue)
         // Placed by the link's full address; the reverse lookup has nothing left to fill.
         assertEquals(listOf(APP_FULL_ADDRESS), editor.lookup.queried)
@@ -80,7 +80,7 @@ class EatTimeEditorViewModelAppLinkTest {
         val venue = editor.venues.stored.single()
         assertEquals("鼎泰豐 信義店", venue.name)
         assertEquals(APP_ADDRESS, venue.address)
-        assertEquals(mapsPosition, GeoPoint(requireNotNull(venue.lat), requireNotNull(venue.lng)))
+        assertEquals(mapsPosition, venue.position)
         assertEquals(venue, vm.uiState.value.venue)
     }
 
@@ -119,7 +119,7 @@ class EatTimeEditorViewModelAppLinkTest {
         val venue = editor.venues.stored.single()
         assertEquals(racing.added?.id, venue.id)
         assertEquals(APP_ADDRESS, venue.address)
-        assertEquals(mapsPosition, GeoPoint(requireNotNull(venue.lat), requireNotNull(venue.lng)))
+        assertEquals(mapsPosition, venue.position)
         assertEquals(venue, vm.uiState.value.venue)
         assertTrue(editor.lookup.asked.isEmpty())
     }
@@ -206,7 +206,7 @@ class EatTimeEditorViewModelAppLinkTest {
         assertEquals(listOf(dinTaiFung.id, branch.id), editor.venues.stored.map { it.id })
         assertEquals("鼎泰豐 信義店", branch.name)
         assertEquals(APP_ADDRESS, branch.address)
-        assertEquals(mapsPosition, GeoPoint(requireNotNull(branch.lat), requireNotNull(branch.lng)))
+        assertEquals(mapsPosition, branch.position)
         assertEquals(branch, vm.uiState.value.venue)
         assertEquals(dinTaiFung, editor.venues.stored.first())
     }

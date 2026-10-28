@@ -28,15 +28,11 @@ class MapsPlaceReader(
     /** [place] with the position its address looks up to, when it has no pin of its own. */
     private suspend fun placed(place: MapsPlace): MapsPlace {
         val query = place.geocodeQuery
-        if (place.hasPin || query == null) return place
+        if (place.position != null || query == null) return place
         val point = lookup.locate(query)
         return if (point != null) place.copy(lat = point.lat, lng = point.lng) else place
     }
 }
 
-private val MapsPlace.hasPin get() = lat != null && lng != null
-
 /** Where the platform geocoder puts [query], or null when it finds nothing that is on the Earth. */
-internal suspend fun AddressLookup.locate(query: String): GeoPoint? = positionOf(query)?.takeIf(::isOnEarth)
-
-private fun isOnEarth(point: GeoPoint) = point.lat in -90.0..90.0 && point.lng in -180.0..180.0
+internal suspend fun AddressLookup.locate(query: String): GeoPoint? = positionOf(query)?.takeIf { it.isOnEarth }

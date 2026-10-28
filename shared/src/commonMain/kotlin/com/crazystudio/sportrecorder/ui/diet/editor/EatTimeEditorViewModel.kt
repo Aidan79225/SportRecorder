@@ -229,17 +229,11 @@ class EatTimeEditorViewModel constructor(
         }
     }
 
-    private fun MapsPlace.position(): GeoPoint? {
-        val lat = lat
-        val lng = lng
-        return if (lat != null && lng != null) GeoPoint(lat, lng) else null
-    }
-
     // Matched against the venues as stored right now, not the possibly not-yet-loaded picker list,
     // so sharing the same place twice finds the venue the first share created.
     private suspend fun applySharedPlace(name: String, place: MapsPlace, run: PlaceRun) {
         val venues = venueRepository.observeAll().first()
-        when (val match = SharedVenue.match(name, place.position(), venues)) {
+        when (val match = SharedVenue.match(name, place.position, venues)) {
             is SharedVenueMatch.Create -> createSharedVenue(match, place.address)
             is SharedVenueMatch.Use -> useSharedVenue(match, place.address)
             is SharedVenueMatch.AskWhichStore -> askWhichStore(name, place.address, match, run)
@@ -436,7 +430,7 @@ class EatTimeEditorViewModel constructor(
     // may be the address glued to the name, and one that is only an address (a searched address, pin
     // or not) names nothing; neither may replace the name the user gave the venue.
     private suspend fun repositionTo(venue: Venue, place: MapsPlace) {
-        val to = place.position()
+        val to = place.position
         val name = place.cleanName
         val address = place.address
         when {
