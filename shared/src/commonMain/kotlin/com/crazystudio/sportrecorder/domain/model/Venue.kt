@@ -9,7 +9,11 @@ package com.crazystudio.sportrecorder.domain.model
  *
  * Names are not unique: two branches of a chain are two venues with the same [name], told apart by
  * [address] (#89). Identity is [id]. [address] is a short human-readable line, null when unknown;
- * it describes the current position, so moving the venue clears it.
+ * it describes the current position, so it goes with that position: a move (or a venue adopting its
+ * first position in findOrCreate) replaces it with the address the move brings — a Maps link's own —
+ * and clears it when none is given, as a merge that adopts a position always does. Re-applying the
+ * same position is no move and keeps it. Otherwise an address is only filled in where there is none,
+ * or changed by the user's own edit.
  */
 data class Venue(
     val id: Int,
