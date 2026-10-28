@@ -98,6 +98,33 @@ class PlaceTitleTest {
         }
     }
 
+    // Typed by a business in lower case. Where nothing but the address can follow it, it is a floor;
+    // before a name (「b6咖啡」, above) it is the name's start.
+    @Test fun aLowerCaseBasementAfterTheAddress_namesNothing() {
+        listOf("b1", "b1樓", "b1F", " b1", "b2之1").forEach { floor ->
+            assertNull(PlaceTitle.split("106台灣臺北市大安區信義路二段194號$floor"), floor)
+        }
+        assertNull(PlaceTitle.split("404, Taichung City, North District, Taiping Rd, 15號b1"))
+        assertNull(PlaceTitle.split("b1, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106"))
+    }
+
+    @Test fun aLowerCaseBasement_endsATitleThatIsOnlyAnAddress() {
+        listOf(
+            "106台灣臺北市大安區信義路二段194號b1",
+            "106台北市大安區信義路二段194號 b1樓",
+            "404, Taichung City, North District, Taiping Rd, 15號b1",
+            "b1, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
+        ).forEach { assertTrue(PlaceTitle.isAddressOnly(it), it) }
+    }
+
+    @Test fun aLowerCaseBasementBeforeAnEnAddress_isItsFloor() {
+        val address = "b1, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City"
+        assertEquals(
+            Split("Din Tai Fung", "$address, Taiwan 106", address),
+            PlaceTitle.split("Din Tai Fung, $address, Taiwan 106"),
+        )
+    }
+
     @Test fun aFloorAfterTheName_joinsTheAddress_inAnyForm() {
         val address = "108台北市萬華區雙園街49巷7號"
         val trimmed = "台北市萬華區雙園街49巷7號"

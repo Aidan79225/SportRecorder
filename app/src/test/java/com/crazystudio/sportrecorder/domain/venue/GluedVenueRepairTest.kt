@@ -116,6 +116,22 @@ class GluedVenueRepairTest {
         assertTrue(lookup.queried.isEmpty())
     }
 
+    @Test fun aVenueNamedByAnAddressAlone_isNeverTouched() = runTest {
+        // What a share of an address searched on the Maps website named it: there is no name to take apart.
+        val addressOnly = listOf(
+            Venue(1, "106台灣臺北市大安區信義路二段194號2樓", null, null, lastUsedAt = 1),
+            Venue(2, "106台灣臺北市大安區信義路二段194號B1", null, null, lastUsedAt = 2),
+            Venue(3, "106台灣臺北市大安區信義路二段194號b1", null, null, lastUsedAt = 3),
+        )
+        val repo = FakeVenueRepository(addressOnly)
+
+        GluedVenueRepair(repo, lookup).run()
+
+        // Split wrongly, 「…194號b1」 would be renamed 「b1」.
+        assertEquals(addressOnly, repo.stored)
+        assertTrue(lookup.queried.isEmpty())
+    }
+
     @Test fun aGluedVenueThatHasAPosition_keepsIt_andItsAddress() = runTest {
         // It learned a position from a record and its address from the reverse lookup.
         val glued = Venue(1, GLUED_ZH, 25.0337, 121.5299, lastUsedAt = 5, address = "信義路二段 194 號")
