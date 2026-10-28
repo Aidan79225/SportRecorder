@@ -30,6 +30,11 @@ private const val ANDROID_KO = "https://www.google.com/maps/place/%E5%8D%97%E9%9
     "xNjgsOTQyNzk2MTksMTAwODE1NjM1QgJUVw%3D%3D&skid=a2a5071b-2ed4-4598-8d55-677272b0aaca&g_st=ac"
 private const val KO_TITLE = "南韓 Seoul, Jung District, Myeongdong 8na-gil, 29 불탄왕뼈구이&감자탕 명동점 | " +
     "Korean Restaurant Bultan Wang Ribs & Gamjatang Myeongdong Branch | 美食 火炭王烤骨肉&韩式土豆排骨汤 明洞店"
+// A pinless /place/ link whose title is only an address, ending in 之N.
+private const val ADDRESS_ONLY_TITLE = "100台灣臺北市中正區重慶南路一段5號之1"
+private const val ADDRESS_ONLY = "https://www.google.com/maps/place/100%E5%8F%B0%E7%81%A3%E8%87%BA%E5%8C%97%E5%B8%82" +
+    "%E4%B8%AD%E6%AD%A3%E5%8D%80%E9%87%8D%E6%85%B6%E5%8D%97%E8%B7%AF%E4%B8%80%E6%AE%B55%E8%99%9F%E4%B9%8B1" +
+    "/data=!4m2!3m1!1s0x3442a9821392326d:0x93faef9e2359365c?utm_source=mstt_1&entry=gps"
 private const val IOS = "https://maps.google.com?q=106%E8%87%BA%E5%8C%97%E5%B8%82%E5%A4%A7%E5%AE%89%E5%8D%80" +
     "%E5%9B%9B%E7%B6%AD%E8%B7%AF208%E5%B7%B710%E8%99%9F%E6%9C%AA%E5%A4%AE%E5%92%96%E5%95%A1%E5%BA%97" +
     "&ftid=0x3442aa2dec922001:0xf1592a50aa99e9f9&entry=gps&shh=CAE&lucs=,94297695,94275415,94284472,94231188," +
@@ -125,6 +130,13 @@ class MapsLinkTest {
         assertEquals(
             MapsPlace(KO_TITLE, null, null, address = null, geocodeQuery = KO_TITLE),
             MapsLink.parse(ANDROID_KO),
+        )
+    }
+
+    @Test fun pinlessAddressOnlySegment_staysWhole() {
+        assertEquals(
+            MapsPlace(ADDRESS_ONLY_TITLE, null, null, address = null, geocodeQuery = ADDRESS_ONLY_TITLE),
+            MapsLink.parse(ADDRESS_ONLY),
         )
     }
 

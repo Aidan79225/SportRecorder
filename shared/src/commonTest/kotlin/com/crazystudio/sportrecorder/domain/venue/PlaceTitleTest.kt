@@ -48,6 +48,14 @@ class PlaceTitleTest {
             Split("小王子咖啡", "100台灣臺北市中正區重慶南路一段5號之1", "臺北市中正區重慶南路一段5號之1"),
             PlaceTitle.split("100台灣臺北市中正區重慶南路一段5號之1小王子咖啡"),
         )
+        assertEquals(
+            Split("小王子咖啡", "100台灣臺北市中正區重慶南路一段5號之12", "臺北市中正區重慶南路一段5號之12"),
+            PlaceTitle.split("100台灣臺北市中正區重慶南路一段5號之12小王子咖啡"),
+        )
+        assertEquals(
+            Split("鼎泰豐", "106台灣臺北市大安區福住里信義路二段194號2樓之3", "臺北市大安區福住里信義路二段194號2樓之3"),
+            PlaceTitle.split("106台灣臺北市大安區福住里信義路二段194號2樓之3鼎泰豐"),
+        )
     }
 
     @Test fun aNameStartingWithDigits_isKeptWhole() {
@@ -131,6 +139,14 @@ class PlaceTitleTest {
             "106台灣臺北市大安區福住里信義路二段194號",
             "106台灣臺北市大安區福住里信義路二段194號2樓",
             "106台灣臺北市大安區福住里信義路二段194號 | ",
+            // The same, ending in 之N: the 之N (whole) belongs to the number, it never becomes a name.
+            "100台灣臺北市中正區重慶南路一段5號之1",
+            "100台灣臺北市中正區重慶南路一段5號之12",
+            "106台灣臺北市大安區福住里信義路二段194號2樓之3",
+            "106台灣臺北市大安區福住里信義路二段194號2樓之12",
+            "106台灣臺北市大安區福住里信義路二段194號地下1樓之2",
+            "106臺北市大安區四維路208巷10號之1",
+            "404, Taichung City, North District, Alley 3, Lane 19, Taiping Rd, 15號之1",
         ).forEach { assertNull(PlaceTitle.split(it), it) }
     }
 

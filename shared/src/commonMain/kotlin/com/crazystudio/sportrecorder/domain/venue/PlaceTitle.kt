@@ -32,15 +32,21 @@ object PlaceTitle {
 private const val POSTCODE = """\d{3}(?:\d{2,3})?"""
 
 // The house number ends the address: …號, then maybe 之N, then maybe a floor (2樓, 地下1樓).
-private const val NUMBER = """\d+號(?:之\d+)?"""
-private const val FLOOR = """(?:(?:地下)?\d+樓(?:之\d+)?)?"""
+// A 之N is taken whole — never 之1 out of 之12 — so the name can't start inside it.
+private const val ZHI = """之\d+(?!\d)"""
+private const val NUMBER = """\d+號(?:$ZHI)?"""
+private const val FLOOR = """(?:(?:地下)?\d+樓(?:$ZHI)?)?"""
+
+// The name glued on after the address. It never starts with a 之N: that is the address's own tail,
+// left over when the title is only an address — 「…5號之1」 names nothing.
+private const val NAME = """(?! ?之\d)(.+)"""
 
 // zh: postcode, maybe 台灣/臺灣, a city or county (臺北市, 屏東縣), the rest of the address with no space
 // up to its first 號, then the name glued on — 「106台灣臺北市大安區…194號鼎泰豐 信義店」.
-private val ZH_ADDRESS_FIRST = Regex("""$POSTCODE(?:台灣|臺灣)?([^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR)(.+)""")
+private val ZH_ADDRESS_FIRST = Regex("""$POSTCODE(?:台灣|臺灣)?([^\d\s,]{1,3}[市縣]\S*?$NUMBER$FLOOR)$NAME""")
 
 // The same order with the address in English — 「404, Taichung City, …, Taiping Rd, 15號高沐手作料理餐廳」.
-private val EN_ADDRESS_FIRST = Regex("""$POSTCODE, ([A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER)(.+)""")
+private val EN_ADDRESS_FIRST = Regex("""$POSTCODE, ([A-Z][A-Za-z’' -]* (?:City|County), .*?$NUMBER)$NAME""")
 
 // en: the name, then an address that starts with "No." and ends with the country and postcode.
 private val NAME_FIRST = Regex("""(.+?), (No\. .+?)(, Taiwan(?: \d{3,6})?)""")
