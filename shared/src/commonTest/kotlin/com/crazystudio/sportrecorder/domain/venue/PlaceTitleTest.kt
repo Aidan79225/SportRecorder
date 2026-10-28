@@ -66,8 +66,31 @@ class PlaceTitleTest {
                 Split("B2B咖啡", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
             "106台灣臺北市大安區信義路二段12號5Fun Bar" to
                 Split("5Fun Bar", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
+            // No basement is that deep, nor written in lower case: these are names.
+            "106台灣臺北市大安區信義路二段12號B612咖啡" to
+                Split("B612咖啡", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
+            "106台灣臺北市大安區信義路二段12號b6咖啡" to
+                Split("b6咖啡", "106台灣臺北市大安區信義路二段12號", "臺北市大安區信義路二段12號"),
         )
         expected.forEach { (title, split) -> assertEquals(split, PlaceTitle.split(title), title) }
+    }
+
+    @Test fun aBasementWithItsOwnFloorWord_staysWholeInTheAddress() {
+        // 「B1樓」 and 「B1F」 are one floor each: never B1 and a name that starts with 樓 or F.
+        listOf("B1樓", "B1F", "B1 樓").forEach { floor ->
+            assertEquals(
+                Split("鼎泰豐", "110台灣台北市信義區松壽路11號$floor", "台北市信義區松壽路11號$floor"),
+                PlaceTitle.split("110台灣台北市信義區松壽路11號${floor}鼎泰豐"),
+                floor,
+            )
+            assertEquals(
+                Split("鼎泰豐", "110台灣台北市信義區松壽路11號$floor", "台北市信義區松壽路11號$floor"),
+                PlaceTitle.split("110台灣台北市信義區松壽路11號鼎泰豐$floor"),
+                "after the name: $floor",
+            )
+            assertNull(PlaceTitle.split("110台灣台北市信義區松壽路11號$floor"), "no name: $floor")
+            assertTrue(PlaceTitle.isAddressOnly("110台北市信義區松壽路11號$floor"), floor)
+        }
     }
 
     @Test fun aFloorAfterTheName_joinsTheAddress_inAnyForm() {

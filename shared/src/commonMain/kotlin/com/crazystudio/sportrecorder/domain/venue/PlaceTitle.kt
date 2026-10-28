@@ -54,9 +54,12 @@ private const val POSTCODE = """\d{3}(?:\d{2,3})?"""
 private const val ZHI = """之\d+(?!\d)"""
 private const val NUMBER = """\d+號(?:$ZHI)?"""
 
-// A floor as the apps and the businesses write it: 2樓, 1 樓, 地下1樓, 三樓, B1, 3F, maybe then 之N.
-// B1 and 3F must end there, so a name that only starts like one (「B2B咖啡」, "5Fun Bar") keeps its start.
-private const val LATIN_FLOOR = """(?:[Bb]\d+(?![\dA-Za-z])|\d+[Ff](?![A-Za-z]))"""
+// A floor as the apps and the businesses write it: 2樓, 1 樓, 地下1樓, 三樓, B1, B1樓, B1F, 3F, maybe then 之N.
+// A basement is B and one or two digits, 3F up to three (Taipei 101's 101F), and each must end there, so a
+// name that only starts like one (「B2B咖啡」, "5Fun Bar", 「B612咖啡」, 「b6咖啡」) keeps its start. A B1
+// is never parted from its own 樓: 「B1樓」 is one floor, never B1 and a name 「樓」.
+private const val BASEMENT_FLOOR = """B[1-9]\d?(?: ?樓|[Ff])?(?![\dA-Za-z]| ?樓)"""
+private const val LATIN_FLOOR = """(?:$BASEMENT_FLOOR|\d{1,3}[Ff](?![A-Za-z]))"""
 private const val DIGIT_FLOOR = """(?:地下)?\d+ ?樓"""
 private const val CJK_NUMERAL_FLOOR = """(?:地下)?[一二三四五六七八九十]+ ?樓"""
 private const val FLOOR_FORM = """(?:$LATIN_FLOOR|$DIGIT_FLOOR|$CJK_NUMERAL_FLOOR)(?:$ZHI)?"""
@@ -93,11 +96,12 @@ private val NAME_FIRST = Regex("""(.+?), ($EN_NUMBER_ADDRESS)($EN_COUNTRY_TAIL)"
 
 // A floor the app put after the name belongs to the address: 「…7號癒所vegvísir｜預約制私廚1 樓」, or
 // 「…私廚地下1樓」, 「…私廚 B1」. The name is the shortest start that leaves only a floor, so a 地下 goes
-// with its floor; B1 or 3F must not be glued to letters or digits before it (「CLUB1」 is a name). A
-// Chinese-numeral floor is not taken from the end of a name, which may well end in one (「第一樓」).
+// with its floor, and so does a B: B1樓 is read as a basement before 1樓 is read as a floor. B1 or 3F must
+// not be glued to letters or digits before it (「CLUB1」 is a name). A Chinese-numeral floor is not taken
+// from the end of a name, which may well end in one (「第一樓」).
 private val TRAILING_FLOORS = listOf(
-    Regex("""(.*?\D) ?($DIGIT_FLOOR(?:$ZHI)?)"""),
     Regex("""(.*?[^\dA-Za-z]) ?($LATIN_FLOOR(?:$ZHI)?)"""),
+    Regex("""(.*?\D) ?($DIGIT_FLOOR(?:$ZHI)?)"""),
 )
 
 // What is left after an address that has no name: 「…194號2樓」 names nothing.
