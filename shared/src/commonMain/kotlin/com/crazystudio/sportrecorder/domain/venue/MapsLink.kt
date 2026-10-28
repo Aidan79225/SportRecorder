@@ -156,11 +156,17 @@ private fun placeOf(url: MapsUrl): MapsPlace {
     val split = if (lat == null) name?.let(PlaceTitle::split) else null
     return when {
         lat != null -> MapsPlace(name, lat, lng)
-        split != null -> MapsPlace(split.name, null, null, split.trimmedAddress, geocodeQuery = split.address)
+        split != null -> MapsPlace(
+            split.name,
+            lat = null,
+            lng = null,
+            address = split.address,
+            geocodeQuery = split.fullAddress,
+        )
         else -> MapsPlace(
             name,
-            null,
-            null,
+            lat = null,
+            lng = null,
             geocodeQuery = name?.takeIf { it.length <= PlaceTitle.MAX_LENGTH },
             nameIsWholeTitle = name != null,
         )

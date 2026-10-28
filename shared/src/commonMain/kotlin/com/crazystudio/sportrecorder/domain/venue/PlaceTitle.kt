@@ -20,11 +20,11 @@ object PlaceTitle {
     const val MAX_LENGTH = 300
 
     /**
-     * [address] is the address exactly as the title gives it (what to geocode); [trimmedAddress] is the
+     * [fullAddress] is the address exactly as the title gives it (what to geocode); [address] is the
      * same without the leading postcode and 台灣/臺灣, or the trailing ", Taiwan <postcode>" (what a
-     * venue stores).
+     * venue stores, as [MapsPlace.address] and `Venue.address` are).
      */
-    data class Split(val name: String, val address: String, val trimmedAddress: String)
+    data class Split(val name: String, val fullAddress: String, val address: String)
 
     /**
      * The name and address in [segment], or null when it is not in a shape the Maps apps make — or is
@@ -101,16 +101,16 @@ private val ADDRESS_ONLY = listOf(
 private fun addressFirst(title: String): PlaceTitle.Split? {
     val match = ZH_ADDRESS_FIRST.matchEntire(title) ?: EN_ADDRESS_FIRST.matchEntire(title)
     return match?.takeUnless { FLOOR_ONLY.matches(it.groupValues[2].trim()) }?.let {
-        val (trimmed, glued) = it.destructured
+        val (address, glued) = it.destructured
         val floored = TRAILING_FLOORS.firstNotNullOfOrNull { floor -> floor.matchEntire(glued.trim()) }
         val name = floored?.groupValues?.get(1) ?: glued
         val floor = floored?.groupValues?.get(2).orEmpty()
-        PlaceTitle.Split(name.trim(), title.dropLast(glued.length) + floor, trimmed + floor)
+        PlaceTitle.Split(name.trim(), fullAddress = title.dropLast(glued.length) + floor, address = address + floor)
     }
 }
 
 private fun nameFirst(title: String): PlaceTitle.Split? =
     NAME_FIRST.matchEntire(title)?.let {
-        val (name, trimmed, country) = it.destructured
-        PlaceTitle.Split(name, trimmed + country, trimmed)
+        val (name, address, country) = it.destructured
+        PlaceTitle.Split(name, fullAddress = address + country, address = address)
     }
