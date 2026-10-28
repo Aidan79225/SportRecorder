@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.map
 class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository {
     private val state = MutableStateFlow(initial)
     private var nextId: Int = (initial.maxOfOrNull { it.id } ?: 0) + 1
+    private val mergedInto = mutableMapOf<Int, Int>()
 
     /** Venues in insertion order, for direct assertions. */
     val stored: List<Venue> get() = state.value
@@ -100,9 +101,12 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         } else {
             into.copy(lastUsedAt = now)
         }
+        mergedInto[fromId] = intoId
         state.value = state.value.filterNot { it.id == fromId }.map { if (it.id == intoId) survivor else it }
         return survivor
     }
+
+    override suspend fun resolve(venueId: Int): Venue? = find(venueId) ?: mergedInto[venueId]?.let { resolve(it) }
 
     override suspend fun delete(venueId: Int) {
         state.value = state.value.filterNot { it.id == venueId }

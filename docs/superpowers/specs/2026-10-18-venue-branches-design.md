@@ -296,6 +296,10 @@ So today a paste creates a venue named by the whole glued string, with no positi
   so a save can no longer silently drop the move.
 - *(builder's call)* The editor's selected venue is refreshed from the database by id, so a filled
   address or moved position is never shown stale.
+- *(builder's call)* The repair below merges in the background while a meal at that venue may be
+  open. `VenueRepository.resolve(id)` follows a merge made since the app started to the survivor, and
+  the editor uses it when its venue leaves the list and again right before saving. A meal is then
+  saved at the venue its records moved to, and never with the id of a deleted venue.
 
 ### Repairing glued venues
 

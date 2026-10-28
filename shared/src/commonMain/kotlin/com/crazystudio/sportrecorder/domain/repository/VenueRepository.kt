@@ -62,6 +62,14 @@ interface VenueRepository {
      */
     suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue
 
+    /**
+     * The venue [venueId] is now: itself as stored; else the venue it was merged into since the app
+     * started (followed through later merges), where its records went; null once deleted. Another
+     * writer may merge away a venue an editor has open — the glued-name repair at app start does, in
+     * the background — and the editor must never store the id of a venue that is gone.
+     */
+    suspend fun resolve(venueId: Int): Venue?
+
     /** Clears the venue on its records and deletes it, in one transaction. Records are never deleted. */
     suspend fun delete(venueId: Int)
 

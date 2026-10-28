@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.map
  * unique, [findOrCreate] picks the most recently used same-name venue (whose address it only fills
  * when empty, or replaces when the venue adopts a first position), a real [setPosition] move
  * replaces the address with the one given (none by default), [setAddressIfEmpty] never overwrites,
- * [observeAll] is most-recently-used first, and [replaceAll] assigns fresh ids.
+ * [observeAll] is most-recently-used first, [resolve] follows merges, and [replaceAll] assigns fresh ids.
  *
  * Records are not modelled, so a test states how many point at a venue through [recordCounts]
  * (a merge moves the emptied venue's count to the survivor, as the real one re-points the rows; a
@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository {
     private val state = MutableStateFlow(initial)
     private var nextId: Int = (initial.maxOfOrNull { it.id } ?: 0) + 1
+    private val mergedInto = mutableMapOf<Int, Int>()
 
     val recordCounts = mutableMapOf<Int, Int>()
 
@@ -102,9 +103,12 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         }
         recordCounts[intoId] = recordCount(intoId) + recordCount(fromId)
         recordCounts.remove(fromId)
+        mergedInto[fromId] = intoId
         state.value = state.value.filterNot { it.id == fromId }.map { if (it.id == intoId) survivor else it }
         return survivor
     }
+
+    override suspend fun resolve(venueId: Int): Venue? = find(venueId) ?: mergedInto[venueId]?.let { resolve(it) }
 
     override suspend fun delete(venueId: Int) {
         recordCounts.remove(venueId)

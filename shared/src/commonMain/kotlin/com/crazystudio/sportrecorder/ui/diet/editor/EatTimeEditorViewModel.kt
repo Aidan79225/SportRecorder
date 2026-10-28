@@ -129,6 +129,7 @@ class EatTimeEditorViewModel constructor(
             venueRepository.observeAll().collect { venues ->
                 allVenues = venues
                 _uiState.update { it.withVenueOptions().withFreshVenue() }
+                followVanishedVenue()
             }
         }
         if (isEditMode) {
@@ -151,6 +152,8 @@ class EatTimeEditorViewModel constructor(
                         },
                     ).withVenueOptions().withFreshVenue()
                 }
+                // Read before a merge the list has already shown: catch up with it.
+                followVanishedVenue()
             }
         }
         if (!isEditMode && sharedText != null) {
@@ -302,12 +305,20 @@ class EatTimeEditorViewModel constructor(
     private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
 
     // The selected venue as stored now, so a filled-in address or a moved position never shows stale.
-    // Kept as it is while the list doesn't have it yet (just created) or any more (merged away).
+    // Kept as it is while the list doesn't have it ([followVanishedVenue] asks why).
     private fun EatTimeEditorUiState.withFreshVenue() =
         copy(venue = venue?.let { shown -> allVenues.firstOrNull { it.id == shown.id } ?: shown })
 
+    // A selected venue the list lacks was just created (the list catches up), or merged away or deleted
+    // by another writer — the glued-name repair at app start merges in the background, while a meal at
+    // that venue may be open. Asked for by id, it becomes the venue its records went to, or none.
+    private suspend fun followVanishedVenue() {
+        val shown = _uiState.value.venue?.takeUnless { shown -> allVenues.any { it.id == shown.id } } ?: return
+        showVenueInPlaceOf(shown.id, venueRepository.resolve(shown.id))
+    }
+
     // An answer replaces the venue only if the user has not switched to another one meanwhile.
-    private fun showVenueInPlaceOf(replacedId: Int, venue: Venue) = _uiState.update { state ->
+    private fun showVenueInPlaceOf(replacedId: Int, venue: Venue?) = _uiState.update { state ->
         state.copy(venue = if (state.venue?.id == replacedId) venue else state.venue)
     }
 
@@ -696,6 +707,9 @@ class EatTimeEditorViewModel constructor(
         // after the write (it would create a venue the saved meal never gets).
         dropSharedPlace()
         val state = _uiState.value
+        // As stored now, asked for by id: one merged away meanwhile by another writer (before the list
+        // showed it) is saved as the venue its records went to, never as an id that is gone.
+        val venue = state.venue?.let { venueRepository.resolve(it.id) }
         val record = EatRecord(
             id = eatTimeId,
             time = currentMillis,
@@ -704,14 +718,16 @@ class EatTimeEditorViewModel constructor(
             photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
             // The update path rewrites the whole row, so the venue must travel with the record:
             // leaving it out here would silently clear it whenever only the note was edited.
-            venue = state.venue,
+            venue = venue,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
             committed = true
             // Recency should reflect use, not creation, and not a later edit of an old record:
-            // fixing last month's note must not push that venue above what is eaten now.
-            state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }
+            // fixing last month's note must not push that venue above what is eaten now — nor the
+            // venue it was merged into since.
+            val loaded = loadedVenueId?.let { venueRepository.resolve(it)?.id }
+            venue?.takeIf { it.id != loaded }?.let { venueRepository.touch(it.id, now()) }
         }
         return ok
     }

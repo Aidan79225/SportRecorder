@@ -126,6 +126,61 @@ class EatTimeEditorViewModelTest {
         assertEquals(daHuWu, saved.venue)
     }
 
+    // A venue named by a glued Maps-app title, and the same store within 50 m: the repair at app start
+    // merges the first into the second in the background, while the editor may have it open.
+    private val glued = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.03350, lng = 121.5301, lastUsedAt = 1L)
+    private val store = Venue(id = 2, name = "鼎泰豐 信義店", lat = 25.03352, lng = 121.5301, lastUsedAt = 2L)
+
+    @Test
+    fun aVenueMergedAwayWhileItsMealIsOpen_isShownAndSavedAsTheOneItWentInto() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
+            val vm = editor.viewModel(eatTimeId = 1)
+            advanceUntilIdle()
+            assertEquals(glued, vm.uiState.value.venue)
+
+            val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 2L)
+            advanceUntilIdle()
+
+            // The editor follows the meal's records to where they went…
+            assertEquals(survivor, vm.uiState.value.venue)
+            vm.setNote("午餐(補記)")
+            assertTrue(vm.save())
+            // …and saves the meal there, never at the venue that is gone; nor is fixing it a new use.
+            assertEquals(survivor, editor.records.stored.single().venue)
+            assertEquals(2L, editor.venues.stored.single().lastUsedAt)
+        }
+
+    @Test
+    fun aVenueMergedAwayJustBeforeTheSave_isSavedAsTheOneItWentInto() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(glued, store))
+        val vm = editor.viewModel()
+        advanceUntilIdle()
+        vm.selectVenue(glued)
+
+        // Merged with no chance for the list to show it: the save asks for the venue by id.
+        editor.venues.merge(fromId = glued.id, intoId = store.id, now = 2L)
+        assertTrue(vm.save())
+
+        assertEquals(store.id, editor.records.stored.single().venue?.id)
+        // A new meal is a use of the venue it is saved at.
+        assertTrue(editor.venues.stored.single().lastUsedAt > 2L)
+    }
+
+    @Test
+    fun aVenueDeletedByAnotherWriter_isNeitherShownNorSaved() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
+        val vm = editor.viewModel(eatTimeId = 1)
+        advanceUntilIdle()
+
+        editor.venues.delete(daHuWu.id)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.venue)
+        assertTrue(vm.save())
+        assertNull(editor.records.stored.single().venue)
+    }
+
     @Test
     fun clearingTheVenue_removesItFromTheSavedMeal() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))

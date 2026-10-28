@@ -9,12 +9,20 @@ import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.entity.VenueEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 class VenueRepositoryImpl(
     private val appDatabase: AppDatabase,
     private val venueDao: VenueDao,
 ) : VenueRepository {
+
+    // Each venue merged away since the app started, to the one it went into, for [resolve]. Written in
+    // the merge's own transaction, so once the deletion can be seen the way to the survivor can too.
+    // Ids are never reused (AUTOINCREMENT), and a merged venue is checked for first, so an entry left
+    // by a merge that rolled back leads nowhere wrong.
+    private val mergedInto = MutableStateFlow<Map<Int, Int>>(emptyMap())
 
     override fun observeAll(): Flow<List<Venue>> =
         venueDao.flowAll().map { rows -> rows.map { it.toDomain() } }
@@ -80,6 +88,7 @@ class VenueRepositoryImpl(
             val into = venueDao.findById(intoId) ?: error("venue $intoId is gone")
             venueDao.repointRecords(fromId = fromId, toId = intoId)
             venueDao.deleteById(fromId)
+            mergedInto.update { it + (fromId to intoId) }
             // Adopting a position is a position change, so the survivor's address goes with it.
             val survivor = if (into.lat == null && from.lat != null) {
                 into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
@@ -90,6 +99,10 @@ class VenueRepositoryImpl(
             survivor.toDomain()
         }
     }
+
+    // A merge never points at a venue that was gone, so the way from one venue to its survivor has no loop.
+    override suspend fun resolve(venueId: Int): Venue? =
+        venueDao.findById(venueId)?.toDomain() ?: mergedInto.value[venueId]?.let { resolve(it) }
 
     override suspend fun delete(venueId: Int) {
         inTransaction {
