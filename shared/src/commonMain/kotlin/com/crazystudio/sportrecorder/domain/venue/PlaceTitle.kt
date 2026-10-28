@@ -113,14 +113,24 @@ private val ADDRESS_ONLY = listOf(
 // What follows the address may be only a floor (「…194號 地下1樓」): that is no name, not even in part.
 private fun addressFirst(title: String): PlaceTitle.Split? {
     val match = ZH_ADDRESS_FIRST.matchEntire(title) ?: EN_ADDRESS_FIRST.matchEntire(title)
-    return match?.takeUnless { FLOOR_ONLY.matches(it.groupValues[2].trim()) }?.let {
-        val (address, glued) = it.destructured
-        val floored = TRAILING_FLOORS.firstNotNullOfOrNull { floor -> floor.matchEntire(glued.trim()) }
-        val name = floored?.groupValues?.get(1) ?: glued
-        val floor = floored?.groupValues?.get(2).orEmpty()
-        PlaceTitle.Split(name.trim(), fullAddress = title.dropLast(glued.length) + floor, address = address + floor)
-    }
+    return match?.destructured
+        ?.takeUnless { (_, glued) -> FLOOR_ONLY.matches(glued.trim()) }
+        ?.let { (address, glued) ->
+            val (name, floor) = peelTrailingFloor(glued)
+            PlaceTitle.Split(
+                name = name.trim(),
+                fullAddress = title.dropLast(glued.length) + floor,
+                address = address + floor,
+            )
+        }
 }
+
+/** [glued] as the name and the floor the app put after it ([TRAILING_FLOORS]); the floor is empty when none. */
+private fun peelTrailingFloor(glued: String): Pair<String, String> =
+    TRAILING_FLOORS.firstNotNullOfOrNull { it.matchEntire(glued.trim()) }
+        ?.destructured
+        ?.let { (name, floor) -> name to floor }
+        ?: (glued to "")
 
 private fun nameFirst(title: String): PlaceTitle.Split? =
     NAME_FIRST.matchEntire(title)?.let {
