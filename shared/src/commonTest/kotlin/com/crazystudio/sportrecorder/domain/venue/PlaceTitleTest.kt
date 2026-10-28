@@ -152,6 +152,48 @@ class PlaceTitleTest {
         )
     }
 
+    // Typed by a business in lower case after its name, at the end of the title: nothing can follow it,
+    // so it is a floor, as it is right after the address. Never 「…私廚b」 on floor 1樓.
+    @Test fun aLowerCaseBasementAfterTheName_joinsTheAddress() {
+        val address = "108台北市萬華區雙園街49巷7號"
+        val trimmed = "台北市萬華區雙園街49巷7號"
+        val name = "癒所vegvísir｜預約制私廚"
+        listOf("b1", "b1樓", "b1F", "b1 樓", "b2之1").forEach { floor ->
+            val expected = Split(name, address + floor, trimmed + floor)
+            assertEquals(expected, PlaceTitle.split(address + name + floor), floor)
+            assertEquals(expected, PlaceTitle.split("$address$name $floor"), "after a space: $floor")
+        }
+    }
+
+    @Test fun aLowerCaseBasementAfterTheName_joinsAnEnCityFirstAddress() {
+        val address = "Taichung City, North District, Alley 3, Lane 19, Taiping Rd, 15號"
+        listOf("b1", "b1樓", "b1F").forEach { floor ->
+            assertEquals(
+                Split("高沐手作料理餐廳", "404, $address$floor", address + floor),
+                PlaceTitle.split("404, ${address}高沐手作料理餐廳$floor"),
+                floor,
+            )
+        }
+    }
+
+    // A basement glued to the letters before it (「club1」, like 「CLUB1」) or starting the name (「b6咖啡」)
+    // is the name's own, in either case and either order.
+    @Test fun aBasementThatIsPartOfTheName_staysInIt() {
+        val zh = "108台北市萬華區雙園街49巷7號"
+        val en = "Taichung City, North District, Taiping Rd, 15號"
+        listOf("CLUB1", "club1", "b6咖啡").forEach { name ->
+            assertEquals(Split(name, zh, zh.drop(3)), PlaceTitle.split(zh + name), name)
+            assertEquals(Split(name, "404, $en", en), PlaceTitle.split("404, $en$name"), "en: $name")
+        }
+    }
+
+    @Test fun anUpperCaseBasementAfterTheName_joinsTheAddress_inEitherOrder() {
+        val zh = "110台北市信義區松壽路11號"
+        val en = "Taipei City, Xinyi District, Songshou Rd, 11號"
+        assertEquals(Split("鼎泰豐", zh + "B1樓", zh.drop(3) + "B1樓"), PlaceTitle.split(zh + "鼎泰豐B1樓"))
+        assertEquals(Split("鼎泰豐", "110, ${en}B1樓", en + "B1樓"), PlaceTitle.split("110, ${en}鼎泰豐B1樓"))
+    }
+
     @Test fun enTitles_keepTheirFloorInTheAddress() {
         listOf("2F", "1樓", "B1", "地下1樓").forEach { floor ->
             val address = "$floor, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City"

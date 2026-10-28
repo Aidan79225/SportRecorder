@@ -64,10 +64,11 @@ private const val DIGIT_FLOOR = """(?:地下)?\d+ ?樓"""
 private const val CJK_NUMERAL_FLOOR = """(?:地下)?[一二三四五六七八九十]+ ?樓"""
 private const val FLOOR_FORM = """(?:$LATIN_FLOOR|$DIGIT_FLOOR|$CJK_NUMERAL_FLOOR)(?:$ZHI)?"""
 
-// Where no name can follow — all that is left after the address, or before an en address's "No." — a
-// basement typed in lower case is a floor too: 「…194號b1」 names nothing. Only there: before a name,
-// 「b6咖啡」 is the name.
-private const val ANY_CASE_FLOOR_FORM = """(?:$FLOOR_FORM|b[1-9]\d?(?: ?樓|[Ff])?(?:$ZHI)?)"""
+// Where no name can follow — all that is left after the address, the end of a title after its name, or
+// before an en address's "No." — a basement typed in lower case is a floor too: 「…194號b1」 names
+// nothing. Only there: before a name, 「b6咖啡」 is the name.
+private const val LOWER_CASE_BASEMENT_FLOOR = """b[1-9]\d?(?: ?樓|[Ff])?"""
+private const val ANY_CASE_FLOOR_FORM = """(?:$FLOOR_FORM|$LOWER_CASE_BASEMENT_FLOOR(?:$ZHI)?)"""
 
 // Maybe a floor after the number, right after it or after a space: 「194號2樓」, 「194號 B1」. Where the
 // address ends the title, its last floor is in any case.
@@ -104,11 +105,12 @@ private val NAME_FIRST = Regex("""(.+?), ($EN_NUMBER_ADDRESS)($EN_COUNTRY_TAIL)"
 
 // A floor the app put after the name belongs to the address: 「…7號癒所vegvísir｜預約制私廚1 樓」, or
 // 「…私廚地下1樓」, 「…私廚 B1」. The name is the shortest start that leaves only a floor, so a 地下 goes
-// with its floor, and so does a B: B1樓 is read as a basement before 1樓 is read as a floor. B1 or 3F must
-// not be glued to letters or digits before it (「CLUB1」 is a name). A Chinese-numeral floor is not taken
-// from the end of a name, which may well end in one (「第一樓」).
+// with its floor, and so does a B: B1樓 is read as a basement before 1樓 is read as a floor. Ending the
+// title, a basement may be in lower case (「…私廚b1樓」, never 「…私廚b」 on 1樓). B1 or 3F must not be
+// glued to letters or digits before it (「CLUB1」, 「club1」 are names). A Chinese-numeral floor is not
+// taken from the end of a name, which may well end in one (「第一樓」).
 private val TRAILING_FLOORS = listOf(
-    Regex("""(.*?[^\dA-Za-z]) ?($LATIN_FLOOR(?:$ZHI)?)"""),
+    Regex("""(.*?[^\dA-Za-z]) ?((?:$LATIN_FLOOR|$LOWER_CASE_BASEMENT_FLOOR)(?:$ZHI)?)"""),
     Regex("""(.*?\D) ?($DIGIT_FLOOR(?:$ZHI)?)"""),
 )
 

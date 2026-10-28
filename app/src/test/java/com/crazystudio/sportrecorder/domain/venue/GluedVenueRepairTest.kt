@@ -100,6 +100,24 @@ class GluedVenueRepairTest {
         assertEquals(0, repo.recordCount(1))
     }
 
+    @Test fun aGluedVenueWithALowerCaseBasementAfterItsName_isRenamedToTheNameAlone() = runTest {
+        val fullAddress = "108台北市萬華區雙園街49巷7號b1樓"
+        val point = GeoPoint(25.0303, 121.4966)
+        val repo = FakeVenueRepository(
+            listOf(Venue(1, "108台北市萬華區雙園街49巷7號癒所vegvísir｜預約制私廚b1樓", null, null, lastUsedAt = 5)),
+        )
+        lookup.positions = mapOf(fullAddress to point)
+
+        GluedVenueRepair(repo, lookup).run()
+
+        // Split at its 1樓, it would be renamed 「…私廚b」 for good, and placed by the address 「…7號1樓」.
+        assertEquals(
+            listOf(Venue(1, "癒所vegvísir｜預約制私廚", point.lat, point.lng, 5, address = "台北市萬華區雙園街49巷7號b1樓")),
+            repo.stored,
+        )
+        assertEquals(listOf(fullAddress), lookup.queried)
+    }
+
     @Test fun typedNames_areNeverTouched() = runTest {
         val typed = listOf(
             Venue(1, "85度C", null, null, lastUsedAt = 1),
