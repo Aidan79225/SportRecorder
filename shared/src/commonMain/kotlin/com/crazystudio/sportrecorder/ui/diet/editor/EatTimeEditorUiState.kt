@@ -63,7 +63,8 @@ data class EatTimeEditorUiState(
     /**
      * A place named [sharedName] was shared at [to], [distance] from [venue], the nearest saved venue
      * by that name. Another branch creates a venue at [to]; the same store either moves [venue] there
-     * (and with it the marker of its [movedRecords] records) or keeps it where it is.
+     * (and with it the marker of its [movedRecords] records) or keeps it where it is. Either way a venue
+     * that ends up at [to] gets [sharedAddress], the link's own address, when it carried one.
      */
     data class PendingStore(
         val venue: Venue,
@@ -71,6 +72,7 @@ data class EatTimeEditorUiState(
         val distance: RoundedDistance,
         val movedRecords: Int,
         val sharedName: String,
+        val sharedAddress: String? = null,
     )
 }
 

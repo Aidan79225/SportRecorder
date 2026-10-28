@@ -6,6 +6,7 @@ import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
 import com.crazystudio.sportrecorder.fake.FakeAddressLookup
 import com.crazystudio.sportrecorder.fake.FakeClipboardReader
@@ -89,7 +90,7 @@ class EatTimeEditorFlowTest {
             } else {
                 SavedStateHandle(mapOf("eatTimeId" to eatTimeId))
             },
-            mapsLinkResolver = FakeMapsLinkResolver(),
+            mapsPlaceReader = MapsPlaceReader(FakeMapsLinkResolver(), FakeAddressLookup()),
             venueAddressFiller = VenueAddressFiller(FakeAddressLookup(), venues),
             clipboardReader = FakeClipboardReader(),
         )
