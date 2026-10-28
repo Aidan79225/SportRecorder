@@ -93,7 +93,10 @@ sealed interface PasteTarget {
     /** Opens the place as this meal's venue, like a share does. */
     data object Select : PasteTarget
 
-    /** Puts [venue] at the place's position. */
+    /**
+     * Puts [venue] at the place's position, and offers the place's name (and its address, when it can't
+     * be located) to the edit dialog's drafts, as 「貼上地圖連結更新」 does.
+     */
     data class Reposition(val venue: Venue) : PasteTarget
 }
 

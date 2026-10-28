@@ -99,8 +99,9 @@ class EatTimeEditorViewModel constructor(
     // The run the open question (if any) belongs to: answering it marks that run, not another.
     private var placeRun: PlaceRun = PlaceRun.Share(savedStateHandle)
 
-    // Reading a map link to move a venue from the edit dialog; dropped when the user declines the
-    // move or closes the dialog.
+    // Reading a map link from the edit dialog, to move its venue and to offer the link's name (and its
+    // address, when the place can't be located) to the dialog's drafts; dropped when the user declines
+    // the move or closes the dialog.
     private var repositionJob: Job? = null
 
     // Looking up the addresses the picker is missing; one at a time, however often it is opened.
