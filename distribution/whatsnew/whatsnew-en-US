@@ -1,5 +1,4 @@
-New in 0.14.0
-• Branches of the same chain are now separate places, each with its own address shown under its name.
-• Sharing or pasting a place that has the same name as one you saved, but sits elsewhere, asks: another branch, or the same place?
-• Paste a Google Maps link right from the place list.
-• Edit a place's name and address, or delete it — your records stay.
+Fixed in 0.14.1
+• Places shared or copied from the Google Maps app now come in with the right name, address and position — no more name and address run together.
+• "Update from a map link" in Edit place works with those links too, and fills in the name and address.
+• Places saved earlier with the name and address run together are tidied up automatically; your records stay with them.
