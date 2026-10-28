@@ -27,12 +27,12 @@ object PlaceTitle {
     data class Split(val name: String, val fullAddress: String, val address: String)
 
     /**
-     * The name and address in [segment], or null when it is not in a shape the Maps apps make — or is
+     * The name and address in [title], or null when it is not in a shape the Maps apps make — or is
      * longer than [MAX_LENGTH], which no real title is.
      */
-    fun split(segment: String): Split? {
-        val title = VenueName.normalize(segment).takeIf { it.length <= MAX_LENGTH }
-        val split = title?.let { addressFirst(it) ?: nameFirst(it) }
+    fun split(title: String): Split? {
+        val normalized = VenueName.normalize(title).takeIf { it.length <= MAX_LENGTH }
+        val split = normalized?.let { addressFirst(it) ?: nameFirst(it) }
         return split?.takeIf { it.name.any(Char::isLetterOrDigit) && !FLOOR_ONLY.matches(it.name) }
     }
 
