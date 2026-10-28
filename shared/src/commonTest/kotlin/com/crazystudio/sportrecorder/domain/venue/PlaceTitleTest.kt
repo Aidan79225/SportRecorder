@@ -255,6 +255,9 @@ class PlaceTitleTest {
             "No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
             "2F, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",
         ).forEach { assertTrue(PlaceTitle.isAddressOnly(it), it) }
+    }
+
+    @Test fun anythingButABareAddress_isNotAddressOnly() {
         listOf(
             "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店",
             "Din Tai Fung Xinyi Branch, No. 194號, Section 2, Xinyi Rd, Da’an District, Taipei City, Taiwan 106",

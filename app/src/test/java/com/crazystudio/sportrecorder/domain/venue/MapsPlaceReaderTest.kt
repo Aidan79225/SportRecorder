@@ -79,7 +79,7 @@ class MapsPlaceReaderTest {
         assertEquals(listOf("X"), lookup.queried)
     }
 
-    @Test fun aWebLink_isReadAsBefore_andNeverLookedUp() = runTest {
+    @Test fun aWebLink_readsItsOwnPin_andIsNeverLookedUp() = runTest {
         lookup.positions = mapOf("鼎泰豐 信義店" to GeoPoint(1.0, 1.0))
 
         assertEquals(MapsPlace("鼎泰豐 信義店", 25.0335035, 121.530118), reader.read(link(WEB)))

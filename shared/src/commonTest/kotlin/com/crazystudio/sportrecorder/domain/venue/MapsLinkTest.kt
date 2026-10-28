@@ -121,8 +121,11 @@ class MapsLinkTest {
         )
     }
 
-    @Test fun androidAppLinks_areFoundAsShortLinks() {
+    @Test fun anAndroidAppShortLink_isFoundAsShort() {
         assertIs<MapsLink.Short>(MapsLink.find("https://maps.app.goo.gl/AaeeX4FWDAMo4Ss67?g_st=ac"))
+    }
+
+    @Test fun theLocationAnAndroidAppLinkResolvesTo_isFoundAsFull() {
         assertIs<MapsLink.Full>(MapsLink.find(ANDROID_ZH))
     }
 
@@ -133,11 +136,14 @@ class MapsLinkTest {
         )
     }
 
-    @Test fun cleanName_isNeverAWholePinlessTitle() {
+    @Test fun cleanName_isThePlacesName_splitFromAnAppTitle_orAWebLinksOwn() {
         assertEquals("鼎泰豐 信義店", MapsLink.parse(ANDROID_ZH)!!.cleanName)
         assertEquals("Din Tai Fung Xinyi Branch", MapsLink.parse(ANDROID_EN)!!.cleanName)
         assertEquals("鼎泰豐 信義店", MapsLink.parse(REAL)!!.cleanName)
         assertEquals("未央咖啡店", MapsLink.parse(IOS)!!.cleanName)
+    }
+
+    @Test fun cleanName_isNeverAWholePinlessTitle() {
         // Left whole, the title may be the address glued to the name, even once its lookup placed it.
         val korean = MapsLink.parse(ANDROID_KO)!!
         assertNull(korean.cleanName)
@@ -175,7 +181,7 @@ class MapsLinkTest {
         )
     }
 
-    @Test fun webLink_isUnchanged() {
+    @Test fun aWebLink_readsItsNameAndPin_withNothingToLookUp() {
         assertEquals(
             MapsPlace("鼎泰豐 信義店", 25.0335035, 121.530118, address = null, geocodeQuery = null),
             MapsLink.parse(REAL),

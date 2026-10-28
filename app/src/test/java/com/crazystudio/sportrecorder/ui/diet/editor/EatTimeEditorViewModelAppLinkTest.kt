@@ -72,7 +72,7 @@ class EatTimeEditorViewModelAppLinkTest {
     }
 
     @Test
-    fun sharingAnAndroidAppLink_readsItTheSameWay() = runTest(mainRule.testDispatcher.scheduler) {
+    fun sharingAnAndroidAppLink_createsTheCleanVenueWithAddressAndPin() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = appLinkEditor()
         val vm = editor.viewModel(sharedText = APP_LINK)
         advanceUntilIdle()
