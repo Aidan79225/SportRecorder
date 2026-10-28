@@ -9,7 +9,11 @@ package com.crazystudio.sportrecorder.domain.model
  *
  * Names are not unique: two branches of a chain are two venues with the same [name], told apart by
  * [address] (#89). Identity is [id]. [address] is a short human-readable line, null when unknown;
- * it describes the current position, so moving the venue clears it.
+ * it describes the current position, so it goes with that position: a move (or a venue adopting its
+ * first position in findOrCreate) replaces it with the address the move brings — a Maps link's own —
+ * and clears it when none is given, as a merge that adopts a position always does. Re-applying the
+ * same position is no move and keeps it. Otherwise an address is only filled in where there is none,
+ * or changed by the user's own edit.
  */
 data class Venue(
     val id: Int,
@@ -18,7 +22,11 @@ data class Venue(
     val lng: Double?,
     val lastUsedAt: Long,
     val address: String? = null,
-)
+) {
+    /** Where the venue is, or null until it learns that. */
+    val position: GeoPoint?
+        get() = if (lat != null && lng != null) GeoPoint(lat, lng) else null
+}
 
 /** How two venue names are compared and stored. Pure, so it is identical on every platform. */
 object VenueName {
@@ -50,4 +58,10 @@ object VenueName {
      */
     fun sameAs(a: String, b: String): Boolean =
         normalize(a).equals(normalize(b), ignoreCase = true)
+}
+
+/** How a venue's address is stored. Pure, so it is identical on every platform. */
+object VenueAddress {
+    /** [raw] as stored: trimmed, and blank is none. */
+    fun clean(raw: String?): String? = raw?.trim()?.ifEmpty { null }
 }

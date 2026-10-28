@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.di
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.SharedPreferencesMigration
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -47,6 +48,8 @@ import com.crazystudio.sportrecorder.domain.usecase.QuickRecordMealUseCase
 import com.crazystudio.sportrecorder.domain.usecase.RescheduleRemindersUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveFastingSelectionUseCase
+import com.crazystudio.sportrecorder.domain.venue.GluedVenueRepair
+import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
 import com.crazystudio.sportrecorder.platform.AddressLookup
 import com.crazystudio.sportrecorder.platform.AndroidClipboardReader
@@ -70,13 +73,26 @@ import com.crazystudio.sportrecorder.ui.insights.DayRecordsViewModel
 import com.crazystudio.sportrecorder.ui.insights.InsightsViewModel
 import com.crazystudio.sportrecorder.ui.settings.SettingsViewModel
 import com.crazystudio.sportrecorder.util.PhotoStorage
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 // Must match the legacy SharedPreferences file name so SharedPreferencesMigration finds it.
 private const val DIET_PREFERENCES_NAME = "diet_preference"
+
+private const val TAG = "AppModule"
+
+/**
+ * The [CoroutineScope] of work that belongs to the process rather than to a screen, such as the venue
+ * repair run at app start: off the main thread, and a failure there is logged, never a crash.
+ */
+val APPLICATION_SCOPE = named("applicationScope")
 
 val appModule = module {
     // Persistence
@@ -96,6 +112,9 @@ val appModule = module {
     single { get<AppDatabase>().getPhotoDao() }
     single { get<AppDatabase>().getVenueDao() }
 
+    // Application lifetime
+    single<CoroutineScope>(APPLICATION_SCOPE) { applicationScope() }
+
     // Repositories
     single<PhotoFileStore> { AndroidPhotoFileStore(androidContext()) }
     single<PhotoImageSource> { AndroidPhotoImageSource(androidContext()) }
@@ -104,6 +123,8 @@ val appModule = module {
     single { VenueAddressFiller(get(), get()) }
     single<PhotoImporter> { AndroidPhotoImporter(androidContext()) }
     single<MapsLinkResolver> { OkHttpMapsLinkResolver(OkHttpClient()) }
+    single { MapsPlaceReader(get(), get()) }
+    single { GluedVenueRepair(get(), get()) }
     single<ClipboardReader> { AndroidClipboardReader(androidContext()) }
     single<EatRecordRepository> { EatRecordRepositoryImpl(get(), get(), get(), get()) }
     single<DietSettingsRepository> { DietSettingsRepositoryImpl(get()) }
@@ -153,3 +174,9 @@ val appModule = module {
     viewModel { EatTimeEditorViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { BackupViewModel(get(), get(), get(), get(), get(), get()) }
 }
+
+@Suppress("InjectDispatcher") // the one place the app-lifetime scope is made; everything else is handed it
+private fun applicationScope() = CoroutineScope(
+    SupervisorJob() + Dispatchers.Default +
+        CoroutineExceptionHandler { _, error -> Log.w(TAG, "background work failed", error) },
+)

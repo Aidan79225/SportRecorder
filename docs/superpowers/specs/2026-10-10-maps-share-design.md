@@ -35,6 +35,10 @@ What this settled:
 2. **The resolved URL carries both the name and the pin.** Name in `/place/<name>/`, pin in
    `!3d<lat>!4d<lng>`. The feared "`?q=…&ftid=…` with no coordinates" form did not occur here; it is
    still handled (see *Failure*) because it may occur elsewhere.
+   **Correction (2026-10-28):** this spike link was made on the Google Maps *website*. Links made by
+   the Google Maps **apps** — what the owner actually shares — resolve to pinless shapes (Android:
+   `/place/<address+name>/data=!4m2!3m1!1s<ftid>`; iOS: `maps.google.com?q=…&ftid=…`). See
+   `2026-10-18-venue-branches-design.md`, *Addendum: links made by the Google Maps app*.
 3. **`@<lat>,<lng>` is the camera, not the pin.** They coincide only when the map is centred on the
    place; after any pan they differ. The pin (`!3d!4d`) is authoritative; `@` is a fallback.
 4. **The name does not depend on the share text's format** — the URL carries it. The rest of the

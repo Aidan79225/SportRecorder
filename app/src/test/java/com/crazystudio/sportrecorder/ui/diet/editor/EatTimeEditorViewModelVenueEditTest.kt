@@ -3,6 +3,8 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.fake.FakeVenueRepository
+import com.crazystudio.sportrecorder.fake.RacedVenueWrites
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -178,6 +180,98 @@ class EatTimeEditorViewModelVenueEditTest {
         assertEquals(keeper.id, vm.uiState.value.venue?.id)
     }
 
+    // The repair at app start merges in the background: a venue may go while a question about it is open.
+    @Test
+    fun everyQuestionAboutAVenueMergedAwayMeanwhile_isWithdrawn() = runTest(mainRule.testDispatcher.scheduler) {
+        val namesake = Venue(id = 2, name = "鼎泰豐", lat = 25.0, lng = 121.0, lastUsedAt = 2L)
+        val editor = Editor(venues = listOf(dinTaiFung, namesake))
+        editor.venues.recordCounts[dinTaiFung.id] = 3
+        editor.clipboard.text = SHARE_TEXT
+        // The share asks which store it is; the edit dialog asks to merge, then to move.
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        vm.saveVenue(dinTaiFung, namesake.name, null)
+        assertTrue(vm.repositionFromClipboard(dinTaiFung))
+        advanceUntilIdle()
+        assertEquals(dinTaiFung, vm.uiState.value.pendingStore?.venue)
+        assertEquals(dinTaiFung, vm.uiState.value.pendingMerge?.from)
+        assertEquals(dinTaiFung, vm.uiState.value.pendingMove?.venue)
+
+        val survivor = editor.venues.merge(fromId = dinTaiFung.id, intoId = namesake.id, now = 3L)
+        advanceUntilIdle()
+
+        // None of them can be answered for a venue that is gone.
+        assertNull(vm.uiState.value.pendingStore)
+        assertNull(vm.uiState.value.pendingMerge)
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(survivor, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun answeringMerge_afterItsVenueWasMergedAway_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = false) { it.mergeVenues() }
+
+    @Test
+    fun answeringKeepBoth_afterItsVenueWasMergedAway_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = false) { it.keepBothVenues() }
+
+    @Test
+    fun answeringMerge_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = true) { it.mergeVenues() }
+
+    @Test
+    fun answeringKeepBoth_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = true) { it.keepBothVenues() }
+
+    // A rename asks to merge, and the repair merges the venue the question is about away: before
+    // [answer] (and before the list shows it), or [byTheWrite] — after every read the answer makes,
+    // as its own write begins. Either way the write finds it gone and writes nothing.
+    private fun answeredAsTheVenueIsMergedAway(byTheWrite: Boolean, answer: (EatTimeEditorViewModel) -> Unit) =
+        runTest(mainRule.testDispatcher.scheduler) {
+            // Still named by the Maps app's title: the user renames it to the store's as the repair merges it.
+            val glued = dinTaiFung.copy(name = "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店")
+            val store = dinTaiFung.copy(id = 2, lastUsedAt = 2L)
+            val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
+            var survivor: Venue? = null
+            val repair: suspend FakeVenueRepository.() -> Unit = {
+                survivor = merge(fromId = glued.id, intoId = store.id, now = 3L)
+            }
+            val racing = RacedVenueWrites(editor.venues, beforeEdit = repair, beforeMerge = repair)
+            val vm = editor.viewModel(eatTimeId = 1, venueRepository = if (byTheWrite) racing else editor.venues)
+            advanceUntilIdle()
+            vm.saveVenue(glued, store.name, null)
+            advanceUntilIdle()
+            assertEquals(glued, vm.uiState.value.pendingMerge?.from)
+
+            if (!byTheWrite) editor.venues.repair()
+            answer(vm)
+            advanceUntilIdle()
+
+            assertEquals(listOf(requireNotNull(survivor)), editor.venues.stored)
+            assertEquals(survivor, vm.uiState.value.venue)
+        }
+
+    @Test
+    fun savingANewName_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val store = dinTaiFung.copy(id = 2, name = "鼎泰豐", lastUsedAt = 2L)
+            val editor = Editor(listOf(mealAt(venue = dinTaiFung)), listOf(dinTaiFung, store))
+            var survivor: Venue? = null
+            val racing = RacedVenueWrites(
+                editor.venues,
+                beforeEdit = { survivor = merge(fromId = dinTaiFung.id, intoId = store.id, now = 3L) },
+            )
+            val vm = editor.viewModel(eatTimeId = 1, venueRepository = racing)
+            advanceUntilIdle()
+
+            // A name no other venue has: saved at once, but the venue is gone by then.
+            vm.saveVenue(dinTaiFung, "我的鼎泰豐", null)
+            advanceUntilIdle()
+
+            assertEquals(listOf(requireNotNull(survivor)), editor.venues.stored)
+            assertEquals(survivor, vm.uiState.value.venue)
+        }
+
     @Test
     fun deletingAVenue_asksWithTheCount() = runTest(mainRule.testDispatcher.scheduler) {
         val other = keeper
@@ -340,7 +434,7 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
-    fun repositionFromALink_takesOnlyThePin_notTheName() = runTest(mainRule.testDispatcher.scheduler) {
+    fun repositionFromAWebLink_movesThePin_andOnlyOffersTheName() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu.copy(address = "舊地址")))
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel()
@@ -351,8 +445,11 @@ class EatTimeEditorViewModelVenueEditTest {
         // No records at it: moved at once, without asking.
         assertNull(vm.uiState.value.pendingMove)
         val moved = editor.venues.stored.single()
+        // The link's name fills the dialog's 店名 draft; only 儲存 would write it.
         assertEquals("大戶屋", moved.name)
+        assertEquals(EatTimeEditorUiState.RepositionDraft(daHuWu.id, "鼎泰豐 信義店"), vm.uiState.value.repositionDraft)
         assertEquals(mapsPosition, GeoPoint(requireNotNull(moved.lat), requireNotNull(moved.lng)))
+        // A web-made link carries no address: the old one went with the old position.
         assertNull(moved.address)
         // Editing a venue never picks it for this meal.
         assertNull(vm.uiState.value.venue)
@@ -379,8 +476,9 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
-    fun repositionFromALinkWithoutAPin_saysSoInTheDialog() = runTest(mainRule.testDispatcher.scheduler) {
+    fun repositionFromALinkThatCantBeLocated_saysSoInTheDialog() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(venues = listOf(daHuWu))
+        // No pin and no address in a shape the Maps apps write: a name the geocoder can't place.
         editor.resolver.location = "https://www.google.com/maps/place/Ichiran"
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel()
@@ -389,7 +487,11 @@ class EatTimeEditorViewModelVenueEditTest {
         vm.repositionFromClipboard(daHuWu)
         advanceUntilIdle()
 
-        assertEquals(ShareNotice.MapLinkUnreadable, vm.uiState.value.repositionNotice)
+        // A title the split leaves whole is never trusted as a 店名: nothing is offered, and the line
+        // does not claim anything was filled in.
+        assertEquals(RepositionNotice.NotLocatedUnchanged, vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
+        assertEquals(listOf("Ichiran"), editor.lookup.queried)
         // The editor's own notice line and the meal's venue are left alone.
         assertNull(vm.uiState.value.shareNotice)
         assertEquals(daHuWu, vm.uiState.value.venue)
@@ -397,6 +499,23 @@ class EatTimeEditorViewModelVenueEditTest {
 
         vm.closeVenueEdit()
         assertNull(vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
+    }
+
+    @Test
+    fun repositionFromALinkNamingNoPlace_saysItCantBeRead() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(daHuWu))
+        // A full Maps URL with neither a place nor a position in it.
+        editor.resolver.location = "https://www.google.com/maps/dir/"
+        editor.clipboard.text = SHARE_TEXT
+        val vm = editor.viewModel()
+
+        vm.repositionFromClipboard(daHuWu)
+        advanceUntilIdle()
+
+        assertEquals(RepositionNotice.Unreadable, vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
+        assertEquals(listOf(daHuWu), editor.venues.stored)
     }
 
     @Test

@@ -12,19 +12,42 @@ interface VenueRepository {
     fun observeAll(): Flow<List<Venue>>
 
     /**
-     * For typed names: the most recently used venue with this name (compared by `VenueName.sameAs`),
-     * else a new one. [lat]/[lng] are only adopted when that venue has no position yet: a later
-     * mention without a fix must never erase one the venue already learned.
+     * The venue [venueId] as stored; null once merged away or deleted. Where a merged-away venue's
+     * records went is [resolve]'s question.
      */
-    suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue
+    suspend fun find(venueId: Int): Venue?
 
-    /** Always a new venue, even if the name exists (a new branch). */
-    suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue
+    /**
+     * For typed names, and a shared place no venue was named for: the most recently used venue with
+     * this name (compared by `VenueName.sameAs`), else a new one. The look and the insert are one
+     * transaction, so a same-name venue another writer adds meanwhile is reused, never duplicated.
+     * [lat]/[lng] are only adopted when that venue has no position yet: a later mention without a fix
+     * must never erase one the venue already learned. [address] — a Maps link's own, stored trimmed
+     * (blank → none) — is written on insert; a reused venue only takes it when it has none, and one
+     * adopting a position loses its old address with the old position, so it takes [address] instead.
+     */
+    suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String? = null): Venue
+
+    /**
+     * Always a new venue, even if the name exists (a new branch, as the user said). [address] — a Maps
+     * link's own — is stored trimmed (blank → none).
+     */
+    suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String? = null): Venue
 
     suspend fun touch(venueId: Int, now: Long)
 
-    /** Moves the venue **and** clears its address: the old address described the old position. */
-    suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?)
+    /**
+     * Moves the venue, and the old address goes with the old position: it becomes [address] — the one a
+     * Maps link gives with its pin, stored trimmed — or none, to be looked up again. Re-applying the same
+     * position is not a move: nothing is written and the address stays.
+     */
+    suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String? = null)
+
+    /**
+     * Writes [address] (trimmed) only if the venue has none — a Maps link's address never replaces one
+     * the venue already has. True if written.
+     */
+    suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean
 
     /**
      * Writes [address] only if the venue is still at ([lat], [lng]) and its address is still null —
@@ -34,16 +57,29 @@ interface VenueRepository {
 
     /**
      * Saves name and address as given: the name normalized, the address trimmed (blank → null).
-     * Never merges. A name that is blank once normalized is refused (throws).
+     * Never merges. A name that is blank once normalized is refused (throws). Returns the venue as
+     * saved, or null when it is gone — merged away or deleted by another writer (the glued-name repair
+     * at app start merges in the background) — and nothing is written then. Whether it is still there
+     * is asked in the same transaction as the write, so no check made before can be outdated.
      */
-    suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue
+    suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue?
 
     /**
      * Re-points [fromId]'s records to [intoId] and deletes [fromId], in one transaction. The
      * survivor keeps its own name, address and position, but adopts [fromId]'s position if it has
-     * none — and then loses its address, as any position change does. Returns the survivor.
+     * none — and then loses its address, as any position change does. Returns the survivor, or null
+     * when either venue is gone (as for [edit]: asked in the same transaction), and nothing is
+     * written then.
      */
-    suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue
+    suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue?
+
+    /**
+     * The venue [venueId] is now: itself as stored; else the venue it was merged into since the app
+     * started (followed through later merges), where its records went; null once deleted. Another
+     * writer may merge away a venue an editor has open — the glued-name repair at app start does, in
+     * the background — and the editor must never store the id of a venue that is gone.
+     */
+    suspend fun resolve(venueId: Int): Venue?
 
     /** Clears the venue on its records and deletes it, in one transaction. Records are never deleted. */
     suspend fun delete(venueId: Int)

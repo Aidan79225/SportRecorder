@@ -14,6 +14,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -29,10 +30,14 @@ import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.backup_cancel
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_unchanged
+import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_move_body
 import com.crazystudio.sportrecorder.shared.resources.editor_move_confirm
 import com.crazystudio.sportrecorder.shared.resources.editor_move_keep
 import com.crazystudio.sportrecorder.shared.resources.editor_move_title
+import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_address
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
@@ -56,13 +61,17 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * The ✎ dialog (#89). Name and address are drafts that only 儲存 writes; the two position actions
  * apply at once and the position line follows them (取消 does not undo a move). 刪除 asks first.
+ * 「貼上地圖連結更新」 also fills the drafts from the link ([draft]); 儲存 waits while it is read, so a
+ * save can't drop the move it is about to make.
  */
 @Composable
+@Suppress("LongParameterList") // Compose state and event slots
 internal fun VenueEditDialog(
     venue: Venue,
     canUseThisPosition: Boolean,
-    notice: ShareNotice?,
+    notice: RepositionNotice?,
     resolving: Boolean,
+    draft: EatTimeEditorUiState.RepositionDraft?,
     actions: VenuePickerActions,
     onClose: () -> Unit,
 ) {
@@ -73,6 +82,14 @@ internal fun VenueEditDialog(
     val address = typedAddress ?: venue.address.orEmpty()
     val records by produceState<Int?>(initialValue = null, venue.id) { value = actions.recordCount(venue) }
     val scope = rememberCoroutineScope()
+    // Taken once, so a draft the user then edits is never put back (on rotation, say).
+    LaunchedEffect(draft) {
+        if (draft != null && draft.venueId == venue.id) {
+            name = draft.name
+            draft.address?.let { typedAddress = it }
+            actions.consumeRepositionDraft()
+        }
+    }
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(Res.string.editor_venue_edit)) },
@@ -96,7 +113,7 @@ internal fun VenueEditDialog(
         confirmButton = {
             VenueEditButtons(
                 // A name that is blank once normalized is not a name; the view model refuses it too.
-                canSave = VenueName.normalize(name).isNotEmpty(),
+                canSave = VenueName.normalize(name).isNotEmpty() && !resolving,
                 onDelete = { actions.requestDelete(venue) },
                 onCancel = onClose,
                 onSave = {
@@ -116,7 +133,7 @@ private fun VenueEditFields(
     address: String,
     onAddressChange: (String) -> Unit,
     positionLine: String,
-    notice: ShareNotice?,
+    notice: RepositionNotice?,
     resolving: Boolean,
     onUseThisPosition: (() -> Unit)?,
     onUseLink: () -> Unit,
@@ -148,7 +165,7 @@ private fun VenueEditFields(
             TextButton(onClick = onClick) { Text(stringResource(Res.string.editor_venue_use_here)) }
         }
         TextButton(onClick = onUseLink) { Text(stringResource(Res.string.editor_venue_use_link)) }
-        val status = if (resolving) Res.string.editor_venue_resolving else notice?.let { shareNoticeRes(it) }
+        val status = if (resolving) Res.string.editor_venue_resolving else notice?.let { repositionNoticeRes(it) }
         status?.let {
             Text(
                 text = stringResource(it),
@@ -157,6 +174,13 @@ private fun VenueEditFields(
             )
         }
     }
+}
+
+private fun repositionNoticeRes(notice: RepositionNotice) = when (notice) {
+    RepositionNotice.NotAMapLink -> Res.string.editor_not_map_link
+    RepositionNotice.Unreadable -> Res.string.editor_link_unreadable
+    RepositionNotice.NotLocated -> Res.string.editor_link_no_position
+    RepositionNotice.NotLocatedUnchanged -> Res.string.editor_link_no_position_unchanged
 }
 
 /** 「位置：25.0335, 121.5301 · 12 筆紀錄」, or 「沒有位置」; the count joins once it is known. */

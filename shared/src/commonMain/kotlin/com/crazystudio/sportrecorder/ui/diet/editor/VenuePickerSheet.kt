@@ -199,6 +199,7 @@ private fun VenuePickerDialogs(
             canUseThisPosition = state.location != null,
             notice = state.repositionNotice,
             resolving = state.repositioning,
+            draft = state.repositionDraft,
             actions = actions,
             onClose = closeEditing,
         )

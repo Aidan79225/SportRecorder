@@ -5,8 +5,13 @@ import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.crazystudio.sportrecorder.di.APPLICATION_SCOPE
 import com.crazystudio.sportrecorder.di.appModule
+import com.crazystudio.sportrecorder.domain.venue.GluedVenueRepair
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
+import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 
@@ -17,6 +22,15 @@ class SportApplication : Application(), SingletonImageLoader.Factory {
             androidContext(this@SportApplication)
             modules(appModule)
         }
+        repairGluedVenues()
+    }
+
+    /**
+     * Venues named by a whole Maps-app title, before such links could be read, are repaired once per
+     * process, in the background: startup never waits for it, not even to build the repair.
+     */
+    private fun repairGluedVenues() {
+        get<CoroutineScope>(APPLICATION_SCOPE).launch { get<GluedVenueRepair>().run() }
     }
 
     /**

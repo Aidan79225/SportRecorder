@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -21,6 +22,9 @@ import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_unchanged
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_address
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit_named
@@ -30,8 +34,10 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_merge_where
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_name
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_position
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_records
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_resolving
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_same_name_title
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_save
+import com.crazystudio.sportrecorder.shared.resources.editor_venue_use_link
 import com.crazystudio.sportrecorder.shared.resources.venue_no_position
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
@@ -92,17 +98,16 @@ class VenuePickerSheetTest {
         actions.records = 12
         show()
 
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+        openEditDialog(placed)
 
         compose.onNodeWithText(str(Res.string.editor_venue_edit)).assertIsDisplayed()
         val position = str(Res.string.editor_venue_position, "25.0335", "121.5301")
         compose.onNodeWithText("$position · ${plural(Res.plurals.editor_venue_records, 12)}").assertIsDisplayed()
         // The drafts: a blank name cannot be saved, a real one is handed over with the address.
-        val nameField = compose.onNode(hasText(str(Res.string.editor_venue_name)) and hasSetTextAction())
-        nameField.assert(hasText(placed.name))
-        nameField.performTextReplacement("  ")
+        nameField().assert(hasText(placed.name))
+        nameField().performTextReplacement("  ")
         saveButton().assertIsNotEnabled()
-        nameField.performTextReplacement("鼎泰豐 101 店")
+        nameField().performTextReplacement("鼎泰豐 101 店")
         saveButton().performClick()
 
         assertEquals(listOf(Triple(placed, "鼎泰豐 101 店", "信義路二段 194 號")), actions.saved)
@@ -112,7 +117,7 @@ class VenuePickerSheetTest {
     @Test
     fun deleteConfirmation_mentionsTheRecordCount() {
         show()
-        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, unplaced.name)).performClick()
+        openEditDialog(unplaced)
         compose.onNodeWithText(str(Res.string.editor_venue_delete)).performClick()
         assertEquals(listOf(unplaced), actions.deleteRequests)
 
@@ -149,14 +154,106 @@ class VenuePickerSheetTest {
         compose.onNodeWithText(plural(Res.plurals.editor_venue_merge_body, 4, placed.name)).assertIsDisplayed()
     }
 
+    @Test
+    fun updatingFromALink_fillsTheNameDraft() {
+        // What the view model does once the link is read: offer its name to that venue's dialog.
+        actions.onReposition = { venue ->
+            state = state.copy(repositionDraft = EatTimeEditorUiState.RepositionDraft(venue.id, "鼎泰豐 101 店"))
+        }
+        show()
+        openEditDialog(placed)
+
+        tapUpdateFromLink()
+
+        nameField().assert(hasText("鼎泰豐 101 店"))
+        assertEquals(1, actions.draftsTaken)
+        // Only 儲存 writes it; the address is the stored one (a move writes the link's own).
+        saveButton().performClick()
+        assertEquals(listOf(Triple(placed, "鼎泰豐 101 店", "信義路二段 194 號")), actions.saved)
+    }
+
+    @Test
+    fun whileALinkIsRead_saveIsDisabled() {
+        actions.onReposition = { state = state.copy(repositioning = true) }
+        show()
+        openEditDialog(placed)
+
+        tapUpdateFromLink()
+
+        // A save now would drop the move the link is about to make.
+        compose.onNodeWithText(str(Res.string.editor_venue_resolving)).assertIsDisplayed()
+        saveButton().assertIsNotEnabled()
+        state = state.copy(repositioning = false)
+        saveButton().assertIsEnabled()
+    }
+
+    @Test
+    fun aLinkThatCantBeLocated_fillsNameAndAddress_andSaysSo() {
+        val linkAddress = "臺北市大安區福住里信義路二段194號"
+        actions.onReposition = { venue ->
+            state = state.copy(
+                repositionDraft = EatTimeEditorUiState.RepositionDraft(venue.id, "鼎泰豐 信義店", linkAddress),
+                repositionNotice = RepositionNotice.NotLocated,
+            )
+        }
+        show()
+        openEditDialog(unplaced)
+
+        tapUpdateFromLink()
+
+        nameField().assert(hasText("鼎泰豐 信義店"))
+        addressField().assert(hasText(linkAddress))
+        compose.onNodeWithText(str(Res.string.editor_link_no_position)).assertIsDisplayed()
+        saveButton().performClick()
+        assertEquals(listOf(Triple(unplaced, "鼎泰豐 信義店", linkAddress)), actions.saved)
+    }
+
+    @Test
+    fun aWholeTitleThatCantBeLocated_keepsTheDrafts_andSaysNothingChanged() {
+        // What the view model does for a title the split left whole and the geocoder can't place.
+        actions.onReposition = { state = state.copy(repositionNotice = RepositionNotice.NotLocatedUnchanged) }
+        show()
+        openEditDialog(placed)
+
+        tapUpdateFromLink()
+
+        compose.onNodeWithText(str(Res.string.editor_link_no_position_unchanged)).assertIsDisplayed()
+        nameField().assert(hasText(placed.name))
+        addressField().assert(hasText("信義路二段 194 號"))
+        assertEquals(0, actions.draftsTaken)
+    }
+
+    /** Taps [venue]'s ✎, which opens its edit dialog. */
+    private fun openEditDialog(venue: Venue) {
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, venue.name)).performClick()
+    }
+
+    /** Taps the open edit dialog's 「貼上地圖連結更新」. */
+    private fun tapUpdateFromLink() {
+        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+    }
+
     private fun saveButton() = compose.onNode(hasText(str(Res.string.editor_venue_save)) and hasClickAction())
 
-    /** Records what the picker asks for; answers [records] for every venue's record count. */
+    private fun nameField() = compose.onNode(hasText(str(Res.string.editor_venue_name)) and hasSetTextAction())
+
+    private fun addressField() = compose.onNode(hasText(str(Res.string.editor_venue_address)) and hasSetTextAction())
+
+    /**
+     * Records what the picker asks for; answers [records] for every venue's record count. Updating
+     * from a link runs [onReposition], which stands in for the view model reading it.
+     *
+     * Unlike the view model, [consumeRepositionDraft] only counts: `state.repositionDraft` stays set.
+     * What stops the dialog taking that leftover draft twice is then its `LaunchedEffect(draft)` key,
+     * not a cleared draft, so [draftsTaken] counts how often the dialog took it.
+     */
     private class RecordingActions : VenuePickerActions {
         var records = 0
         val saved = mutableListOf<Triple<Venue, String, String?>>()
         val deleteRequests = mutableListOf<Venue>()
         var keptBoth = 0
+        var onReposition: (Venue) -> Unit = {}
+        var draftsTaken = 0
 
         override fun selectVenue(venue: Venue) = Unit
         override fun createVenue(name: String) = Unit
@@ -166,7 +263,13 @@ class VenuePickerSheetTest {
         override fun consumeMessage() = Unit
         override suspend fun recordCount(venue: Venue) = records
         override fun useThisPositionFor(venue: Venue) = Unit
-        override suspend fun repositionFromClipboard(venue: Venue) = false
+        override suspend fun repositionFromClipboard(venue: Venue): Boolean {
+            onReposition(venue)
+            return true
+        }
+        override fun consumeRepositionDraft() {
+            draftsTaken++
+        }
         override fun closeVenueEdit() = Unit
         override fun confirmMove() = Unit
         override fun cancelMove() = Unit

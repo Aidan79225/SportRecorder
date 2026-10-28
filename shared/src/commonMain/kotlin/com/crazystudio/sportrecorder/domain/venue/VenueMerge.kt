@@ -1,6 +1,5 @@
 package com.crazystudio.sportrecorder.domain.venue
 
-import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueName
 
@@ -15,17 +14,7 @@ object VenueMerge {
         val namesakes = venues.filter { it.id != venue.id && VenueName.sameAs(it.name, newName) }
         return when {
             VenueName.sameAs(venue.name, newName) || namesakes.isEmpty() -> null
-            else -> namesakes.nearestTo(venue.position()) ?: namesakes.maxBy { it.lastUsedAt }
+            else -> venue.position?.let { namesakes.nearestTo(it)?.first } ?: namesakes.maxBy { it.lastUsedAt }
         }
-    }
-
-    private fun Venue.position(): GeoPoint? {
-        val lat = lat
-        val lng = lng
-        return if (lat != null && lng != null) GeoPoint(lat, lng) else null
-    }
-
-    private fun List<Venue>.nearestTo(point: GeoPoint?): Venue? = point?.let { here ->
-        mapNotNull { venue -> venue.position()?.let { venue to it.metersTo(here) } }.minByOrNull { it.second }?.first
     }
 }

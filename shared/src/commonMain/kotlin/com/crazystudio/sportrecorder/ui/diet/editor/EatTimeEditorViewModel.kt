@@ -9,12 +9,14 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.venue.MapsLink
 import com.crazystudio.sportrecorder.domain.venue.MapsPlace
+import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
 import com.crazystudio.sportrecorder.domain.venue.SharedVenue
 import com.crazystudio.sportrecorder.domain.venue.SharedVenueMatch
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
@@ -23,7 +25,6 @@ import com.crazystudio.sportrecorder.domain.venue.VenuePicker
 import com.crazystudio.sportrecorder.domain.venue.roundedDistance
 import com.crazystudio.sportrecorder.platform.ClipboardReader
 import com.crazystudio.sportrecorder.platform.LocationProvider
-import com.crazystudio.sportrecorder.platform.MapsLinkResolver
 import com.crazystudio.sportrecorder.platform.PhotoImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -77,7 +78,7 @@ class EatTimeEditorViewModel constructor(
     private val photoFileStore: PhotoFileStore,
     private val photoImageSource: PhotoImageSource,
     private val savedStateHandle: SavedStateHandle,
-    private val mapsLinkResolver: MapsLinkResolver,
+    private val mapsPlaceReader: MapsPlaceReader,
     private val venueAddressFiller: VenueAddressFiller,
     private val clipboardReader: ClipboardReader,
 ) : ViewModel(), VenuePickerActions {
@@ -98,8 +99,9 @@ class EatTimeEditorViewModel constructor(
     // The run the open question (if any) belongs to: answering it marks that run, not another.
     private var placeRun: PlaceRun = PlaceRun.Share(savedStateHandle)
 
-    // Reading a map link to move a venue from the edit dialog; dropped when the user declines the
-    // move or closes the dialog.
+    // Reading a map link from the edit dialog, to move its venue and to offer the link's name (and its
+    // address, when the place can't be located) to the dialog's drafts; dropped when the user declines
+    // the move or closes the dialog.
     private var repositionJob: Job? = null
 
     // Looking up the addresses the picker is missing; one at a time, however often it is opened.
@@ -128,7 +130,8 @@ class EatTimeEditorViewModel constructor(
         viewModelScope.launch {
             venueRepository.observeAll().collect { venues ->
                 allVenues = venues
-                _uiState.update { it.withVenueOptions() }
+                _uiState.update { it.withVenueOptions().withFreshVenue() }
+                followVanishedVenues()
             }
         }
         if (isEditMode) {
@@ -149,8 +152,10 @@ class EatTimeEditorViewModel constructor(
                         } else {
                             EatTimeEditorUiState.LocationStatus.IDLE
                         },
-                    ).withVenueOptions()
+                    ).withVenueOptions().withFreshVenue()
                 }
+                // Read before a merge the list has already shown: catch up with it.
+                followVanishedVenues()
             }
         }
         if (!isEditMode && sharedText != null) {
@@ -205,71 +210,65 @@ class EatTimeEditorViewModel constructor(
 
     /**
      * A place shared from Google Maps (or pasted) becomes this meal's venue, at the position Maps
-     * gives — never the phone's fix. Any failure only leaves a notice under the venue row: the editor
-     * stays usable and saving is never held up by it.
+     * gives — never the phone's fix — and with the address the link carries, if any. A link made by
+     * the Maps app has no pin: [MapsPlaceReader] places it by its address. Any failure only leaves a
+     * notice under the venue row: the editor stays usable and saving is never held up by it.
      */
     private suspend fun openPlace(text: String, run: PlaceRun) {
         _uiState.update { it.copy(resolvingLink = true) }
         try {
             val link = MapsLink.find(text)
-            val place = link?.let { readPlace(it) }
+            val place = link?.let { mapsPlaceReader.read(it) }
             val name = place?.name
             when {
                 link == null -> showNotice(ShareNotice.NotAMapLink)
                 // A place without a name is unusable: coordinates alone name no venue.
                 place == null || name == null -> showNotice(ShareNotice.MapLinkUnreadable)
-                else -> applySharedPlace(name, place.position(), run)
+                else -> applySharedPlace(name, place, run)
             }
         } finally {
             _uiState.update { it.copy(resolvingLink = false) }
         }
     }
 
-    /** A short link is resolved first (one request, no redirects); [MapsLink.parse] then vets the target host. */
-    private suspend fun readPlace(link: MapsLink): MapsPlace? {
-        val fullUrl = when (link) {
-            is MapsLink.Short -> mapsLinkResolver.resolve(link)
-            is MapsLink.Full -> link.url
-        }
-        return fullUrl?.let(MapsLink::parse)
-    }
-
-    private fun MapsPlace.position(): GeoPoint? {
-        val lat = lat
-        val lng = lng
-        return if (lat != null && lng != null) GeoPoint(lat, lng) else null
-    }
-
     // Matched against the venues as stored right now, not the possibly not-yet-loaded picker list,
     // so sharing the same place twice finds the venue the first share created.
-    private suspend fun applySharedPlace(name: String, position: GeoPoint?, run: PlaceRun) {
+    private suspend fun applySharedPlace(name: String, place: MapsPlace, run: PlaceRun) {
         val venues = venueRepository.observeAll().first()
-        when (val match = SharedVenue.match(name, position, venues)) {
-            is SharedVenueMatch.Create -> createSharedVenue(match)
-            is SharedVenueMatch.Use -> useSharedVenue(match)
-            is SharedVenueMatch.AskWhichStore -> askWhichStore(name, match, run)
+        when (val match = SharedVenue.match(name, place.position, venues)) {
+            is SharedVenueMatch.Create -> createSharedVenue(match, place.address)
+            is SharedVenueMatch.Use -> useSharedVenue(match, place.address)
+            is SharedVenueMatch.AskWhichStore -> askWhichStore(name, place.address, match, run)
         }
     }
 
     // Not createVenue: that adopts the record's device fix, and a shared place is where Maps says.
-    private suspend fun createSharedVenue(match: SharedVenueMatch.Create) {
+    // The link's own address comes with it; only without one is it looked up from the pin.
+    // findOrCreate, not create: another writer (the glued-name repair at app start, a second editor)
+    // may have added this name since the match read the venues; its check and insert are one
+    // transaction, so that venue is reused, never duplicated (and takes the address only if it has none).
+    private suspend fun createSharedVenue(match: SharedVenueMatch.Create, address: String?) {
         val venue = venueRepository.findOrCreate(
             name = match.name,
             lat = match.position?.lat,
             lng = match.position?.lng,
             now = now(),
+            address = address,
         )
         showVenue(venue)
         fillAddress(venue)
     }
 
-    private suspend fun useSharedVenue(match: SharedVenueMatch.Use) {
+    // A venue learning its position takes the link's address with it (an address belongs to its
+    // position); one already placed only gets the link's address when it has none.
+    private suspend fun useSharedVenue(match: SharedVenueMatch.Use, address: String?) {
         val fill = match.fillPosition
         if (fill == null) {
-            showVenue(match.venue)
+            val filled = address != null && venueRepository.setAddressIfEmpty(match.venue.id, address)
+            showVenue(if (filled) match.venue.copy(address = address) else match.venue)
         } else {
-            venueRepository.setPosition(match.venue.id, fill.lat, fill.lng)
-            val placed = match.venue.copy(lat = fill.lat, lng = fill.lng, address = null)
+            venueRepository.setPosition(match.venue.id, fill.lat, fill.lng, address)
+            val placed = match.venue.copy(lat = fill.lat, lng = fill.lng, address = address)
             showVenue(placed)
             fillAddress(placed)
         }
@@ -278,7 +277,12 @@ class EatTimeEditorViewModel constructor(
     // The same name far away may be another branch or the same store mis-placed: only the user knows.
     // Moving it would move its marker for every record at it, so the question carries the count.
     // Asked once per run: a share re-run after process death must not re-ask what was answered.
-    private suspend fun askWhichStore(sharedName: String, match: SharedVenueMatch.AskWhichStore, run: PlaceRun) {
+    private suspend fun askWhichStore(
+        sharedName: String,
+        sharedAddress: String?,
+        match: SharedVenueMatch.AskWhichStore,
+        run: PlaceRun,
+    ) {
         if (run.answered) {
             showVenue(match.venue)
         } else {
@@ -288,6 +292,7 @@ class EatTimeEditorViewModel constructor(
                 distance = roundedDistance(match.meters),
                 movedRecords = venueRepository.recordCount(match.venue.id),
                 sharedName = sharedName,
+                sharedAddress = sharedAddress,
             )
             _uiState.update { it.copy(venue = match.venue, pendingStore = pending) }
         }
@@ -295,8 +300,42 @@ class EatTimeEditorViewModel constructor(
 
     private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
 
+    // The selected venue as stored now, so a filled-in address or a moved position never shows stale.
+    // Kept as it is while the list doesn't have it ([followVanishedVenues] asks why).
+    private fun EatTimeEditorUiState.withFreshVenue() =
+        copy(venue = venue?.let { shown -> allVenues.firstOrNull { it.id == shown.id } ?: shown })
+
+    // A venue the list lacks was just created (the list catches up), or merged away or deleted by another
+    // writer — the glued-name repair at app start merges in the background, while a meal at that venue
+    // may be open. Asked for by id, the selected one becomes the venue its records went to, or none; and
+    // a question still open about one that is gone is withdrawn: answered, it would write to a venue that
+    // no longer exists.
+    private suspend fun followVanishedVenues() {
+        val state = _uiState.value
+        state.venue?.takeUnless { it.isListed() }?.let { showVenueInPlaceOf(it.id, venueRepository.resolve(it.id)) }
+        val gone = state.questionedVenues().filterNot { it.isListed() || it.remains() }.map { it.id }.toSet()
+        if (gone.isNotEmpty()) withdrawQuestionsAbout(gone)
+    }
+
+    private fun Venue.isListed() = allVenues.any { it.id == id }
+
+    // Neither merged away nor deleted, asked for by id: a venue the list has not caught up with yet remains.
+    private suspend fun Venue.remains() = venueRepository.find(id) != null
+
+    // The venues the open questions are about: a merge's two, a move's and a share's.
+    private fun EatTimeEditorUiState.questionedVenues() =
+        listOfNotNull(pendingMerge?.from, pendingMerge?.into, pendingMove?.venue, pendingStore?.venue)
+
+    private fun withdrawQuestionsAbout(venueIds: Set<Int>) = _uiState.update { state ->
+        state.copy(
+            pendingMerge = state.pendingMerge?.takeUnless { it.from.id in venueIds || it.into.id in venueIds },
+            pendingMove = state.pendingMove?.takeUnless { it.venue.id in venueIds },
+            pendingStore = state.pendingStore?.takeUnless { it.venue.id in venueIds },
+        )
+    }
+
     // An answer replaces the venue only if the user has not switched to another one meanwhile.
-    private fun showVenueInPlaceOf(replacedId: Int, venue: Venue) = _uiState.update { state ->
+    private fun showVenueInPlaceOf(replacedId: Int, venue: Venue?) = _uiState.update { state ->
         state.copy(venue = if (state.venue?.id == replacedId) venue else state.venue)
     }
 
@@ -330,16 +369,22 @@ class EatTimeEditorViewModel constructor(
     fun answerAnotherBranch() {
         val pending = takePendingStore() ?: return
         viewModelScope.launch {
-            val branch = venueRepository.create(pending.sharedName, pending.to.lat, pending.to.lng, now())
+            val branch = venueRepository.create(
+                pending.sharedName,
+                pending.to.lat,
+                pending.to.lng,
+                now(),
+                pending.sharedAddress,
+            )
             showVenueInPlaceOf(pending.venue.id, branch)
             fillAddress(branch)
         }
     }
 
-    /** Same store, mis-placed: move it to the link's pin — for every record at it. */
+    /** Same store, mis-placed: move it to the link's pin — for every record at it — with the link's address. */
     fun answerSameStoreMove() {
         val pending = takePendingStore() ?: return
-        viewModelScope.launch { moveVenue(pending.venue, pending.to) }
+        viewModelScope.launch { moveVenue(pending.venue, pending.to, pending.sharedAddress) }
     }
 
     /** Same store, and it stays where it is; it stays selected for this meal. Also what dismissing means. */
@@ -347,21 +392,25 @@ class EatTimeEditorViewModel constructor(
         takePendingStore()
     }
 
-    // Moves the venue's marker for every record at it, and its old address goes with the old position.
+    // Moves the venue's marker for every record at it, and its old address goes with the old position:
+    // it becomes [address] — what a Maps link gives with its pin — or is looked up again.
     // The meal's own venue choice is left as it is; a selected copy of this venue is only refreshed.
-    private suspend fun moveVenue(venue: Venue, to: GeoPoint) {
-        venueRepository.setPosition(venue.id, to.lat, to.lng)
-        val moved = venue.copy(lat = to.lat, lng = to.lng, address = null)
+    private suspend fun moveVenue(venue: Venue, to: GeoPoint, address: String? = null) {
+        venueRepository.setPosition(venue.id, to.lat, to.lng, address)
+        val moved = venue.copy(lat = to.lat, lng = to.lng, address = address)
         showVenueInPlaceOf(venue.id, moved)
         fillAddress(moved)
     }
 
     /**
-     * Moves [venue] to the pin of the Maps link on the clipboard, read now because the user tapped.
-     * Only the pin is taken, never the name. A venue with records asks first
-     * ([EatTimeEditorUiState.pendingMove]); a link without a pin says so in
-     * [EatTimeEditorUiState.repositionNotice]. False when the clipboard held no Maps link: the user is
-     * then asked to paste one by hand.
+     * Updates [venue] from the Maps link on the clipboard, read now because the user tapped. The
+     * place's position moves the venue, with the link's own address; a venue with records asks first
+     * ([EatTimeEditorUiState.pendingMove]). The link's name is offered to the edit dialog's 店名 draft
+     * ([EatTimeEditorUiState.repositionDraft]): only 儲存 writes it. A title the split could not read
+     * ([MapsPlace.cleanName] null) is never offered. A place with no position moves nothing: its name
+     * and address are offered instead (nothing, for such a title), and
+     * [EatTimeEditorUiState.repositionNotice] says why. False when the clipboard held no Maps link:
+     * the user is then asked to paste one by hand.
      */
     override suspend fun repositionFromClipboard(venue: Venue): Boolean {
         val text = clipboardReader.text()?.takeIf { MapsLink.find(it) != null }
@@ -376,7 +425,7 @@ class EatTimeEditorViewModel constructor(
     private fun startReposition(text: String, venue: Venue) {
         val previous = repositionJob
         previous?.cancel()
-        _uiState.update { it.copy(repositionNotice = null) }
+        _uiState.update { it.copy(repositionNotice = null, repositionDraft = null) }
         repositionJob = viewModelScope.launch {
             // A cancelled run still clears repositioning on its way out; let it finish before this one starts.
             previous?.join()
@@ -388,31 +437,60 @@ class EatTimeEditorViewModel constructor(
         _uiState.update { it.copy(repositioning = true) }
         try {
             val link = MapsLink.find(text)
-            val to = link?.let { readPlace(it) }?.position()
+            val place = link?.let { mapsPlaceReader.read(it) }
             when {
-                link == null -> showRepositionNotice(ShareNotice.NotAMapLink)
-                to == null -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
-                else -> askOrMove(venue, to)
+                link == null -> showRepositionNotice(RepositionNotice.NotAMapLink)
+                place == null -> showRepositionNotice(RepositionNotice.Unreadable)
+                else -> repositionTo(venue, place)
             }
         } finally {
             _uiState.update { it.copy(repositioning = false) }
         }
     }
 
-    private suspend fun askOrMove(venue: Venue, to: GeoPoint) {
-        val records = venueRepository.recordCount(venue.id)
-        if (records > 0) {
-            _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records)) }
-        } else {
-            moveVenue(venue, to)
+    // The address belongs to its position: it travels with the move, and is only offered as a draft
+    // when there is no position to move to. Only a clean name is offered: a title the split left whole
+    // may be the address glued to the name, and one that is only an address (a searched address, pin
+    // or not) names nothing; neither may replace the name the user gave the venue.
+    private suspend fun repositionTo(venue: Venue, place: MapsPlace) {
+        val to = place.position
+        val name = place.cleanName
+        val address = place.address
+        when {
+            to != null -> {
+                name?.let { offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, it)) }
+                askOrMove(venue, to, address)
+            }
+            // Nowhere to put it: the drafts take the name and address the link splits into, and nothing moves.
+            name != null && address != null -> {
+                offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, name, address))
+                showRepositionNotice(RepositionNotice.NotLocated)
+            }
+            // Nowhere to put it, and nothing to trust as a name: the line says nothing was changed.
+            place.name != null -> showRepositionNotice(RepositionNotice.NotLocatedUnchanged)
+            else -> showRepositionNotice(RepositionNotice.Unreadable)
         }
     }
 
-    private fun showRepositionNotice(notice: ShareNotice) = _uiState.update { it.copy(repositionNotice = notice) }
+    private fun offerDraft(draft: EatTimeEditorUiState.RepositionDraft) =
+        _uiState.update { it.copy(repositionDraft = draft) }
+
+    private suspend fun askOrMove(venue: Venue, to: GeoPoint, address: String?) {
+        val records = venueRepository.recordCount(venue.id)
+        if (records > 0) {
+            _uiState.update { it.copy(pendingMove = EatTimeEditorUiState.PendingMove(venue, to, records, address)) }
+        } else {
+            moveVenue(venue, to, address)
+        }
+    }
+
+    private fun showRepositionNotice(notice: RepositionNotice) = _uiState.update { it.copy(repositionNotice = notice) }
+
+    override fun consumeRepositionDraft() = _uiState.update { it.copy(repositionDraft = null) }
 
     /**
      * The edit dialog is gone: a map link still being read for it moves nothing, and the question,
-     * paste dialog or notice it led to goes with it.
+     * paste dialog, notice or drafts it led to go with it.
      */
     override fun closeVenueEdit() {
         repositionJob?.cancel()
@@ -420,18 +498,19 @@ class EatTimeEditorViewModel constructor(
             state.copy(
                 repositionNotice = null,
                 repositioning = false,
+                repositionDraft = null,
                 pendingMove = null,
                 pasteDialog = state.pasteDialog.takeUnless { it is PasteTarget.Reposition },
             )
         }
     }
 
-    /** Move the venue to the link's pin — for every record at it. */
+    /** Move the venue to the link's pin — for every record at it — with the link's address. */
     override fun confirmMove() {
         val pending = _uiState.value.pendingMove ?: return
         // Clear first, so a second tap finds nothing pending.
         _uiState.update { it.copy(pendingMove = null) }
-        viewModelScope.launch { moveVenue(pending.venue, pending.to) }
+        viewModelScope.launch { moveVenue(pending.venue, pending.to, pending.address) }
     }
 
     /** Keep the venue where it is; a map link still being read for it moves nothing either. */
@@ -498,7 +577,7 @@ class EatTimeEditorViewModel constructor(
             val into = VenueMerge.target(current, name, venues)
             // Saving what is already stored writes nothing, so the venue does not jump up the list.
             val unchanged = current.name == VenueName.normalize(name) &&
-                current.address == address?.trim()?.ifEmpty { null }
+                current.address == VenueAddress.clean(address)
             when {
                 into != null -> {
                     val pending = EatTimeEditorUiState.PendingMerge(
@@ -517,8 +596,10 @@ class EatTimeEditorViewModel constructor(
 
     override suspend fun recordCount(venue: Venue): Int = venueRepository.recordCount(venue.id)
 
+    // Gone by the write (merged away or deleted by another writer): nothing was saved, and the list,
+    // once it shows that, takes the selection to where the venue's records went ([followVanishedVenues]).
     private suspend fun editVenue(venueId: Int, name: String, address: String?) {
-        showVenueInPlaceOf(venueId, venueRepository.edit(venueId, name, address, now()))
+        venueRepository.edit(venueId, name, address, now())?.let { showVenueInPlaceOf(venueId, it) }
     }
 
     // Clear first: a second tap must find nothing pending, not act on a venue the first one merged away.
@@ -528,18 +609,24 @@ class EatTimeEditorViewModel constructor(
         return pending
     }
 
-    /** One place after all: its records move to the other venue, which keeps its own name, address and position. */
+    /**
+     * One place after all: its records move to the other venue, which keeps its own name, address and
+     * position. Either one merged away or deleted since the question was asked (before the list showed
+     * it, so the question was not yet withdrawn) leaves nothing to merge: the merge itself finds that,
+     * in its own transaction, as with [editVenue].
+     */
     override fun mergeVenues() {
         val pending = takePendingMerge() ?: return
         viewModelScope.launch {
-            val survivor = venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())
-            showVenueInPlaceOf(pending.from.id, survivor)
-            // A survivor without a position adopts the merged one's, and needs an address for it.
-            fillAddress(survivor)
+            venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())?.let { survivor ->
+                showVenueInPlaceOf(pending.from.id, survivor)
+                // A survivor without a position adopts the merged one's, and needs an address for it.
+                fillAddress(survivor)
+            }
         }
     }
 
-    /** Two places with one name (branches): just save the edit. */
+    /** Two places with one name (branches): just save the edit — unless the venue is gone meanwhile. */
     override fun keepBothVenues() {
         val pending = takePendingMerge() ?: return
         viewModelScope.launch { editVenue(pending.from.id, pending.newName, pending.newAddress) }
@@ -645,6 +732,9 @@ class EatTimeEditorViewModel constructor(
         // after the write (it would create a venue the saved meal never gets).
         dropSharedPlace()
         val state = _uiState.value
+        // As stored now, asked for by id: one merged away meanwhile by another writer (before the list
+        // showed it) is saved as the venue its records went to, never as an id that is gone.
+        val venue = state.venue?.let { venueRepository.resolve(it.id) }
         val record = EatRecord(
             id = eatTimeId,
             time = currentMillis,
@@ -653,14 +743,16 @@ class EatTimeEditorViewModel constructor(
             photos = emptyList(), // photos are managed via pendingPhotos / photosToDelete below
             // The update path rewrites the whole row, so the venue must travel with the record:
             // leaving it out here would silently clear it whenever only the note was edited.
-            venue = state.venue,
+            venue = venue,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
             committed = true
             // Recency should reflect use, not creation, and not a later edit of an old record:
-            // fixing last month's note must not push that venue above what is eaten now.
-            state.venue?.takeIf { it.id != loadedVenueId }?.let { venueRepository.touch(it.id, now()) }
+            // fixing last month's note must not push that venue above what is eaten now — nor the
+            // venue it was merged into since.
+            val loaded = loadedVenueId?.let { venueRepository.resolve(it)?.id }
+            venue?.takeIf { it.id != loaded }?.let { venueRepository.touch(it.id, now()) }
         }
         return ok
     }

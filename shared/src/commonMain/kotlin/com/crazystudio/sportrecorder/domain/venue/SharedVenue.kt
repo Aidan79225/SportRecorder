@@ -81,7 +81,7 @@ object SharedVenue {
             nearest == null -> SharedVenueMatch.Use(sameName.mostRecentlyUsed(), fillPosition = pin)
             nearest.second <= SAME_PLACE_METERS -> SharedVenueMatch.Use(nearest.first, fillPosition = null)
             else -> {
-                val unplaced = sameName.filter { it.lat == null || it.lng == null }.maxByOrNull { it.lastUsedAt }
+                val unplaced = sameName.filter { it.position == null }.maxByOrNull { it.lastUsedAt }
                 if (unplaced != null) {
                     SharedVenueMatch.Use(unplaced, fillPosition = pin)
                 } else {
@@ -91,14 +91,22 @@ object SharedVenue {
         }
     }
 
-    /** The venue with a position closest to [pin], with its distance; null when none has a position. */
-    private fun List<Venue>.nearestTo(pin: GeoPoint): Pair<Venue, Double>? =
-        mapNotNull { venue ->
-            val lat = venue.lat
-            val lng = venue.lng
-            if (lat != null && lng != null) venue to GeoPoint(lat, lng).metersTo(pin) else null
-        }.minByOrNull { it.second }
+    /**
+     * The nearest other venue with [venue]'s name within [SAME_PLACE_METERS] of it: the same store, as
+     * far as the app can tell. Null when [venue] has no position, or no such venue is that close.
+     */
+    internal fun sameStore(venue: Venue, venues: List<Venue>): Venue? {
+        val here = venue.position ?: return null
+        return venues.filter { it.id != venue.id && VenueName.sameAs(it.name, venue.name) }
+            .nearestTo(here)
+            ?.takeIf { (_, meters) -> meters <= SAME_PLACE_METERS }
+            ?.first
+    }
 
     /** Only called on non-empty lists. */
     private fun List<Venue>.mostRecentlyUsed(): Venue = maxBy { it.lastUsedAt }
 }
+
+/** The venue with a position closest to [point], with its distance; null when none has a position. */
+internal fun List<Venue>.nearestTo(point: GeoPoint): Pair<Venue, Double>? =
+    mapNotNull { venue -> venue.position?.let { venue to it.metersTo(point) } }.minByOrNull { it.second }

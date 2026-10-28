@@ -216,3 +216,106 @@ from the edit dialog other than by rename; undo after delete.
   shared name matches a saved venue that is more than 50 m away; within 50 m nothing is asked.
 - ⚠️ **The app reaching out on its own.** Address lookups run in the background for venues the user
   already has. They send a place's position, not the user's live location, and they fail quietly.
+
+## Addendum (2026-10-28): links made by the Google Maps app
+
+Bug report from the owner after 0.14.0: 「貼上連結不會把店名和地址正確填入欄位」 and 「無法使用連結更新店家」.
+
+**Cause (reproduced on the emulator with the real Maps app, and with curl).** #84 was built on a link
+made on the Maps *website*, whose resolved URL carries `/place/<name>/` and a `!3d!4d` pin. Links made
+by the Maps **apps** do not:
+
+- **Android app** (Share → 複製到剪貼簿, or share to SportRecorder; `…?g_st=ac`) →
+  `https://www.google.com/maps/place/<ADDRESS and NAME glued>/data=!4m2!3m1!1s<ftid>?utm_source=mstt_1&entry=gps…`
+  — **no pin, no camera**. In zh-TW the segment is the address glued to the name with no separator:
+  `106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店`. In en-US it is name first, comma-separated:
+  `Din Tai Fung Xinyi Branch, No. 194號, Section 2, Xinyi Rd, …, Taipei City, Taiwan 106`.
+- **iOS app** → pathless `https://maps.google.com?q=<address and name>&ftid=…&entry=gps`.
+
+So today a paste creates a venue named by the whole glued string, with no position and no address, and
+「貼上地圖連結更新」 always says it cannot read the link.
+
+### Decisions taken with the owner (2026-10-28)
+
+| Question | Decision |
+|---|---|
+| 「貼上地圖連結更新」 in ✎ | Fills **店名 and 地址** from the link, not only the pin. |
+| Which address a venue keeps when it comes from a Maps link | **The link's own address, trimmed** of the leading postcode and country (「臺北市大安區福住里信義路二段194號」). |
+| Position for a pinless link | **Look up the link's address with the phone's own geocoder** (forward geocoding). |
+| Venues already created with glued names | **Repair them automatically.** |
+
+### Reading a link (amends *Parsing rules* of #84)
+
+- `MapsPlace` gains `address: String?`.
+- A pinless `/place/` segment is split into name and address by a pure helper, **only when it is
+  confident**; otherwise the whole segment stays the name (today's behaviour — never worse):
+  - **Taiwanese address first** (zh): `[postcode][台灣|臺灣]<…>號[之N][N樓|…樓]` followed by the name.
+  - **Name first** (en): `Name, <address>` where the address part is clearly an address (e.g. starts
+    with `No.` or ends with the country/postcode). The implementer pins the exact rules with the
+    real samples recorded during diagnosis; any shape they don't cover is left whole.
+  - A web-made link (with a pin) is never split: its `/place/` name may legitimately contain commas.
+- iOS `maps.google.com` / `www.google.com` with path `""`, `/` or `/maps` and a `q=` parameter is
+  accepted (exact-host allowlist unchanged); `q` is decoded and split the same way. `ftid` is ignored.
+- `/maps/search/<lat>,<lng>` and `q=<lat>,<lng>` give a pin with no name; a `/place/` segment that is
+  only coordinates is no name.
+- **Trimmed address** for storage: zh drops the leading postcode and 台灣/臺灣; en drops a trailing
+  `, Taiwan <postcode>` (generally: a trailing country/postcode the split recognised).
+- **Position:** when the link has no pin, the place's position is looked up by forward geocoding —
+  the full (untrimmed) address when the split found one, else the whole segment — through a new
+  `AddressLookup.positionOf(query)` (same platform service as the reverse lookup, 10 s bound, never
+  throws). No second request to Google is made; the #84 network rule is unchanged. If the lookup fails,
+  the place has a name and address but no position (the existing "name, no coordinates" Failure row).
+- *(builder's call)* A title longer than 300 characters (normalized) is neither split nor looked up:
+  every real one is under 200, and the split's patterns backtrack quadratically on crafted text while
+  a shared link is parsed on the main thread. Such a title stays whole and has no position.
+
+### Using a read place
+
+- **Paste / share:** matching is unchanged (now on the clean name). A created venue gets the link's
+  trimmed address; a used venue with no address gets it; "same store, move" writes it with the pin.
+  The reverse lookup still fills an address only when the venue has none.
+  *(builder's call)* "No venue by that name" still creates through `findOrCreate` (now taking the
+  address), whose name check and insert are one transaction: a same-name venue another writer added
+  after the match read the venues (the glued-name repair at app start, a second editor) is reused, and
+  takes the link's address only if it has none. Only "another branch" always creates.
+- *(builder's call)* The move question no longer says the records move to "where Google Maps puts it":
+  for a pinless link the position is the phone geocoder's estimate. It now reads
+  「有 %1$d 筆過去的紀錄會移到這個連結的位置。」 / "… will move to this link's place."
+- **「貼上地圖連結更新」 in ✎:** the pin moves as today (asking first when the venue has records), and
+  the link's **trimmed address is written with the move** (an address belongs to its position). The
+  link's **name fills the 店名 draft**; 儲存 keeps it, 取消 keeps the old name *(builder's call: the
+  address follows the position, so 取消 does not restore the old address once the pin has moved)*.
+  If the link has no usable position, the name and address fill the drafts and a gentle line says the
+  position could not be found; nothing moves.
+- *(builder's call)* In ✎, a title the split left whole never fills 店名: it may be the address glued to
+  the name (any place outside Taiwan, e.g. the real Korean link), and before this addendum ✎ never
+  touched the name, so "never worse" means leaving the user's own. The pin still moves when the whole
+  title can be looked up; when it can't, nothing is filled and the line says nothing was changed
+  (「找不到這個地點的位置，店家資料沒有更動。」). Paste and share still name a new venue by the whole title.
+- *(builder's call)* While a link is being read in ✎, 儲存 is disabled (取消 still cancels the read),
+  so a save can no longer silently drop the move.
+- *(builder's call)* The editor's selected venue is refreshed from the database by id, so a filled
+  address or moved position is never shown stale.
+- *(builder's call)* The repair below merges in the background while a meal at that venue may be
+  open. `VenueRepository.resolve(id)` follows a merge made since the app started to the survivor, and
+  the editor uses it when its venue leaves the list and again right before saving. A meal is then
+  saved at the venue its records moved to, and never with the id of a deleted venue.
+
+### Repairing glued venues
+
+Once per app start, in the background: every venue whose **name** the confident split recognises as
+"address + name" in the exact Maps shape is renamed to the name and given the trimmed address; its
+position is looked up from the address if it has none. If, after that, another venue with the same
+name lies within 50 m, the repaired one is **merged into it** (records move, nothing is lost);
+otherwise both are kept (branches). The split's confidence rule is what keeps typed names safe: a
+name the user typed is only touched if it starts with a Taiwanese postcode+台灣/臺灣 address or has
+the exact en Maps shape. A failed position lookup is not retried; the name and address are still fixed.
+
+### 初衷對照 / North-Star check
+
+- ✅ Sharing from the real Maps app now fills the right name, address and position with no typing.
+- ⚠️ The automatic repair rewrites venue names on its own — limited to the exact glued Maps shape, and
+  a merge only happens for the same name within 50 m, so no record is lost or moved to another store.
+- ⚠️ Forward geocoding sends an address text to the platform geocoder; it is the link's own address,
+  never the user's location. Belongs with the Play data-safety review.
+

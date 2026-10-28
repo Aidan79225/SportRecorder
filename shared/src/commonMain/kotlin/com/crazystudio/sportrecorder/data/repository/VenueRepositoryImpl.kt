@@ -5,35 +5,48 @@ import androidx.room.useWriterConnection
 import com.crazystudio.sportrecorder.dao.VenueDao
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.entity.VenueEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 class VenueRepositoryImpl(
     private val appDatabase: AppDatabase,
     private val venueDao: VenueDao,
 ) : VenueRepository {
 
+    // Each venue merged away since the app started, to the one it went into, for [resolve]. Written in
+    // the merge's own transaction, so once the deletion can be seen the way to the survivor can too.
+    // Ids are never reused (AUTOINCREMENT), and a merged venue is checked for first, so an entry left
+    // by a merge that rolled back leads nowhere wrong.
+    private val mergedInto = MutableStateFlow<Map<Int, Int>>(emptyMap())
+
     override fun observeAll(): Flow<List<Venue>> =
         venueDao.flowAll().map { rows -> rows.map { it.toDomain() } }
 
-    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long): Venue {
+    override suspend fun find(venueId: Int): Venue? = venueDao.findById(venueId)?.toDomain()
+
+    override suspend fun findOrCreate(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue {
         val normalized = VenueName.normalize(name)
+        val given = VenueAddress.clean(address)
         // One transaction: names are no longer unique in SQL, so two racing calls must not both
-        // miss and create two venues for one typed name.
+        // miss and create two venues for one name.
         return inTransaction {
             val existing = mostRecentlyUsedNamed(normalized)
             if (existing == null) {
-                insertNew(normalized, lat, lng, now)
+                insertNew(normalized, lat, lng, now, given)
             } else {
                 // Teach it a position only if it has none; never overwrite one it already knows.
-                // Gaining a position is a position change, so any address goes with it.
+                // Gaining a position is a position change, so any address goes with it and the given
+                // one (if any) comes with the new position. Otherwise it only fills an empty address.
                 val learned = if (existing.lat == null && lat != null) {
-                    existing.copy(lat = lat, lng = lng, address = null, lastUsedAt = now)
+                    existing.copy(lat = lat, lng = lng, address = given, lastUsedAt = now)
                 } else {
-                    existing.copy(lastUsedAt = now)
+                    existing.copy(address = existing.address ?: given, lastUsedAt = now)
                 }
                 venueDao.update(learned)
                 learned.toDomain()
@@ -41,48 +54,65 @@ class VenueRepositoryImpl(
         }
     }
 
-    override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long): Venue =
-        insertNew(VenueName.normalize(name), lat, lng, now)
+    override suspend fun create(name: String, lat: Double?, lng: Double?, now: Long, address: String?): Venue =
+        insertNew(VenueName.normalize(name), lat, lng, now, VenueAddress.clean(address))
 
     override suspend fun touch(venueId: Int, now: Long) = venueDao.setLastUsedAt(id = venueId, now = now)
 
-    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?) =
-        venueDao.setPosition(id = venueId, lat = lat, lng = lng)
+    override suspend fun setPosition(venueId: Int, lat: Double?, lng: Double?, address: String?) =
+        venueDao.setPosition(id = venueId, lat = lat, lng = lng, address = VenueAddress.clean(address))
 
     override suspend fun setAddressIfUnchanged(venueId: Int, lat: Double, lng: Double, address: String): Boolean =
         venueDao.setAddressIfUnchanged(id = venueId, lat = lat, lng = lng, address = address) > 0
 
-    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
-        val normalized = VenueName.normalize(name)
-        require(normalized.isNotEmpty()) { "a venue needs a name" }
-        venueDao.setNameAndAddress(
-            id = venueId,
-            name = normalized,
-            address = address?.trim()?.ifEmpty { null },
-            now = now,
-        )
-        return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
+    override suspend fun setAddressIfEmpty(venueId: Int, address: String): Boolean {
+        val cleaned = VenueAddress.clean(address) ?: return false
+        return venueDao.setAddressIfEmpty(id = venueId, address = cleaned) > 0
     }
 
-    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
-        require(fromId != intoId) { "cannot merge venue $fromId into itself" }
-        // One transaction, so a kill midway can never leave a stale empty venue or a survivor
-        // missing its coordinates.
+    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue? {
+        val normalized = VenueName.normalize(name)
+        require(normalized.isNotEmpty()) { "a venue needs a name" }
+        // One transaction: the venue is edited and read back, or it is gone and the update wrote nothing.
         return inTransaction {
-            val from = venueDao.findById(fromId) ?: error("venue $fromId is gone")
-            val into = venueDao.findById(intoId) ?: error("venue $intoId is gone")
-            venueDao.repointRecords(fromId = fromId, toId = intoId)
-            venueDao.deleteById(fromId)
-            // Adopting a position is a position change, so the survivor's address goes with it.
-            val survivor = if (into.lat == null && from.lat != null) {
-                into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
-            } else {
-                into.copy(lastUsedAt = now)
-            }
-            venueDao.update(survivor)
-            survivor.toDomain()
+            venueDao.setNameAndAddress(
+                id = venueId,
+                name = normalized,
+                address = VenueAddress.clean(address),
+                now = now,
+            )
+            venueDao.findById(venueId)?.toDomain()
         }
     }
+
+    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue? {
+        require(fromId != intoId) { "cannot merge venue $fromId into itself" }
+        // One transaction, so a kill midway can never leave a stale empty venue or a survivor
+        // missing its coordinates, and both venues are still there when the records move.
+        return inTransaction {
+            val from = venueDao.findById(fromId)
+            val into = venueDao.findById(intoId)
+            if (from != null && into != null) mergeRows(from, into, now) else null
+        }
+    }
+
+    // Inside [merge]'s transaction.
+    private suspend fun mergeRows(from: VenueEntity, into: VenueEntity, now: Long): Venue {
+        venueDao.repointRecords(fromId = from.id, toId = into.id)
+        venueDao.deleteById(from.id)
+        mergedInto.update { it + (from.id to into.id) }
+        // Adopting a position is a position change, so the survivor's address goes with it.
+        val survivor = if (into.lat == null && from.lat != null) {
+            into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
+        } else {
+            into.copy(lastUsedAt = now)
+        }
+        venueDao.update(survivor)
+        return survivor.toDomain()
+    }
+
+    // A merge never points at a venue that was gone, so the way from one venue to its survivor has no loop.
+    override suspend fun resolve(venueId: Int): Venue? = find(venueId) ?: mergedInto.value[venueId]?.let { resolve(it) }
 
     override suspend fun delete(venueId: Int) {
         inTransaction {
@@ -108,8 +138,14 @@ class VenueRepositoryImpl(
             }
         }
 
-    private suspend fun insertNew(normalized: String, lat: Double?, lng: Double?, now: Long): Venue {
-        val row = VenueEntity(name = normalized, lat = lat, lng = lng, lastUsedAt = now)
+    private suspend fun insertNew(
+        normalized: String,
+        lat: Double?,
+        lng: Double?,
+        now: Long,
+        address: String?,
+    ): Venue {
+        val row = VenueEntity(name = normalized, lat = lat, lng = lng, lastUsedAt = now, address = address)
         return row.copy(id = venueDao.insert(row).toInt()).toDomain()
     }
 

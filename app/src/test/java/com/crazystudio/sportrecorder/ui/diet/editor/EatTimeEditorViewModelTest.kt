@@ -126,6 +126,62 @@ class EatTimeEditorViewModelTest {
         assertEquals(daHuWu, saved.venue)
     }
 
+    // A venue the repair at app start has just renamed from a glued Maps-app title, and the same store
+    // within 50 m: the repair next merges the first into the second in the background, while the
+    // editor may have it open.
+    private val mergedAway = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.03350, lng = 121.5301, lastUsedAt = 1L)
+    private val store = Venue(id = 2, name = "鼎泰豐 信義店", lat = 25.03352, lng = 121.5301, lastUsedAt = 2L)
+
+    @Test
+    fun aVenueMergedAwayWhileItsMealIsOpen_isShownAndSavedAsTheOneItWentInto() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val editor = Editor(listOf(mealAt(venue = mergedAway)), listOf(mergedAway, store))
+            val vm = editor.viewModel(eatTimeId = 1)
+            advanceUntilIdle()
+            assertEquals(mergedAway, vm.uiState.value.venue)
+
+            val survivor = editor.venues.merge(fromId = mergedAway.id, intoId = store.id, now = 2L)
+            advanceUntilIdle()
+
+            // The editor follows the meal's records to where they went…
+            assertEquals(survivor, vm.uiState.value.venue)
+            vm.setNote("午餐(補記)")
+            assertTrue(vm.save())
+            // …and saves the meal there, never at the venue that is gone; nor is fixing it a new use.
+            assertEquals(survivor, editor.records.stored.single().venue)
+            assertEquals(2L, editor.venues.stored.single().lastUsedAt)
+        }
+
+    @Test
+    fun aVenueMergedAwayJustBeforeTheSave_isSavedAsTheOneItWentInto() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(mergedAway, store))
+        val vm = editor.viewModel()
+        advanceUntilIdle()
+        vm.selectVenue(mergedAway)
+
+        // Merged with no chance for the list to show it: the save asks for the venue by id.
+        editor.venues.merge(fromId = mergedAway.id, intoId = store.id, now = 2L)
+        assertTrue(vm.save())
+
+        assertEquals(store.id, editor.records.stored.single().venue?.id)
+        // A new meal is a use of the venue it is saved at.
+        assertTrue(editor.venues.stored.single().lastUsedAt > 2L)
+    }
+
+    @Test
+    fun aVenueDeletedByAnotherWriter_isNeitherShownNorSaved() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
+        val vm = editor.viewModel(eatTimeId = 1)
+        advanceUntilIdle()
+
+        editor.venues.delete(daHuWu.id)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.venue)
+        assertTrue(vm.save())
+        assertNull(editor.records.stored.single().venue)
+    }
+
     @Test
     fun clearingTheVenue_removesItFromTheSavedMeal() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
@@ -417,6 +473,33 @@ class EatTimeEditorViewModelTest {
         assertEquals(listOf(null, address), branching.venues.stored.map { it.address })
         assertEquals(address, moving.venues.stored.single().address)
         assertEquals(listOf(mapsPosition), moving.lookup.asked)
+    }
+
+    @Test
+    fun aSharedVenue_showsTheAddressFilledInAfterIt() = runTest(mainRule.testDispatcher.scheduler) {
+        // A web-made link carries no address: the reverse lookup fills it after the venue is chosen.
+        val editor = Editor()
+        editor.lookup.address = "信義路二段 194 號"
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+
+        assertEquals("信義路二段 194 號", editor.venues.stored.single().address)
+        assertEquals(editor.venues.stored.single(), vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aPickedVenue_showsTheAddressThePickerFillsIn() = runTest(mainRule.testDispatcher.scheduler) {
+        val editor = Editor(venues = listOf(daHuWu))
+        editor.lookup.address = "仁愛路"
+        val vm = editor.viewModel()
+        advanceUntilIdle()
+
+        vm.selectVenue(daHuWu)
+        vm.onPickerShown()
+        advanceUntilIdle()
+
+        // A venue picked by hand gets its address when the picker back-fills it.
+        assertEquals(daHuWu.copy(address = "仁愛路"), vm.uiState.value.venue)
     }
 
     @Test

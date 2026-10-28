@@ -38,14 +38,15 @@ interface VenueDao {
     suspend fun setNameAndAddress(id: Int, name: String, address: String?, now: Long)
 
     /**
-     * Moves the venue and clears its address (it described the old position). Re-applying the same
+     * Moves the venue, and the address that described the old position goes: it becomes [address] —
+     * what a Maps link gives with its pin — or null, to be looked up again. Re-applying the same
      * position is not a move, so it writes nothing and keeps the address.
      */
     @Query(
-        "UPDATE ${VenueEntity.tableName} SET lat = :lat, lng = :lng, address = NULL " +
+        "UPDATE ${VenueEntity.tableName} SET lat = :lat, lng = :lng, address = :address " +
             "WHERE id = :id AND (lat IS NOT :lat OR lng IS NOT :lng)",
     )
-    suspend fun setPosition(id: Int, lat: Double?, lng: Double?)
+    suspend fun setPosition(id: Int, lat: Double?, lng: Double?, address: String?)
 
     @Query("UPDATE ${VenueEntity.tableName} SET last_used_at = :now WHERE id = :id")
     suspend fun setLastUsedAt(id: Int, now: Long)
@@ -60,6 +61,10 @@ interface VenueDao {
             "WHERE id = :id AND lat = :lat AND lng = :lng AND address IS NULL",
     )
     suspend fun setAddressIfUnchanged(id: Int, lat: Double, lng: Double, address: String): Int
+
+    /** Writes [address] only while the venue has none. Returns the number of rows written (0 or 1). */
+    @Query("UPDATE ${VenueEntity.tableName} SET address = :address WHERE id = :id AND address IS NULL")
+    suspend fun setAddressIfEmpty(id: Int, address: String): Int
 
     @Query("DELETE FROM ${VenueEntity.tableName} WHERE id = :id")
     suspend fun deleteById(id: Int)
