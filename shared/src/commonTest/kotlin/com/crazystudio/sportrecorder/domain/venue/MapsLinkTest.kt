@@ -68,7 +68,7 @@ class MapsLinkTest {
 
     @Test fun noCoordinatesStillGivesTheName_andSaysWhatToLookUp() {
         assertEquals(
-            MapsPlace("X", null, null, geocodeQuery = "X"),
+            MapsPlace("X", null, null, geocodeQuery = "X", nameIsWholeTitle = true),
             MapsLink.parse("https://www.google.com/maps/place/X/"),
         )
     }
@@ -128,7 +128,7 @@ class MapsLinkTest {
 
     @Test fun unrecognisedPinlessSegment_staysWhole() {
         assertEquals(
-            MapsPlace(KO_TITLE, null, null, address = null, geocodeQuery = KO_TITLE),
+            MapsPlace(KO_TITLE, null, null, address = null, geocodeQuery = KO_TITLE, nameIsWholeTitle = true),
             MapsLink.parse(ANDROID_KO),
         )
     }
@@ -164,13 +164,13 @@ class MapsLinkTest {
         // No real title is this long: it is not split, nor sent to the geocoder, nor taken for a clean name.
         val overLong = atTheLimit + "鼎"
         val place = MapsLink.parse("https://www.google.com/maps/place/$overLong/")!!
-        assertEquals(MapsPlace(overLong, null, null, address = null, geocodeQuery = null), place)
+        assertEquals(MapsPlace(overLong, null, null, geocodeQuery = null, nameIsWholeTitle = true), place)
         assertNull(place.cleanName)
     }
 
     @Test fun pinlessAddressOnlySegment_staysWhole() {
         assertEquals(
-            MapsPlace(ADDRESS_ONLY_TITLE, null, null, address = null, geocodeQuery = ADDRESS_ONLY_TITLE),
+            MapsPlace(ADDRESS_ONLY_TITLE, null, null, geocodeQuery = ADDRESS_ONLY_TITLE, nameIsWholeTitle = true),
             MapsLink.parse(ADDRESS_ONLY),
         )
     }

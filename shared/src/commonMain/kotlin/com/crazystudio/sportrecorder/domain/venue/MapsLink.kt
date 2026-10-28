@@ -44,6 +44,10 @@ sealed interface MapsLink {
  * [geocodeQuery] — the text to look up to find where the place is: the full address when the title
  * split, else the whole title; null when the link has a pin, names nothing, or has a title longer than
  * [PlaceTitle.MAX_LENGTH] (no real one is).
+ *
+ * [nameIsWholeTitle]: [name] is a pinless link's whole title, which [PlaceTitle] could not split and so
+ * may be the address glued to the name. Set when the link is read and never changed after: being
+ * placed by looking that title up, or being too long to look up, does not change what the title is.
  */
 data class MapsPlace(
     val name: String?,
@@ -51,18 +55,15 @@ data class MapsPlace(
     val lng: Double?,
     val address: String? = null,
     val geocodeQuery: String? = null,
+    val nameIsWholeTitle: Boolean = false,
 ) {
     /**
-     * [name] when it is the place's name alone; null when it is a pinless link's whole title, which
-     * [PlaceTitle] could not split and so may be the address glued to the name. Being placed by
-     * looking that title up does not change what it is; nor does being too long to look up (it then
-     * has no position either). Null too for a title that is only an address — a link to an address
-     * searched on the Maps website — pin or not: it names nothing.
+     * [name] when it is the place's name alone; null when it is a whole title ([nameIsWholeTitle]),
+     * and null too for a title that is only an address — a link to an address searched on the Maps
+     * website — pin or not: it names nothing.
      */
     val cleanName: String?
-        get() = name?.takeUnless {
-            PlaceTitle.isAddressOnly(it) || address == null && (geocodeQuery != null || lat == null)
-        }
+        get() = name?.takeUnless { nameIsWholeTitle || PlaceTitle.isAddressOnly(it) }
 }
 
 private const val HTTPS = "https://"
@@ -156,7 +157,13 @@ private fun placeOf(url: MapsUrl): MapsPlace {
     return when {
         lat != null -> MapsPlace(name, lat, lng)
         split != null -> MapsPlace(split.name, null, null, split.trimmedAddress, geocodeQuery = split.address)
-        else -> MapsPlace(name, null, null, geocodeQuery = name?.takeIf { it.length <= PlaceTitle.MAX_LENGTH })
+        else -> MapsPlace(
+            name,
+            null,
+            null,
+            geocodeQuery = name?.takeIf { it.length <= PlaceTitle.MAX_LENGTH },
+            nameIsWholeTitle = name != null,
+        )
     }
 }
 

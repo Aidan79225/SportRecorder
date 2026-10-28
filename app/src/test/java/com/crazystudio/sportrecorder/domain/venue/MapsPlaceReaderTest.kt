@@ -71,7 +71,7 @@ class MapsPlaceReaderTest {
 
         val place = reader.read(link("https://www.google.com/maps/place/X/"))
 
-        assertEquals(MapsPlace("X", 25.04, 121.53, geocodeQuery = "X"), place)
+        assertEquals(MapsPlace("X", 25.04, 121.53, geocodeQuery = "X", nameIsWholeTitle = true), place)
         assertEquals(listOf("X"), lookup.queried)
     }
 
