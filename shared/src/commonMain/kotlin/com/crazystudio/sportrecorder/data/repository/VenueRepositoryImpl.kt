@@ -70,37 +70,45 @@ class VenueRepositoryImpl(
         return venueDao.setAddressIfEmpty(id = venueId, address = cleaned) > 0
     }
 
-    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
+    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue? {
         val normalized = VenueName.normalize(name)
         require(normalized.isNotEmpty()) { "a venue needs a name" }
-        venueDao.setNameAndAddress(
-            id = venueId,
-            name = normalized,
-            address = VenueAddress.clean(address),
-            now = now,
-        )
-        return venueDao.findById(venueId)?.toDomain() ?: error("venue $venueId is gone")
+        // One transaction: the venue is edited and read back, or it is gone and the update wrote nothing.
+        return inTransaction {
+            venueDao.setNameAndAddress(
+                id = venueId,
+                name = normalized,
+                address = VenueAddress.clean(address),
+                now = now,
+            )
+            venueDao.findById(venueId)?.toDomain()
+        }
     }
 
-    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
+    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue? {
         require(fromId != intoId) { "cannot merge venue $fromId into itself" }
         // One transaction, so a kill midway can never leave a stale empty venue or a survivor
-        // missing its coordinates.
+        // missing its coordinates, and both venues are still there when the records move.
         return inTransaction {
-            val from = venueDao.findById(fromId) ?: error("venue $fromId is gone")
-            val into = venueDao.findById(intoId) ?: error("venue $intoId is gone")
-            venueDao.repointRecords(fromId = fromId, toId = intoId)
-            venueDao.deleteById(fromId)
-            mergedInto.update { it + (fromId to intoId) }
-            // Adopting a position is a position change, so the survivor's address goes with it.
-            val survivor = if (into.lat == null && from.lat != null) {
-                into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
-            } else {
-                into.copy(lastUsedAt = now)
-            }
-            venueDao.update(survivor)
-            survivor.toDomain()
+            val from = venueDao.findById(fromId)
+            val into = venueDao.findById(intoId)
+            if (from != null && into != null) mergeRows(from, into, now) else null
         }
+    }
+
+    // Inside [merge]'s transaction.
+    private suspend fun mergeRows(from: VenueEntity, into: VenueEntity, now: Long): Venue {
+        venueDao.repointRecords(fromId = from.id, toId = into.id)
+        venueDao.deleteById(from.id)
+        mergedInto.update { it + (from.id to into.id) }
+        // Adopting a position is a position change, so the survivor's address goes with it.
+        val survivor = if (into.lat == null && from.lat != null) {
+            into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
+        } else {
+            into.copy(lastUsedAt = now)
+        }
+        venueDao.update(survivor)
+        return survivor.toDomain()
     }
 
     // A merge never points at a venue that was gone, so the way from one venue to its survivor has no loop.

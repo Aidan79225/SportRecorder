@@ -595,8 +595,10 @@ class EatTimeEditorViewModel constructor(
 
     override suspend fun recordCount(venue: Venue): Int = venueRepository.recordCount(venue.id)
 
+    // Gone by the write (merged away or deleted by another writer): nothing was saved, and the list,
+    // once it shows that, takes the selection to where the venue's records went ([followVanishedVenues]).
     private suspend fun editVenue(venueId: Int, name: String, address: String?) {
-        showVenueInPlaceOf(venueId, venueRepository.edit(venueId, name, address, now()))
+        venueRepository.edit(venueId, name, address, now())?.let { showVenueInPlaceOf(venueId, it) }
     }
 
     // Clear first: a second tap must find nothing pending, not act on a venue the first one merged away.
@@ -609,13 +611,13 @@ class EatTimeEditorViewModel constructor(
     /**
      * One place after all: its records move to the other venue, which keeps its own name, address and
      * position. Either one merged away or deleted since the question was asked (before the list showed
-     * it, so the question was not yet withdrawn) leaves nothing to merge.
+     * it, so the question was not yet withdrawn) leaves nothing to merge: the merge itself finds that,
+     * in its own transaction, as with [editVenue].
      */
     override fun mergeVenues() {
         val pending = takePendingMerge() ?: return
         viewModelScope.launch {
-            if (pending.from.remains() && pending.into.remains()) {
-                val survivor = venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())
+            venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())?.let { survivor ->
                 showVenueInPlaceOf(pending.from.id, survivor)
                 // A survivor without a position adopts the merged one's, and needs an address for it.
                 fillAddress(survivor)
@@ -626,9 +628,7 @@ class EatTimeEditorViewModel constructor(
     /** Two places with one name (branches): just save the edit — unless the venue is gone meanwhile. */
     override fun keepBothVenues() {
         val pending = takePendingMerge() ?: return
-        viewModelScope.launch {
-            if (pending.from.remains()) editVenue(pending.from.id, pending.newName, pending.newAddress)
-        }
+        viewModelScope.launch { editVenue(pending.from.id, pending.newName, pending.newAddress) }
     }
 
     override fun cancelMerge() = _uiState.update { it.copy(pendingMerge = null) }

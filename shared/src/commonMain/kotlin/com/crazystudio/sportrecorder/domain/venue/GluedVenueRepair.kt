@@ -40,17 +40,22 @@ class GluedVenueRepair(
         // Renamed by the user while the lookup ran (or deleted): theirs now, left alone.
         val venue = venues.find(glued.id)?.takeIf { it.name == glued.name } ?: return
         val address = venue.address ?: split.address
+        // Deleted or merged away by the user by the time of this write: nothing is written, here or below.
         venues.edit(venue.id, split.name, address, now = venue.lastUsedAt)
         if (point != null && venue.position == null) venues.setPosition(venue.id, point.lat, point.lng, address)
         mergeIntoTheSameStore(venue.id)
     }
 
-    /** The survivor keeps its own name and position, and takes the address it lacked and the later use. */
+    /**
+     * The survivor keeps its own name and position, and takes the address it lacked and the later use.
+     * Either one merged away or deleted by the user meanwhile: nothing is merged, and nothing filled in.
+     */
     private suspend fun mergeIntoTheSameStore(venueId: Int) {
         val all = venues.observeAll().first()
         val repaired = all.firstOrNull { it.id == venueId } ?: return
         val store = SharedVenue.sameStore(repaired, all) ?: return
-        venues.merge(fromId = venueId, intoId = store.id, now = maxOf(repaired.lastUsedAt, store.lastUsedAt))
-        repaired.address?.let { venues.setAddressIfEmpty(store.id, it) }
+        val lastUsedAt = maxOf(repaired.lastUsedAt, store.lastUsedAt)
+        val survivor = venues.merge(fromId = venueId, intoId = store.id, now = lastUsedAt)
+        if (survivor != null) repaired.address?.let { venues.setAddressIfEmpty(survivor.id, it) }
     }
 }

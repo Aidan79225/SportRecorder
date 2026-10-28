@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.map
  * unique, [findOrCreate] picks the most recently used same-name venue (whose address it only fills
  * when empty, or replaces when the venue adopts a first position), a real [setPosition] move
  * replaces the address with the one given (none by default), [setAddressIfEmpty] never overwrites,
- * [observeAll] is most-recently-used first, [resolve] follows merges, and [replaceAll] assigns fresh ids.
+ * [observeAll] is most-recently-used first, [edit] and [merge] write nothing and return null for a venue
+ * that is gone, [resolve] follows merges, and [replaceAll] assigns fresh ids.
  *
  * Records are not modelled, so a test states how many point at a venue through [recordCounts]
  * (a merge moves the emptied venue's count to the survivor, as the real one re-points the rows; a
@@ -83,31 +84,31 @@ class FakeVenueRepository(initial: List<Venue> = emptyList()) : VenueRepository 
         return venue != null
     }
 
-    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue {
+    override suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue? {
         val normalized = VenueName.normalize(name)
         require(normalized.isNotEmpty()) { "a venue needs a name" }
-        val edited = state.value.first { it.id == venueId }.copy(
-            name = normalized,
-            address = VenueAddress.clean(address),
-            lastUsedAt = now,
-        )
-        replace(edited)
+        val edited = find(venueId)?.copy(name = normalized, address = VenueAddress.clean(address), lastUsedAt = now)
+        edited?.let(::replace)
         return edited
     }
 
-    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue {
+    override suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue? {
         require(fromId != intoId) { "cannot merge venue $fromId into itself" }
-        val from = state.value.first { it.id == fromId }
-        val into = state.value.first { it.id == intoId }
+        val from = find(fromId)
+        val into = find(intoId)
+        return if (from != null && into != null) mergeRows(from, into, now) else null
+    }
+
+    private fun mergeRows(from: Venue, into: Venue, now: Long): Venue {
         val survivor = if (into.lat == null && from.lat != null) {
             into.copy(lat = from.lat, lng = from.lng, address = null, lastUsedAt = now)
         } else {
             into.copy(lastUsedAt = now)
         }
-        recordCounts[intoId] = recordCount(intoId) + recordCount(fromId)
-        recordCounts.remove(fromId)
-        mergedInto[fromId] = intoId
-        state.value = state.value.filterNot { it.id == fromId }.map { if (it.id == intoId) survivor else it }
+        recordCounts[into.id] = (recordCounts[into.id] ?: 0) + (recordCounts[from.id] ?: 0)
+        recordCounts.remove(from.id)
+        mergedInto[from.id] = into.id
+        state.value = state.value.filterNot { it.id == from.id }.map { if (it.id == into.id) survivor else it }
         return survivor
     }
 

@@ -3,6 +3,8 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.fake.FakeVenueRepository
+import com.crazystudio.sportrecorder.fake.RacedVenueWrites
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -207,31 +209,66 @@ class EatTimeEditorViewModelVenueEditTest {
 
     @Test
     fun answeringMerge_afterItsVenueWasMergedAway_writesNothing() =
-        answeredAfterTheVenueWasMergedAway { it.mergeVenues() }
+        answeredAsTheVenueIsMergedAway(byTheWrite = false) { it.mergeVenues() }
 
     @Test
     fun answeringKeepBoth_afterItsVenueWasMergedAway_writesNothing() =
-        answeredAfterTheVenueWasMergedAway { it.keepBothVenues() }
+        answeredAsTheVenueIsMergedAway(byTheWrite = false) { it.keepBothVenues() }
 
-    // A rename asks to merge; [answer] comes once the venue the question is about was merged away.
-    private fun answeredAfterTheVenueWasMergedAway(answer: (EatTimeEditorViewModel) -> Unit) =
+    @Test
+    fun answeringMerge_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = true) { it.mergeVenues() }
+
+    @Test
+    fun answeringKeepBoth_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        answeredAsTheVenueIsMergedAway(byTheWrite = true) { it.keepBothVenues() }
+
+    // A rename asks to merge, and the repair merges the venue the question is about away: before
+    // [answer] (and before the list shows it), or [byTheWrite] — after every read the answer makes,
+    // as its own write begins. Either way the write finds it gone and writes nothing.
+    private fun answeredAsTheVenueIsMergedAway(byTheWrite: Boolean, answer: (EatTimeEditorViewModel) -> Unit) =
         runTest(mainRule.testDispatcher.scheduler) {
             // Still named by the Maps app's title: the user renames it to the store's as the repair merges it.
             val glued = dinTaiFung.copy(name = "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店")
             val store = dinTaiFung.copy(id = 2, lastUsedAt = 2L)
             val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
-            val vm = editor.viewModel(eatTimeId = 1)
+            var survivor: Venue? = null
+            val repair: suspend FakeVenueRepository.() -> Unit = {
+                survivor = merge(fromId = glued.id, intoId = store.id, now = 3L)
+            }
+            val racing = RacedVenueWrites(editor.venues, beforeEdit = repair, beforeMerge = repair)
+            val vm = editor.viewModel(eatTimeId = 1, venueRepository = if (byTheWrite) racing else editor.venues)
             advanceUntilIdle()
             vm.saveVenue(glued, store.name, null)
             advanceUntilIdle()
             assertEquals(glued, vm.uiState.value.pendingMerge?.from)
 
-            // Answered before the list shows the merge: the answer asks for the venue by id.
-            val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 3L)
+            if (!byTheWrite) editor.venues.repair()
             answer(vm)
             advanceUntilIdle()
 
-            assertEquals(listOf(survivor), editor.venues.stored)
+            assertEquals(listOf(requireNotNull(survivor)), editor.venues.stored)
+            assertEquals(survivor, vm.uiState.value.venue)
+        }
+
+    @Test
+    fun savingANewName_asItsVenueIsMergedAwayByTheWrite_writesNothing() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val store = dinTaiFung.copy(id = 2, name = "鼎泰豐", lastUsedAt = 2L)
+            val editor = Editor(listOf(mealAt(venue = dinTaiFung)), listOf(dinTaiFung, store))
+            var survivor: Venue? = null
+            val racing = RacedVenueWrites(
+                editor.venues,
+                beforeEdit = { survivor = merge(fromId = dinTaiFung.id, intoId = store.id, now = 3L) },
+            )
+            val vm = editor.viewModel(eatTimeId = 1, venueRepository = racing)
+            advanceUntilIdle()
+
+            // A name no other venue has: saved at once, but the venue is gone by then.
+            vm.saveVenue(dinTaiFung, "我的鼎泰豐", null)
+            advanceUntilIdle()
+
+            assertEquals(listOf(requireNotNull(survivor)), editor.venues.stored)
             assertEquals(survivor, vm.uiState.value.venue)
         }
 

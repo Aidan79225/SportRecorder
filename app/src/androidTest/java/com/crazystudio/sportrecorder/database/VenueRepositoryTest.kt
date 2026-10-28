@@ -291,7 +291,7 @@ class VenueRepositoryTest {
         val v = repo.create("大戶屋 信義店", lat = 25.0, lng = 121.0, now = 2L)
         db.getEatTimeDao().insert(EatTime(time = 100L, venueId = v.id))
 
-        val edited = repo.edit(v.id, "  大戶屋　", address = "信義路 1 號", now = 3L)
+        val edited = requireNotNull(repo.edit(v.id, "  大戶屋　", address = "信義路 1 號", now = 3L))
 
         assertEquals(v.id, edited.id)
         assertEquals("大戶屋", edited.name)
@@ -302,7 +302,7 @@ class VenueRepositoryTest {
         assertEquals(1, repo.recordCount(v.id))
         assertEquals(0, repo.recordCount(other.id))
 
-        val cleared = repo.edit(v.id, "大戶屋", address = "   ", now = 4L)
+        val cleared = requireNotNull(repo.edit(v.id, "大戶屋", address = "   ", now = 4L))
 
         assertNull(cleared.address)
         assertNull(stored(v.id).address)
@@ -316,7 +316,7 @@ class VenueRepositoryTest {
         db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id))
         db.getEatTimeDao().insert(EatTime(time = 200L, venueId = good.id))
 
-        val survivor = repo.merge(fromId = typo.id, intoId = good.id, now = 3L)
+        val survivor = requireNotNull(repo.merge(fromId = typo.id, intoId = good.id, now = 3L))
 
         assertEquals(good.id, survivor.id)
         assertEquals("大戶屋", survivor.name)
@@ -334,13 +334,44 @@ class VenueRepositoryTest {
         val into = repo.create("大戶屋", null, null, now = 2L)
         repo.edit(into.id, "大戶屋", address = "沒有位置時打的地址", now = 2L)
 
-        val survivor = repo.merge(fromId = from.id, intoId = into.id, now = 3L)
+        val survivor = requireNotNull(repo.merge(fromId = from.id, intoId = into.id, now = 3L))
 
         // It had no position, so it adopts the merged venue's — a position change, so the address goes.
         assertEquals(25.0, survivor.lat!!, 0.0)
         assertEquals(121.0, survivor.lng!!, 0.0)
         assertNull(survivor.address)
         assertNull(stored(into.id).address)
+    }
+
+    // Another writer (the glued-name repair at app start) may merge a venue away just before an editor's
+    // write: the write finds that itself, and writes nothing.
+    @Test fun merge_whenEitherVenueIsGone_writesNothing() = runBlocking {
+        val store = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 1L)
+        val gone = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 2L)
+        val other = repo.create("鼎泰豐", lat = null, lng = null, now = 3L)
+        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = other.id))
+        repo.merge(fromId = gone.id, intoId = store.id, now = 4L)
+
+        assertNull(repo.merge(fromId = gone.id, intoId = other.id, now = 5L))
+        assertNull(repo.merge(fromId = other.id, intoId = gone.id, now = 5L))
+
+        // The one still there keeps its records and is not touched; nor is the earlier survivor.
+        assertEquals(other, repo.find(other.id))
+        assertEquals(1, repo.recordCount(other.id))
+        assertEquals(4L, stored(store.id).lastUsedAt)
+    }
+
+    @Test fun edit_whenTheVenueIsGone_writesNothing() = runBlocking {
+        val store = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 1L)
+        val gone = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 2L)
+        repo.merge(fromId = gone.id, intoId = store.id, now = 3L)
+
+        assertNull(repo.edit(gone.id, "我的鼎泰豐", address = "信義路", now = 4L))
+
+        // Nothing came back, and the survivor keeps its own name and address.
+        assertEquals(listOf(store.id), repo.observeAll().first().map { it.id })
+        assertEquals("鼎泰豐", stored(store.id).name)
+        assertNull(stored(store.id).address)
     }
 
     @Test fun find_isOnlyAVenueStillStored() = runBlocking {

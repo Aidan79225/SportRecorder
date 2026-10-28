@@ -57,16 +57,21 @@ interface VenueRepository {
 
     /**
      * Saves name and address as given: the name normalized, the address trimmed (blank → null).
-     * Never merges. A name that is blank once normalized is refused (throws).
+     * Never merges. A name that is blank once normalized is refused (throws). Returns the venue as
+     * saved, or null when it is gone — merged away or deleted by another writer (the glued-name repair
+     * at app start merges in the background) — and nothing is written then. Whether it is still there
+     * is asked in the same transaction as the write, so no check made before can be outdated.
      */
-    suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue
+    suspend fun edit(venueId: Int, name: String, address: String?, now: Long): Venue?
 
     /**
      * Re-points [fromId]'s records to [intoId] and deletes [fromId], in one transaction. The
      * survivor keeps its own name, address and position, but adopts [fromId]'s position if it has
-     * none — and then loses its address, as any position change does. Returns the survivor.
+     * none — and then loses its address, as any position change does. Returns the survivor, or null
+     * when either venue is gone (as for [edit]: asked in the same transaction), and nothing is
+     * written then.
      */
-    suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue
+    suspend fun merge(fromId: Int, intoId: Int, now: Long): Venue?
 
     /**
      * The venue [venueId] is now: itself as stored; else the venue it was merged into since the app

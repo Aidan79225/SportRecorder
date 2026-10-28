@@ -4,6 +4,7 @@ import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.fake.FakeAddressLookup
 import com.crazystudio.sportrecorder.fake.FakeVenueRepository
+import com.crazystudio.sportrecorder.fake.RacedVenueWrites
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -210,6 +211,28 @@ class GluedVenueRepairTest {
 
         assertEquals(listOf("鼎泰豐 信義店", "我的鼎泰豐"), repo.stored.map { it.name })
         assertEquals(listOf(FULL_ADDRESS), lookup.queried)
+    }
+
+    @Test fun aVenueTheUserDeletesAsItIsRenamed_staysGone() = runTest {
+        val repo = FakeVenueRepository(listOf(Venue(1, GLUED_ZH, null, null, lastUsedAt = 5)))
+        // Deleted in the editor after the repair read it again, as its rename begins.
+        val racing = RacedVenueWrites(repo, beforeEdit = { delete(1) })
+
+        GluedVenueRepair(racing, lookup).run()
+
+        assertTrue(repo.stored.isEmpty())
+    }
+
+    @Test fun aRepairedVenueTheUserDeletesAsItIsMerged_leavesTheStoreAsItWas() = runTest {
+        val near = Venue(id = 1, name = "鼎泰豐 信義店", lat = 25.0334, lng = 121.5302, lastUsedAt = 9)
+        val repo = FakeVenueRepository(listOf(near, Venue(2, GLUED_ZH, null, null, lastUsedAt = 12)))
+        // Deleted in the editor once renamed, as the merge into the same store begins.
+        val racing = RacedVenueWrites(repo, beforeMerge = { delete(2) })
+
+        GluedVenueRepair(racing, lookup).run()
+
+        // Nothing merged, so the store takes neither the later use nor the gone venue's address.
+        assertEquals(listOf(near), repo.stored)
     }
 
     @Test fun aPositionTheUserSetsMeanwhile_isKept() = runTest {
