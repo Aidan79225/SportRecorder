@@ -178,6 +178,58 @@ class EatTimeEditorViewModelVenueEditTest {
         assertEquals(keeper.id, vm.uiState.value.venue?.id)
     }
 
+    // The repair at app start merges in the background: a venue may go while a question about it is open.
+    @Test
+    fun everyQuestionAboutAVenueMergedAwayMeanwhile_isWithdrawn() = runTest(mainRule.testDispatcher.scheduler) {
+        val namesake = Venue(id = 2, name = "鼎泰豐", lat = 25.0, lng = 121.0, lastUsedAt = 2L)
+        val editor = Editor(venues = listOf(dinTaiFung, namesake))
+        editor.venues.recordCounts[dinTaiFung.id] = 3
+        editor.clipboard.text = SHARE_TEXT
+        // The share asks which store it is; the edit dialog asks to merge, then to move.
+        val vm = editor.viewModel(sharedText = SHARE_TEXT)
+        advanceUntilIdle()
+        vm.saveVenue(dinTaiFung, namesake.name, null)
+        assertTrue(vm.repositionFromClipboard(dinTaiFung))
+        advanceUntilIdle()
+        assertEquals(dinTaiFung, vm.uiState.value.pendingStore?.venue)
+        assertEquals(dinTaiFung, vm.uiState.value.pendingMerge?.from)
+        assertEquals(dinTaiFung, vm.uiState.value.pendingMove?.venue)
+
+        val survivor = editor.venues.merge(fromId = dinTaiFung.id, intoId = namesake.id, now = 3L)
+        advanceUntilIdle()
+
+        // None of them can be answered for a venue that is gone.
+        assertNull(vm.uiState.value.pendingStore)
+        assertNull(vm.uiState.value.pendingMerge)
+        assertNull(vm.uiState.value.pendingMove)
+        assertEquals(survivor, vm.uiState.value.venue)
+    }
+
+    @Test
+    fun aMergeQuestionAnsweredAfterItsVenueWasMergedAway_writesNothing() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            // Still named by the Maps app's title: the user renames it to the store's as the repair merges it.
+            val glued = dinTaiFung.copy(name = "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店")
+            val store = dinTaiFung.copy(id = 2, lastUsedAt = 2L)
+            val answers = listOf<(EatTimeEditorViewModel) -> Unit>({ it.mergeVenues() }, { it.keepBothVenues() })
+            answers.forEach { answer ->
+                val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
+                val vm = editor.viewModel(eatTimeId = 1)
+                advanceUntilIdle()
+                vm.saveVenue(glued, store.name, null)
+                advanceUntilIdle()
+                assertEquals(glued, vm.uiState.value.pendingMerge?.from)
+
+                // Answered before the list shows the merge: the answer asks for the venue by id.
+                val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 3L)
+                answer(vm)
+                advanceUntilIdle()
+
+                assertEquals(listOf(survivor), editor.venues.stored)
+                assertEquals(survivor, vm.uiState.value.venue)
+            }
+        }
+
     @Test
     fun deletingAVenue_asksWithTheCount() = runTest(mainRule.testDispatcher.scheduler) {
         val other = keeper

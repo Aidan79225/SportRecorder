@@ -130,7 +130,7 @@ class EatTimeEditorViewModel constructor(
             venueRepository.observeAll().collect { venues ->
                 allVenues = venues
                 _uiState.update { it.withVenueOptions().withFreshVenue() }
-                followVanishedVenue()
+                followVanishedVenues()
             }
         }
         if (isEditMode) {
@@ -154,7 +154,7 @@ class EatTimeEditorViewModel constructor(
                     ).withVenueOptions().withFreshVenue()
                 }
                 // Read before a merge the list has already shown: catch up with it.
-                followVanishedVenue()
+                followVanishedVenues()
             }
         }
         if (!isEditMode && sharedText != null) {
@@ -300,16 +300,37 @@ class EatTimeEditorViewModel constructor(
     private fun showVenue(venue: Venue) = _uiState.update { it.copy(venue = venue) }
 
     // The selected venue as stored now, so a filled-in address or a moved position never shows stale.
-    // Kept as it is while the list doesn't have it ([followVanishedVenue] asks why).
+    // Kept as it is while the list doesn't have it ([followVanishedVenues] asks why).
     private fun EatTimeEditorUiState.withFreshVenue() =
         copy(venue = venue?.let { shown -> allVenues.firstOrNull { it.id == shown.id } ?: shown })
 
-    // A selected venue the list lacks was just created (the list catches up), or merged away or deleted
-    // by another writer — the glued-name repair at app start merges in the background, while a meal at
-    // that venue may be open. Asked for by id, it becomes the venue its records went to, or none.
-    private suspend fun followVanishedVenue() {
-        val shown = _uiState.value.venue?.takeUnless { shown -> allVenues.any { it.id == shown.id } } ?: return
-        showVenueInPlaceOf(shown.id, venueRepository.resolve(shown.id))
+    // A venue the list lacks was just created (the list catches up), or merged away or deleted by another
+    // writer — the glued-name repair at app start merges in the background, while a meal at that venue
+    // may be open. Asked for by id, the selected one becomes the venue its records went to, or none; and
+    // a question still open about one that is gone is withdrawn: answered, it would write to a venue that
+    // no longer exists.
+    private suspend fun followVanishedVenues() {
+        val state = _uiState.value
+        state.venue?.takeUnless { it.isListed() }?.let { showVenueInPlaceOf(it.id, venueRepository.resolve(it.id)) }
+        val gone = state.questionedVenues().filterNot { it.isListed() || it.remains() }.map { it.id }.toSet()
+        if (gone.isNotEmpty()) withdrawQuestionsAbout(gone)
+    }
+
+    private fun Venue.isListed() = allVenues.any { it.id == id }
+
+    // Neither merged away nor deleted, asked for by id: a venue the list has not caught up with yet remains.
+    private suspend fun Venue.remains() = venueRepository.resolve(id)?.id == id
+
+    // The venues the open questions are about: a merge's two, a move's and a share's.
+    private fun EatTimeEditorUiState.questionedVenues() =
+        listOfNotNull(pendingMerge?.from, pendingMerge?.into, pendingMove?.venue, pendingStore?.venue)
+
+    private fun withdrawQuestionsAbout(venueIds: Set<Int>) = _uiState.update { state ->
+        state.copy(
+            pendingMerge = state.pendingMerge?.takeUnless { it.from.id in venueIds || it.into.id in venueIds },
+            pendingMove = state.pendingMove?.takeUnless { it.venue.id in venueIds },
+            pendingStore = state.pendingStore?.takeUnless { it.venue.id in venueIds },
+        )
     }
 
     // An answer replaces the venue only if the user has not switched to another one meanwhile.
@@ -585,21 +606,29 @@ class EatTimeEditorViewModel constructor(
         return pending
     }
 
-    /** One place after all: its records move to the other venue, which keeps its own name, address and position. */
+    /**
+     * One place after all: its records move to the other venue, which keeps its own name, address and
+     * position. Either one merged away or deleted since the question was asked (before the list showed
+     * it, so the question was not yet withdrawn) leaves nothing to merge.
+     */
     override fun mergeVenues() {
         val pending = takePendingMerge() ?: return
         viewModelScope.launch {
-            val survivor = venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())
-            showVenueInPlaceOf(pending.from.id, survivor)
-            // A survivor without a position adopts the merged one's, and needs an address for it.
-            fillAddress(survivor)
+            if (pending.from.remains() && pending.into.remains()) {
+                val survivor = venueRepository.merge(fromId = pending.from.id, intoId = pending.into.id, now = now())
+                showVenueInPlaceOf(pending.from.id, survivor)
+                // A survivor without a position adopts the merged one's, and needs an address for it.
+                fillAddress(survivor)
+            }
         }
     }
 
-    /** Two places with one name (branches): just save the edit. */
+    /** Two places with one name (branches): just save the edit — unless the venue is gone meanwhile. */
     override fun keepBothVenues() {
         val pending = takePendingMerge() ?: return
-        viewModelScope.launch { editVenue(pending.from.id, pending.newName, pending.newAddress) }
+        viewModelScope.launch {
+            if (pending.from.remains()) editVenue(pending.from.id, pending.newName, pending.newAddress)
+        }
     }
 
     override fun cancelMerge() = _uiState.update { it.copy(pendingMerge = null) }
