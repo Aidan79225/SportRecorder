@@ -47,6 +47,22 @@ internal const val APP_LOCATION = "https://www.google.com/maps/place/" +
 internal const val APP_FULL_ADDRESS = "106台灣臺北市大安區福住里信義路二段194號"
 internal const val APP_ADDRESS = "臺北市大安區福住里信義路二段194號"
 
+// The Android app's link to a place in Korea, and the real Location it resolved to: a title the split
+// can't read (address glued to the name, in three languages), so the link names the place by all of it.
+internal const val KO_LINK = "https://maps.app.goo.gl/XJeDa4ocvgKDRTDw5?g_st=ac"
+internal const val KO_LOCATION = "https://www.google.com/maps/place/" +
+    "%E5%8D%97%E9%9F%93+Seoul,+Jung+District,+Myeongdong+8na-gil,+29+%EB%B6%88%ED%83%84%EC%99%95%EB%BC%88" +
+    "%EA%B5%AC%EC%9D%B4%26%EA%B0%90%EC%9E%90%ED%83%95+%EB%AA%85%EB%8F%99%EC%A0%90+%7C+Korean+Restaurant" +
+    "+Bultan+Wang+Ribs+%26+Gamjatang+Myeongdong+Branch+%7C+%E7%BE%8E%E9%A3%9F+%E7%81%AB%E7%82%AD%E7%8E%8B" +
+    "%E7%83%A4%E9%AA%A8%E8%82%89%26%E9%9F%A9%E5%BC%8F%E5%9C%9F%E8%B1%86%E6%8E%92%E9%AA%A8%E6%B1%A4" +
+    "+%E6%98%8E%E6%B4%9E%E5%BA%97/data=!4m2!3m1!1s0x357ca371e83b62c7:0x768802893f6ca9bd!18m1!1e1" +
+    "?utm_source=mstt_1&entry=gps&coh=192189&g_ep=CAESBzI2LjI2LjMYACCenQoqiwEsOTQyNjc3MjcsOTQyOTIxOTUsOTQy" +
+    "OTk1MzIsMTAwNzk2NDk4LDEwMDc5Nzc2MSwxMDA3OTY1MzUsOTQyODA1NzYsOTQyMDczOTQsOTQyMDc1MDYsOTQyMDg1MDYsOTQy" +
+    "MTg2NTMsOTQyMjk4MzksOTQyNzUxNjgsOTQyNzk2MTksMTAwODE1NjM1QgJUVw%3D%3D" +
+    "&skid=a2a5071b-2ed4-4598-8d55-677272b0aaca&g_st=ac"
+internal const val KO_TITLE = "南韓 Seoul, Jung District, Myeongdong 8na-gil, 29 불탄왕뼈구이&감자탕 명동점 | " +
+    "Korean Restaurant Bultan Wang Ribs & Gamjatang Myeongdong Branch | 美食 火炭王烤骨肉&韩式土豆排骨汤 明洞店"
+
 private const val PAST_MEAL = 1_700_000_000_000L
 internal val home = GeoPoint(24.0, 120.0)
 internal val daHuWu = Venue(id = 1, name = "大戶屋", lat = 25.0, lng = 121.0, lastUsedAt = 1L)

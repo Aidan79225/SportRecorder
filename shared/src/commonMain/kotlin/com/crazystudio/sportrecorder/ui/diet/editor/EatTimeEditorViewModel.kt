@@ -369,8 +369,9 @@ class EatTimeEditorViewModel constructor(
      * Updates [venue] from the Maps link on the clipboard, read now because the user tapped. The
      * place's position moves the venue, with the link's own address; a venue with records asks first
      * ([EatTimeEditorUiState.pendingMove]). The link's name is offered to the edit dialog's 店名 draft
-     * ([EatTimeEditorUiState.repositionDraft]): only 儲存 writes it. A place with no position moves
-     * nothing: its name and address are offered instead, and
+     * ([EatTimeEditorUiState.repositionDraft]): only 儲存 writes it. A title the split could not read
+     * ([MapsPlace.cleanName] null) is never offered. A place with no position moves nothing: its name
+     * and address are offered instead (nothing, for such a title), and
      * [EatTimeEditorUiState.repositionNotice] says why. False when the clipboard held no Maps link:
      * the user is then asked to paste one by hand.
      */
@@ -411,30 +412,30 @@ class EatTimeEditorViewModel constructor(
     }
 
     // The address belongs to its position: it travels with the move, and is only offered as a draft
-    // when there is no position to move to.
+    // when there is no position to move to. Only a clean name is offered: a title the split left whole
+    // may be the address glued to the name, and must not replace the name the user gave the venue.
     private suspend fun repositionTo(venue: Venue, place: MapsPlace) {
         val to = place.position()
-        val name = place.name
+        val name = place.cleanName
+        val address = place.address
         when {
             to != null -> {
                 name?.let { offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, it)) }
-                askOrMove(venue, to, place.address)
+                askOrMove(venue, to, address)
             }
-            // A name with nowhere to put it: the drafts take what the link says, and nothing moves.
-            name != null -> {
-                offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, name, place.address))
-                showRepositionNotice(notLocated(place))
+            // Nowhere to put it: the drafts take the name and address the link splits into, and nothing moves.
+            name != null && address != null -> {
+                offerDraft(EatTimeEditorUiState.RepositionDraft(venue.id, name, address))
+                showRepositionNotice(ShareNotice.PlaceNotLocated)
             }
+            // Nowhere to put it, and nothing to trust as a name: the line says nothing was changed.
+            place.name != null -> showRepositionNotice(ShareNotice.PlaceNotLocatedUnchanged)
             else -> showRepositionNotice(ShareNotice.MapLinkUnreadable)
         }
     }
 
     private fun offerDraft(draft: EatTimeEditorUiState.RepositionDraft) =
         _uiState.update { it.copy(repositionDraft = draft) }
-
-    // The line never claims an address was filled in when the link carried none.
-    private fun notLocated(place: MapsPlace) =
-        if (place.address != null) ShareNotice.PlaceNotLocated else ShareNotice.PlaceNotLocatedNameOnly
 
     private suspend fun askOrMove(venue: Venue, to: GeoPoint, address: String?) {
         val records = venueRepository.recordCount(venue.id)

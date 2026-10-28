@@ -54,7 +54,7 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
 import com.crazystudio.sportrecorder.shared.resources.distance_kilometers
 import com.crazystudio.sportrecorder.shared.resources.distance_meters
 import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position
-import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_name
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_unchanged
 import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_store_body
@@ -336,7 +336,7 @@ internal fun shareNoticeRes(notice: ShareNotice) = when (notice) {
     ShareNotice.MapLinkUnreadable -> Res.string.editor_link_unreadable
     ShareNotice.NotAMapLink -> Res.string.editor_not_map_link
     ShareNotice.PlaceNotLocated -> Res.string.editor_link_no_position
-    ShareNotice.PlaceNotLocatedNameOnly -> Res.string.editor_link_no_position_name
+    ShareNotice.PlaceNotLocatedUnchanged -> Res.string.editor_link_no_position_unchanged
 }
 
 /**

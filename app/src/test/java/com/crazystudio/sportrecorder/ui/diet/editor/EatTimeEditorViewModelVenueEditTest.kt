@@ -393,9 +393,10 @@ class EatTimeEditorViewModelVenueEditTest {
         vm.repositionFromClipboard(daHuWu)
         advanceUntilIdle()
 
-        // Only the name is offered, so the line does not claim an address was filled in.
-        assertEquals(ShareNotice.PlaceNotLocatedNameOnly, vm.uiState.value.repositionNotice)
-        assertEquals(EatTimeEditorUiState.RepositionDraft(daHuWu.id, "Ichiran"), vm.uiState.value.repositionDraft)
+        // A title the split leaves whole is never trusted as a 店名: nothing is offered, and the line
+        // does not claim anything was filled in.
+        assertEquals(ShareNotice.PlaceNotLocatedUnchanged, vm.uiState.value.repositionNotice)
+        assertNull(vm.uiState.value.repositionDraft)
         assertEquals(listOf("Ichiran"), editor.lookup.queried)
         // The editor's own notice line and the meal's venue are left alone.
         assertNull(vm.uiState.value.shareNotice)

@@ -23,6 +23,7 @@ import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_body
 import com.crazystudio.sportrecorder.shared.resources.editor_delete_title
 import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position
+import com.crazystudio.sportrecorder.shared.resources.editor_link_no_position_unchanged
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_address
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_delete
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_edit
@@ -205,6 +206,21 @@ class VenuePickerSheetTest {
         compose.onNodeWithText(str(Res.string.editor_link_no_position)).assertIsDisplayed()
         saveButton().performClick()
         assertEquals(listOf(Triple(unplaced, "鼎泰豐 信義店", linkAddress)), actions.saved)
+    }
+
+    @Test
+    fun aWholeTitleThatCantBeLocated_keepsTheDrafts_andSaysNothingChanged() {
+        // What the view model does for a title the split left whole and the geocoder can't place.
+        actions.onReposition = { state = state.copy(repositionNotice = ShareNotice.PlaceNotLocatedUnchanged) }
+        show()
+        compose.onNodeWithContentDescription(str(Res.string.editor_venue_edit_named, placed.name)).performClick()
+
+        compose.onNodeWithText(str(Res.string.editor_venue_use_link)).performClick()
+
+        compose.onNodeWithText(str(Res.string.editor_link_no_position_unchanged)).assertIsDisplayed()
+        nameField().assert(hasText(placed.name))
+        addressField().assert(hasText("信義路二段 194 號"))
+        assertEquals(0, actions.draftsTaken)
     }
 
     private fun saveButton() = compose.onNode(hasText(str(Res.string.editor_venue_save)) and hasClickAction())

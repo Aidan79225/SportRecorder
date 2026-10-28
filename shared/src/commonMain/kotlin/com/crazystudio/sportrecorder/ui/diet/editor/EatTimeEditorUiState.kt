@@ -118,6 +118,9 @@ enum class ShareNotice {
      */
     PlaceNotLocated,
 
-    /** As [PlaceNotLocated], for a link that carries no address: only the name fills its draft. */
-    PlaceNotLocatedNameOnly,
+    /**
+     * As [PlaceNotLocated], for a link whose title could not be split into a name and an address: that
+     * whole title is no 店名, so nothing fills the drafts, and nothing moves.
+     */
+    PlaceNotLocatedUnchanged,
 }

@@ -36,6 +36,19 @@ class EatTimeEditorViewModelAppLinkTest {
             if (locatable) lookup.positions = mapOf(APP_FULL_ADDRESS to mapsPosition)
         }
 
+    // Where the geocoder puts the Korean link's whole title, and a venue the user named themselves.
+    private val myeongdong = GeoPoint(37.5636, 126.985)
+    private val bultanWang = Venue(id = 1, name = "火炭王 明洞店", lat = 37.0, lng = 127.0, lastUsedAt = 1L, address = "舊地址")
+
+    /** As [appLinkEditor], for the real Korean link, whose title the split leaves whole. */
+    private fun koreanLinkEditor(venues: List<Venue>, locatable: Boolean = true) =
+        Editor(venues = venues).apply {
+            resolver.location = KO_LOCATION
+            clipboard.text = KO_LINK
+            lookup.address = geocoderAddress
+            if (locatable) lookup.positions = mapOf(KO_TITLE to myeongdong)
+        }
+
     @Test
     fun pastingAnAndroidAppLink_createsTheCleanVenueWithAddressAndPin() = runTest(mainRule.testDispatcher.scheduler) {
         val editor = appLinkEditor()
@@ -284,4 +297,54 @@ class EatTimeEditorViewModelAppLinkTest {
         assertNull(vm.uiState.value.repositionDraft)
         assertNull(vm.uiState.value.repositionNotice)
     }
+
+    @Test
+    fun repositionFromAnUnsplitAppLink_movesTheVenue_butNeverOffersTheTitleAsItsName() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val editor = koreanLinkEditor(listOf(bultanWang))
+            editor.venues.recordCounts[bultanWang.id] = 2
+            val vm = editor.viewModel()
+
+            assertTrue(vm.repositionFromClipboard(bultanWang))
+            advanceUntilIdle()
+
+            // Placed by its whole title, it still moves (asking first), with no address of the link's own.
+            assertEquals(
+                EatTimeEditorUiState.PendingMove(bultanWang, to = myeongdong, movedRecords = 2, address = null),
+                vm.uiState.value.pendingMove,
+            )
+            assertEquals(listOf(KO_TITLE), editor.lookup.queried)
+            // That title may be the address glued to the name: it never becomes the 店名 draft.
+            assertNull(vm.uiState.value.repositionDraft)
+            assertNull(vm.uiState.value.repositionNotice)
+
+            vm.confirmMove()
+            advanceUntilIdle()
+
+            // The user's own name stays; the old address went with the old position and is looked up again.
+            assertEquals(
+                bultanWang.copy(lat = myeongdong.lat, lng = myeongdong.lng, address = geocoderAddress),
+                editor.venues.stored.single(),
+            )
+            assertNull(vm.uiState.value.repositionDraft)
+        }
+
+    @Test
+    fun repositionWhenAnUnsplitAppLinkCantBeLocated_fillsNothing_andSaysSo() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val editor = koreanLinkEditor(listOf(bultanWang), locatable = false)
+            editor.venues.recordCounts[bultanWang.id] = 2
+            val vm = editor.viewModel()
+
+            assertTrue(vm.repositionFromClipboard(bultanWang))
+            advanceUntilIdle()
+
+            // Nowhere to move it to and no name to trust: the drafts keep what the user has, and the
+            // line says nothing was changed rather than that a name was filled in.
+            assertNull(vm.uiState.value.repositionDraft)
+            assertEquals(ShareNotice.PlaceNotLocatedUnchanged, vm.uiState.value.repositionNotice)
+            assertNull(vm.uiState.value.pendingMove)
+            assertEquals(listOf(bultanWang), editor.venues.stored)
+            assertEquals(listOf(KO_TITLE), editor.lookup.queried)
+        }
 }

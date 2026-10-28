@@ -277,6 +277,11 @@ So today a paste creates a venue named by the whole glued string, with no positi
   address follows the position, so 取消 does not restore the old address once the pin has moved)*.
   If the link has no usable position, the name and address fill the drafts and a gentle line says the
   position could not be found; nothing moves.
+- *(builder's call)* In ✎, a title the split left whole never fills 店名: it may be the address glued to
+  the name (any place outside Taiwan, e.g. the real Korean link), and before this addendum ✎ never
+  touched the name, so "never worse" means leaving the user's own. The pin still moves when the whole
+  title can be looked up; when it can't, nothing is filled and the line says nothing was changed
+  (「找不到這個地點的位置，店家資料沒有更動。」). Paste and share still name a new venue by the whole title.
 - *(builder's call)* While a link is being read in ✎, 儲存 is disabled (取消 still cancels the read),
   so a save can no longer silently drop the move.
 - *(builder's call)* The editor's selected venue is refreshed from the database by id, so a filled

@@ -133,6 +133,18 @@ class MapsLinkTest {
         )
     }
 
+    @Test fun cleanName_isNeverAWholePinlessTitle() {
+        assertEquals("鼎泰豐 信義店", MapsLink.parse(ANDROID_ZH)!!.cleanName)
+        assertEquals("Din Tai Fung Xinyi Branch", MapsLink.parse(ANDROID_EN)!!.cleanName)
+        assertEquals("鼎泰豐 信義店", MapsLink.parse(REAL)!!.cleanName)
+        assertEquals("未央咖啡店", MapsLink.parse(IOS)!!.cleanName)
+        // Left whole, the title may be the address glued to the name, even once its lookup placed it.
+        val korean = MapsLink.parse(ANDROID_KO)!!
+        assertNull(korean.cleanName)
+        assertNull(korean.copy(lat = 37.5636, lng = 126.985).cleanName)
+        assertNull(MapsLink.parse(ADDRESS_ONLY)!!.cleanName)
+    }
+
     @Test fun pinlessAddressOnlySegment_staysWhole() {
         assertEquals(
             MapsPlace(ADDRESS_ONLY_TITLE, null, null, address = null, geocodeQuery = ADDRESS_ONLY_TITLE),

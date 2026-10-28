@@ -50,7 +50,14 @@ data class MapsPlace(
     val lng: Double?,
     val address: String? = null,
     val geocodeQuery: String? = null,
-)
+) {
+    /**
+     * [name] when it is the place's name alone; null when it is a pinless link's whole title, which
+     * [PlaceTitle] could not split and so may be the address glued to the name. Being placed by
+     * looking that title up does not change what it is.
+     */
+    val cleanName: String? get() = name.takeUnless { address == null && geocodeQuery != null }
+}
 
 private const val HTTPS = "https://"
 private const val SHORT_HOST = "maps.app.goo.gl"
