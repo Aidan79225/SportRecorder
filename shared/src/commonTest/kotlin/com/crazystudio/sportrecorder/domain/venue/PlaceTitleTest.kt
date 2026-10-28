@@ -89,6 +89,11 @@ class PlaceTitleTest {
                 "after the name: $floor",
             )
             assertNull(PlaceTitle.split("110台灣台北市信義區松壽路11號$floor"), "no name: $floor")
+        }
+    }
+
+    @Test fun aBasementWithItsOwnFloorWord_endsATitleThatIsOnlyAnAddress() {
+        listOf("B1樓", "B1F", "B1 樓").forEach { floor ->
             assertTrue(PlaceTitle.isAddressOnly("110台北市信義區松壽路11號$floor"), floor)
         }
     }

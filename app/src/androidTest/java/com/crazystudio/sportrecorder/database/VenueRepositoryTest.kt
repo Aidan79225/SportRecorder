@@ -43,6 +43,9 @@ class VenueRepositoryTest {
 
     @After fun tearDown() = db.close()
 
+    private suspend fun stored(venueId: Int) =
+        checkNotNull(db.getVenueDao().findById(venueId)) { "venue $venueId is not stored" }
+
     @Test fun findOrCreate_isIdempotentAcrossCaseAndSpacing() = runBlocking {
         val a = repo.findOrCreate("Starbucks", lat = 25.0, lng = 121.0, now = 1L)
         val b = repo.findOrCreate("  starbucks ", lat = null, lng = null, now = 2L)
@@ -76,7 +79,7 @@ class VenueRepositoryTest {
 
         assertNotEquals(first.id, second.id)
         assertEquals(listOf("麥當勞", "麥當勞"), repo.observeAll().first().map { it.name })
-        assertEquals(25.05, db.getVenueDao().findById(second.id)!!.lat!!, 0.0)
+        assertEquals(25.05, stored(second.id).lat!!, 0.0)
     }
 
     @Test fun findOrCreate_picksTheMostRecentlyUsedOfSameNames() = runBlocking {
@@ -88,7 +91,7 @@ class VenueRepositoryTest {
 
         assertEquals(older.id, picked.id)
         assertEquals(2, repo.observeAll().first().size)
-        assertEquals(2L, db.getVenueDao().findById(newer.id)!!.lastUsedAt)
+        assertEquals(2L, stored(newer.id).lastUsedAt)
     }
 
     @Test fun findOrCreate_adoptingAFirstPosition_clearsTheAddress() = runBlocking {
@@ -100,14 +103,14 @@ class VenueRepositoryTest {
         assertEquals(v.id, adopted.id)
         assertEquals(25.03, adopted.lat!!, 0.0)
         assertNull(adopted.address)
-        assertNull(db.getVenueDao().findById(v.id)!!.address)
+        assertNull(stored(v.id).address)
     }
 
     @Test fun findOrCreate_onInsert_writesTheAddressTrimmed() = runBlocking {
         val created = repo.findOrCreate("鼎泰豐 信義店", 25.03, 121.53, now = 1L, address = " 臺北市大安區信義路二段194號 ")
 
         assertEquals("臺北市大安區信義路二段194號", created.address)
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(created.id)!!.address)
+        assertEquals("臺北市大安區信義路二段194號", stored(created.id).address)
     }
 
     @Test fun findOrCreate_onReuse_neverReplacesTheAddressItHas() = runBlocking {
@@ -117,7 +120,7 @@ class VenueRepositoryTest {
 
         assertEquals(created.id, again.id)
         assertEquals("臺北市大安區信義路二段194號", again.address)
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(created.id)!!.address)
+        assertEquals("臺北市大安區信義路二段194號", stored(created.id).address)
         assertEquals(1, repo.observeAll().first().size)
     }
 
@@ -128,9 +131,9 @@ class VenueRepositoryTest {
 
         assertEquals(empty.id, filled.id)
         assertEquals("松壽路11號", filled.address)
-        val stored = db.getVenueDao().findById(empty.id)!!
-        assertEquals("松壽路11號", stored.address)
-        assertEquals(25.04, stored.lat!!, 0.0)
+        val venue = stored(empty.id)
+        assertEquals("松壽路11號", venue.address)
+        assertEquals(25.04, venue.lat!!, 0.0)
     }
 
     @Test fun findOrCreate_adoptingAFirstPosition_takesTheGivenAddress() = runBlocking {
@@ -140,14 +143,14 @@ class VenueRepositoryTest {
 
         // The old address goes with the old (no) position; the link's comes with the new one.
         assertEquals(unplaced.id, placed.id)
-        assertEquals("忠孝東路四段5號", db.getVenueDao().findById(unplaced.id)!!.address)
+        assertEquals("忠孝東路四段5號", stored(unplaced.id).address)
     }
 
     @Test fun findOrCreate_aBlankAddress_isNone() = runBlocking {
         val created = repo.findOrCreate("大戶屋", null, null, now = 7L, address = "   ")
 
         assertNull(created.address)
-        assertNull(db.getVenueDao().findById(created.id)!!.address)
+        assertNull(stored(created.id).address)
     }
 
     @Test fun setPosition_clearsTheAddress() = runBlocking {
@@ -185,12 +188,16 @@ class VenueRepositoryTest {
 
     @Test fun create_withAnAddress_keepsItTrimmed() = runBlocking {
         val v = repo.create("鼎泰豐 信義店", lat = 25.03, lng = 121.53, now = 1L, address = " 臺北市大安區信義路二段194號 ")
-        val blank = repo.create("一蘭", lat = null, lng = null, now = 2L, address = "   ")
 
         assertEquals("臺北市大安區信義路二段194號", v.address)
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(v.id)!!.address)
+        assertEquals("臺北市大安區信義路二段194號", stored(v.id).address)
+    }
+
+    @Test fun create_aBlankAddress_isNone() = runBlocking {
+        val blank = repo.create("一蘭", lat = null, lng = null, now = 2L, address = "   ")
+
         assertNull(blank.address)
-        assertNull(db.getVenueDao().findById(blank.id)!!.address)
+        assertNull(stored(blank.id).address)
     }
 
     @Test fun setPosition_withAnAddress_writesItWithTheMove() = runBlocking {
@@ -199,7 +206,7 @@ class VenueRepositoryTest {
         // A Maps link's address belongs to the link's pin: it moves in with it.
         repo.setPosition(v.id, lat = 25.03, lng = 121.53, address = "臺北市大安區信義路二段194號")
 
-        val moved = db.getVenueDao().findById(v.id)!!
+        val moved = stored(v.id)
         assertEquals(25.03, moved.lat!!, 0.0)
         assertEquals(121.53, moved.lng!!, 0.0)
         assertEquals("臺北市大安區信義路二段194號", moved.address)
@@ -211,7 +218,7 @@ class VenueRepositoryTest {
         // Re-applying the same position is no move, so it writes nothing — not even the address.
         repo.setPosition(v.id, lat = 25.03, lng = 121.53, address = "別的地址")
 
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(v.id)!!.address)
+        assertEquals("臺北市大安區信義路二段194號", stored(v.id).address)
     }
 
     @Test fun setPosition_placingAnUnplacedVenue_writesPositionAndAddress() = runBlocking {
@@ -219,26 +226,44 @@ class VenueRepositoryTest {
 
         repo.setPosition(unplaced.id, lat = 25.04, lng = 121.55, address = "松壽路11號")
 
-        val placed = db.getVenueDao().findById(unplaced.id)!!
+        val placed = stored(unplaced.id)
         assertEquals(25.04, placed.lat!!, 0.0)
         assertEquals("松壽路11號", placed.address)
     }
 
-    @Test fun setAddressIfEmpty_writesOnlyIntoAnEmptyAddress() = runBlocking {
+    @Test fun setAddressIfEmpty_writesIntoAnEmptyAddress() = runBlocking {
         val empty = repo.create("鼎泰豐 信義店", lat = 25.03, lng = 121.53, now = 1L)
-        val typed = repo.create("一蘭", lat = null, lng = null, now = 2L, address = "我打的地址")
 
         assertTrue(repo.setAddressIfEmpty(empty.id, "臺北市大安區信義路二段194號"))
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(empty.id)!!.address)
-        // The position is left exactly as it was.
-        assertEquals(25.03, db.getVenueDao().findById(empty.id)!!.lat!!, 0.0)
+        assertEquals("臺北市大安區信義路二段194號", stored(empty.id).address)
+    }
 
-        // Never over an address the venue already has — typed, or written a moment ago.
+    @Test fun setAddressIfEmpty_leavesThePositionAsItWas() = runBlocking {
+        val empty = repo.create("鼎泰豐 信義店", lat = 25.03, lng = 121.53, now = 1L)
+
+        repo.setAddressIfEmpty(empty.id, "臺北市大安區信義路二段194號")
+
+        val kept = stored(empty.id)
+        assertEquals(25.03, kept.lat!!, 0.0)
+        assertEquals(121.53, kept.lng!!, 0.0)
+    }
+
+    @Test fun setAddressIfEmpty_neverOverwritesATypedAddress() = runBlocking {
+        val typed = repo.create("一蘭", lat = null, lng = null, now = 2L, address = "我打的地址")
+
         assertFalse(repo.setAddressIfEmpty(typed.id, "松壽路11號"))
-        assertEquals("我打的地址", db.getVenueDao().findById(typed.id)!!.address)
+        assertEquals("我打的地址", stored(typed.id).address)
+    }
+
+    @Test fun setAddressIfEmpty_neverOverwritesOneItJustWrote() = runBlocking {
+        val empty = repo.create("鼎泰豐 信義店", lat = 25.03, lng = 121.53, now = 1L)
+        repo.setAddressIfEmpty(empty.id, "臺北市大安區信義路二段194號")
+
         assertFalse(repo.setAddressIfEmpty(empty.id, "別的地址"))
-        assertEquals("臺北市大安區信義路二段194號", db.getVenueDao().findById(empty.id)!!.address)
-        // A venue that is gone is no write.
+        assertEquals("臺北市大安區信義路二段194號", stored(empty.id).address)
+    }
+
+    @Test fun setAddressIfEmpty_onAVenueThatIsGone_writesNothing() = runBlocking {
         assertFalse(repo.setAddressIfEmpty(9_999, "松壽路11號"))
     }
 
@@ -246,19 +271,19 @@ class VenueRepositoryTest {
         // Matches: still at the looked-up position, address still empty → written.
         val a = repo.create("A", lat = 25.0, lng = 121.0, now = 1L)
         assertTrue(repo.setAddressIfUnchanged(a.id, lat = 25.0, lng = 121.0, address = "一路 1 號"))
-        assertEquals("一路 1 號", db.getVenueDao().findById(a.id)!!.address)
+        assertEquals("一路 1 號", stored(a.id).address)
 
         // The venue moved while the lookup ran → the result describes a stale position.
         val b = repo.create("B", lat = 25.0, lng = 121.0, now = 1L)
         repo.setPosition(b.id, lat = 25.1, lng = 121.1)
         assertFalse(repo.setAddressIfUnchanged(b.id, lat = 25.0, lng = 121.0, address = "二路 2 號"))
-        assertNull(db.getVenueDao().findById(b.id)!!.address)
+        assertNull(stored(b.id).address)
 
         // The user typed an address meanwhile → a lookup never overwrites it.
         val c = repo.create("C", lat = 25.0, lng = 121.0, now = 1L)
         repo.edit(c.id, "C", address = "我打的地址", now = 2L)
         assertFalse(repo.setAddressIfUnchanged(c.id, lat = 25.0, lng = 121.0, address = "三路 3 號"))
-        assertEquals("我打的地址", db.getVenueDao().findById(c.id)!!.address)
+        assertEquals("我打的地址", stored(c.id).address)
     }
 
     @Test fun edit_savesNameAndAddress_blankAddressBecomesNull_andNeverMerges() = runBlocking {
@@ -280,7 +305,7 @@ class VenueRepositoryTest {
         val cleared = repo.edit(v.id, "大戶屋", address = "   ", now = 4L)
 
         assertNull(cleared.address)
-        assertNull(db.getVenueDao().findById(v.id)!!.address)
+        assertNull(stored(v.id).address)
     }
 
     @Test fun merge_repointsRecordsAndDeletesTheOther_survivorKeepsItsOwnFields() = runBlocking {
@@ -315,7 +340,7 @@ class VenueRepositoryTest {
         assertEquals(25.0, survivor.lat!!, 0.0)
         assertEquals(121.0, survivor.lng!!, 0.0)
         assertNull(survivor.address)
-        assertNull(db.getVenueDao().findById(into.id)!!.address)
+        assertNull(stored(into.id).address)
     }
 
     @Test fun find_isOnlyAVenueStillStored() = runBlocking {

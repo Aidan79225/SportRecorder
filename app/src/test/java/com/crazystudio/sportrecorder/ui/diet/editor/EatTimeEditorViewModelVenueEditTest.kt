@@ -206,28 +206,33 @@ class EatTimeEditorViewModelVenueEditTest {
     }
 
     @Test
-    fun aMergeQuestionAnsweredAfterItsVenueWasMergedAway_writesNothing() =
+    fun answeringMerge_afterItsVenueWasMergedAway_writesNothing() =
+        answeredAfterTheVenueWasMergedAway { it.mergeVenues() }
+
+    @Test
+    fun answeringKeepBoth_afterItsVenueWasMergedAway_writesNothing() =
+        answeredAfterTheVenueWasMergedAway { it.keepBothVenues() }
+
+    // A rename asks to merge; [answer] comes once the venue the question is about was merged away.
+    private fun answeredAfterTheVenueWasMergedAway(answer: (EatTimeEditorViewModel) -> Unit) =
         runTest(mainRule.testDispatcher.scheduler) {
             // Still named by the Maps app's title: the user renames it to the store's as the repair merges it.
             val glued = dinTaiFung.copy(name = "106台灣臺北市大安區福住里信義路二段194號鼎泰豐 信義店")
             val store = dinTaiFung.copy(id = 2, lastUsedAt = 2L)
-            val answers = listOf<(EatTimeEditorViewModel) -> Unit>({ it.mergeVenues() }, { it.keepBothVenues() })
-            answers.forEach { answer ->
-                val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
-                val vm = editor.viewModel(eatTimeId = 1)
-                advanceUntilIdle()
-                vm.saveVenue(glued, store.name, null)
-                advanceUntilIdle()
-                assertEquals(glued, vm.uiState.value.pendingMerge?.from)
+            val editor = Editor(listOf(mealAt(venue = glued)), listOf(glued, store))
+            val vm = editor.viewModel(eatTimeId = 1)
+            advanceUntilIdle()
+            vm.saveVenue(glued, store.name, null)
+            advanceUntilIdle()
+            assertEquals(glued, vm.uiState.value.pendingMerge?.from)
 
-                // Answered before the list shows the merge: the answer asks for the venue by id.
-                val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 3L)
-                answer(vm)
-                advanceUntilIdle()
+            // Answered before the list shows the merge: the answer asks for the venue by id.
+            val survivor = editor.venues.merge(fromId = glued.id, intoId = store.id, now = 3L)
+            answer(vm)
+            advanceUntilIdle()
 
-                assertEquals(listOf(survivor), editor.venues.stored)
-                assertEquals(survivor, vm.uiState.value.venue)
-            }
+            assertEquals(listOf(survivor), editor.venues.stored)
+            assertEquals(survivor, vm.uiState.value.venue)
         }
 
     @Test
