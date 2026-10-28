@@ -81,8 +81,10 @@ private val PIN = Regex("""!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)""")
 private val CAMERA = Regex("""@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)""")
 
 // A title or search that is only coordinates: "42.578496,1.895566", "39.920439, 116.331538", or a
-// dropped pin's 25°02'00.6"N 121°31'48.4"E.
-private val DECIMAL = Regex("""(-?\d{1,3}(?:\.\d+)?), ?(-?\d{1,3}(?:\.\d+)?)""")
+// dropped pin's 25°02'00.6"N 121°31'48.4"E. Other apps' q= may say "loc:25.0335,121.5301", or label
+// them, "25.0335,121.5301(鼎泰豐)": the label is the name. One cut short — a link shared as plain text
+// ends at its CJK label — names nothing.
+private val DECIMAL = Regex("""(?:loc: ?)?(-?\d{1,3}(?:\.\d+)?), ?(-?\d{1,3}(?:\.\d+)?)(?: ?\((?:(.*)\))?.*)?""")
 private val DMS = Regex("""\d{1,3}°\d{1,2}'\d{1,2}(?:\.\d+)?"[NS] \d{1,3}°\d{1,2}'\d{1,2}(?:\.\d+)?"[EW]""")
 
 /** A URL cut into the parts the allowlist and the parser look at. */
@@ -138,13 +140,14 @@ private fun classify(candidate: String): MapsLink? {
 }
 
 /**
- * A title that is only coordinates is no name; a link with a pin is never split (its name may hold
- * commas). An over-long title is neither split nor looked up: no real one is that long.
+ * A title that is only coordinates is no name, though its label is; a link with a pin is never split
+ * (its name may hold commas). An over-long title is neither split nor looked up: no real one is that long.
  */
 private fun placeOf(url: MapsUrl): MapsPlace {
     val title = url.title
-    val name = title?.takeUnless(::isCoordinates)
-    val (lat, lng) = coordinates(url, title)
+    val coordinateTitle = title?.let(DECIMAL::matchEntire)
+    val name = if (coordinateTitle != null) label(coordinateTitle) else title?.takeUnless(DMS::matches)
+    val (lat, lng) = coordinates(url, coordinateTitle)
     val split = if (lat == null) name?.let(PlaceTitle::split) else null
     return when {
         lat != null -> MapsPlace(name, lat, lng)
@@ -157,9 +160,9 @@ private fun placeOf(url: MapsUrl): MapsPlace {
  * The pin (`!3d…!4d…`) is the place itself, and so is a title or search that is only coordinates;
  * the `@` camera is only where the map was looking.
  */
-private fun coordinates(url: MapsUrl, title: String?): Pair<Double?, Double?> {
+private fun coordinates(url: MapsUrl, coordinateTitle: MatchResult?): Pair<Double?, Double?> {
     val match = PIN.find(url.path)
-        ?: title?.let(DECIMAL::matchEntire)
+        ?: coordinateTitle
         ?: url.search?.let(DECIMAL::matchEntire)
         ?: CAMERA.find(url.path)
     val lat = match?.groupValues?.get(1)?.toDoubleOrNull()
@@ -168,7 +171,8 @@ private fun coordinates(url: MapsUrl, title: String?): Pair<Double?, Double?> {
     return if (valid) lat to lng else null to null
 }
 
-private fun isCoordinates(text: String) = DECIMAL.matches(text) || DMS.matches(text)
+/** The label other apps put after the coordinates, `(鼎泰豐)`; null when there is none. */
+private fun label(coordinates: MatchResult): String? = VenueName.normalize(coordinates.groupValues[3]).ifEmpty { null }
 
 /** `%XX` runs are UTF-8 bytes and `+` is a space. Hand-rolled: there is no `java.net` in commonMain. */
 private fun percentDecode(raw: String): String {

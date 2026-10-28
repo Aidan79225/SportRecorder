@@ -211,6 +211,22 @@ class MapsLinkTest {
         assertEquals(MapsPlace(null, null, null), MapsLink.parse("https://www.google.com/maps/search/%E9%BC%8E"))
     }
 
+    @Test fun coordinatesAsOtherAppsWriteThem_giveAPin_andTheLabelIsTheName() {
+        val labelled = MapsPlace("鼎泰豐", 25.0335, 121.5301)
+        assertEquals(labelled, MapsLink.parse("https://maps.google.com/?q=25.0335,121.5301(鼎泰豐)"))
+        assertEquals(
+            labelled,
+            MapsLink.parse("https://maps.google.com/?q=25.0335,121.5301+(%E9%BC%8E%E6%B3%B0%E8%B1%90)"),
+        )
+        val unnamed = MapsPlace(null, 25.0335, 121.5301)
+        assertEquals(unnamed, MapsLink.parse("https://maps.google.com/maps?q=loc:25.0335,121.5301"))
+        assertEquals(unnamed, MapsLink.parse("https://maps.google.com/?q=loc:+25.0335,+121.5301"))
+        assertEquals(unnamed, MapsLink.parse("https://maps.google.com/?q=25.0335,121.5301()"))
+        // Shared as plain text, the link ends at its CJK label: what is left of it names nothing.
+        val shared = MapsLink.find("https://maps.google.com/?q=25.0335,121.5301(鼎泰豐)")!!
+        assertEquals(unnamed, MapsLink.parse(shared.url))
+    }
+
     @Test fun coordinatesOnlyPlace_hasNoName() {
         val droppedPin = "https://www.google.com/maps/place/42.578496,1.895566/data=!4m6!3m5!1s0!7e2!8m2" +
             "!3d42.5784957!4d1.8955661?utm_source=mstt_1&entry=gps&coh=192189"
