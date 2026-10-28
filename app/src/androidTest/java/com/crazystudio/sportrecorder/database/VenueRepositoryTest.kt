@@ -263,7 +263,7 @@ class VenueRepositoryTest {
         assertEquals("臺北市大安區信義路二段194號", stored(empty.id).address)
     }
 
-    @Test fun setAddressIfEmpty_onAVenueThatIsGone_writesNothing() = runBlocking {
+    @Test fun setAddressIfEmpty_onAVenueThatIsGone_returnsFalse() = runBlocking {
         assertFalse(repo.setAddressIfEmpty(9_999, "松壽路11號"))
     }
 
@@ -374,36 +374,51 @@ class VenueRepositoryTest {
         assertNull(stored(store.id).address)
     }
 
-    @Test fun find_isOnlyAVenueStillStored() = runBlocking {
+    @Test fun find_givesAStoredVenue() = runBlocking {
         val store = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 1L)
-        val merged = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 2L)
-        val deleted = repo.create("麥當勞", null, null, now = 3L)
 
         assertEquals(store, repo.find(store.id))
-        repo.merge(fromId = merged.id, intoId = store.id, now = 4L)
+    }
+
+    @Test fun find_givesNothing_forAMergedAwayVenue() = runBlocking {
+        val store = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 1L)
+        val merged = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 2L)
+        repo.merge(fromId = merged.id, intoId = store.id, now = 3L)
+
+        // Where its records went is resolve's to say.
+        assertNull(repo.find(merged.id))
+    }
+
+    @Test fun find_givesNothing_forADeletedVenue() = runBlocking {
+        val deleted = repo.create("麥當勞", null, null, now = 1L)
         repo.delete(deleted.id)
 
-        // Gone either way: where a merged-away venue's records went is resolve's to say.
-        assertNull(repo.find(merged.id))
         assertNull(repo.find(deleted.id))
+    }
+
+    @Test fun resolve_givesAStoredVenueAsItIs() = runBlocking {
+        val store = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 1L)
+
+        assertEquals(store, repo.resolve(store.id))
     }
 
     @Test fun resolve_followsMerges_toWhereTheRecordsWent() = runBlocking {
         val a = repo.create("鼎泰豐 信義店", lat = 25.0335, lng = 121.5301, now = 1L)
         val b = repo.create("鼎泰豐 信義店", lat = 25.0336, lng = 121.5301, now = 2L)
         val c = repo.create("鼎泰豐", lat = 25.0337, lng = 121.5301, now = 3L)
-        val gone = repo.create("麥當勞", null, null, now = 4L)
+        repo.merge(fromId = a.id, intoId = b.id, now = 4L)
+        val survivor = requireNotNull(repo.merge(fromId = b.id, intoId = c.id, now = 5L))
 
-        // As stored, while it is there.
-        assertEquals(a, repo.resolve(a.id))
-        repo.merge(fromId = a.id, intoId = b.id, now = 5L)
-        val survivor = repo.merge(fromId = b.id, intoId = c.id, now = 6L)
-        repo.delete(gone.id)
-
-        // Merged away (twice over): the venue its records are at now. Deleted: none.
+        // Merged away (twice over): the venue its records are at now, which resolves to itself.
         assertEquals(survivor, repo.resolve(a.id))
         assertEquals(survivor, repo.resolve(b.id))
         assertEquals(survivor, repo.resolve(c.id))
+    }
+
+    @Test fun resolve_givesNothing_forADeletedVenue() = runBlocking {
+        val gone = repo.create("麥當勞", null, null, now = 1L)
+        repo.delete(gone.id)
+
         assertNull(repo.resolve(gone.id))
     }
 
