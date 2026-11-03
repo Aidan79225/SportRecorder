@@ -77,12 +77,12 @@ object PhotoStorage {
         val source = fileFor(context, fileName)
         if (!source.exists()) return@withContext false
         val resolver = context.contentResolver
-        val displayName = "SportRecorder_${System.currentTimeMillis()}.webp"
+        val displayName = "Sitora_${System.currentTimeMillis()}.webp"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Images.Media.MIME_TYPE, "image/webp")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/SportRecorder")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/Sitora")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }
