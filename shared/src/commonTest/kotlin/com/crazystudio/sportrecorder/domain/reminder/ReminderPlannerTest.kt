@@ -47,6 +47,22 @@ class ReminderPlannerTest {
     }
 
     @Test
+    fun windowClosing_followsTheWindowEndALongLastMealExtends() {
+        // 10:00 (default hour) and 17:30 for 90 min: the nominal end is 10:00 + 8h = 18:00, but the
+        // last meal runs to 19:00, so windowEnd = max(18:00, 19:00) = 19:00 → trigger 19:00 − lead.
+        val prefs = ReminderPrefs(windowClosingEnabled = true)
+        val meals = listOf(meal(day0 + h(10)), meal(day0 + h(17) + min(30), 90))
+        val out = ReminderPlanner.plan(meals, settings, prefs, day0 + h(17) + min(45), utc)
+
+        val nominalEnd = day0 + h(10) + h(settings.eatingHours)
+        val lastMealEnd = day0 + h(19)
+        assertTrue(lastMealEnd > nominalEnd)
+        assertEquals(1, out.size)
+        assertEquals(ReminderType.WINDOW_CLOSING, out[0].type)
+        assertEquals(lastMealEnd - min(prefs.leadMinutes), out[0].triggerAtMillis)
+    }
+
+    @Test
     fun windowClosing_customLeadTime() {
         val prefs = ReminderPrefs(windowClosingEnabled = true, leadMinutes = 45)
         val out = ReminderPlanner.plan(listOf(meal(day0 + h(10))), settings, prefs, day0 + h(11), utc)
