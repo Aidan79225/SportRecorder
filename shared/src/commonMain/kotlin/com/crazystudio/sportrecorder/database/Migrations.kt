@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.database
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.FastingType
 import com.crazystudio.sportrecorder.entity.VenueEntity
 
@@ -15,6 +16,7 @@ private const val VERSION_6 = 6
 private const val VERSION_7 = 7
 private const val VERSION_8 = 8
 private const val VERSION_9 = 9
+private const val VERSION_10 = 10
 
 // SQL is unchanged from the Android version — only the API moves from SupportSQLiteDatabase to the
 // multiplatform SQLiteConnection. Room runs each migrate() inside its own transaction.
@@ -97,7 +99,16 @@ object Migrations {
                             "`index_${VenueEntity.tableName}_name` ON `${VenueEntity.tableName}` (`name`)"
                     )
                 }
-            }
+            },
+            // A meal gains a duration; every meal recorded before reads as the hour the app always assumed.
+            // The DEFAULT must match the entity's `defaultValue = "60"` — Room validates it on open.
+            object : Migration(VERSION_9, VERSION_10) {
+                override fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL(
+                        "ALTER TABLE `${EatTime.tableName}` ADD COLUMN `duration_minutes` INTEGER NOT NULL DEFAULT 60"
+                    )
+                }
+            },
         )
     }
 }

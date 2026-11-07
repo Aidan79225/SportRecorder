@@ -110,4 +110,19 @@ class EatRecordRepositoryRoomTest {
         assertEquals(42L, after.photos.single().createdAt) // replaceAll keeps the backed-up timestamp
         assertTrue(h.files.deleted.isEmpty())
     }
+
+    @Test fun aDurationRoundTrips_onInsertAndOnUpdate() = runBlocking {
+        val id = h.eatRepo.save(
+            EatRecord(0, 1_000, null, "lunch", emptyList(), durationMinutes = 90),
+            emptyList(),
+            emptyList(),
+        )
+        assertEquals(90, h.eatRepo.findById(id)!!.durationMinutes)
+
+        h.eatRepo.save(h.eatRepo.findById(id)!!.copy(durationMinutes = 30), emptyList(), emptyList())
+        assertEquals(30, h.eatRepo.findById(id)!!.durationMinutes)
+
+        h.eatRepo.replaceAll(listOf(EatRecord(0, 2_000, null, "restored", emptyList(), durationMinutes = 120)))
+        assertEquals(listOf(120), h.eatRepo.observeAll().first().map { it.durationMinutes })
+    }
 }

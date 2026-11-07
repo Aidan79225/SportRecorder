@@ -37,6 +37,15 @@ class EatRecordMappersTest {
         )
     }
 
+    @Test fun aMealsDurationIsCarriedFromTheRowToTheRecord() {
+        val entity = EatTimeWithPhotos(
+            eatTime = EatTime(id = 1, time = 100L, durationMinutes = 90),
+            photos = emptyList(),
+        )
+        assertEquals(90, entity.toDomain().durationMinutes)
+        assertEquals(45, EatTime(id = 2, time = 0L, durationMinutes = 45).toDomain().durationMinutes)
+    }
+
     @Test fun nullLatLng_mapsToNullLocation() {
         val record = EatTime(id = 3, time = 0L, lat = null, lng = null, note = null).toDomain()
         assertNull(record.location)

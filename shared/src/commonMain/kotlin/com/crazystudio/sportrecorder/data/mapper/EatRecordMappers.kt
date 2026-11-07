@@ -21,6 +21,7 @@ fun EatTime.toDomain(photos: List<EatPhoto> = emptyList(), venue: Venue? = null)
     note = note,
     photos = photos,
     venue = venue,
+    durationMinutes = durationMinutes,
 )
 
 fun EatTimeWithPhotos.toDomain(): EatRecord = eatTime.toDomain(photos.map { it.toDomain() }, venue?.toDomain())

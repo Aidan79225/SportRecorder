@@ -49,6 +49,7 @@ class EatRecordRepositoryImpl(
                             lng = record.location?.lng,
                             note = record.note,
                             venueId = record.venue?.id,
+                            durationMinutes = record.durationMinutes,
                         ),
                     )
                     removedPhotos.forEach {
@@ -65,6 +66,7 @@ class EatRecordRepositoryImpl(
                             lng = record.location?.lng,
                             note = record.note,
                             venueId = record.venue?.id,
+                            durationMinutes = record.durationMinutes,
                         ),
                     ).toInt()
                 }
@@ -105,6 +107,7 @@ class EatRecordRepositoryImpl(
                             lng = record.location?.lng,
                             note = record.note,
                             venueId = record.venue?.id,
+                            durationMinutes = record.durationMinutes,
                         ),
                     ).toInt()
                     record.photos.forEach { photo ->

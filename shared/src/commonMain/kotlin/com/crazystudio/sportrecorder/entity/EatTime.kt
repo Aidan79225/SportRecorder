@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 
 @Entity(tableName = EatTime.tableName)
 data class EatTime(
@@ -24,6 +25,9 @@ data class EatTime(
 
     @ColumnInfo(name = "venue_id")
     val venueId: Int? = null,
+
+    @ColumnInfo(name = "duration_minutes", defaultValue = "60")
+    val durationMinutes: Int = MealDuration.DEFAULT_MINUTES,
 ) {
     companion object {
         const val tableName = "eat_time"
