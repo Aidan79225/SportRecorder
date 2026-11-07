@@ -12,10 +12,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,16 +34,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
@@ -57,15 +65,16 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 import kotlin.time.Instant
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * The Record tab: every record, newest first, with a venue search above them.
+ *
+ * The search text is this screen's own state — the one place it lives. Typing, the ✕ and tapping a card's
+ * venue all go through one `search` path, so the field and the list can never disagree, and a new
+ * search always starts at the newest match.
+ */
 @Composable
-@Suppress("LongMethod") // cohesive screen: search field + list + delete dialog
 fun RecordScreen(
     records: List<EatRecord>,
-    query: String,
-    showSearch: Boolean,
-    onQueryChange: (String) -> Unit,
-    onVenueClick: (Venue) -> Unit,
     onDelete: (EatRecord) -> Unit,
     onEditRecord: (Int) -> Unit,
     photoModel: (String) -> Any?,
@@ -73,80 +82,54 @@ fun RecordScreen(
     modifier: Modifier = Modifier,
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
-    // The search text is owned here; [query] only seeds it (e.g. after the screen is recreated). Nothing
-    // outside this screen changes the query, so it is never copied back — a lagging echo of a keystroke
-    // can never rewrite the field or reset an IME's composition.
-    var text by remember { mutableStateOf(query) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val shown = remember(records, query) { RecordVenueFilter.matching(records, query) }
+    val showSearch = remember(records, query) { RecordVenueFilter.canSearch(records, query) }
+    // Outside the branch below, so the list keeps its place while the no-match line stands in for it.
+    val listState = rememberLazyListState()
+    val search: (String) -> Unit = { value ->
+        query = value
+        listState.requestScrollToItem(0)
+    }
 
-    Box(
+    // imePadding: edge-to-edge, so without it the keyboard would cover the last results.
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+            .background(MaterialTheme.colorScheme.surface)
+            .imePadding(),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (showSearch) {
-                RecordSearchField(
-                    text = text,
-                    onTextChange = {
-                        text = it
-                        onQueryChange(it)
-                    },
-                )
-            }
-            if (query.isNotBlank() && records.isEmpty()) {
-                Text(
-                    text = stringResource(Res.string.record_search_empty),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(12.dp),
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(12.dp),
-                ) {
-                    items(records, key = { it.id }) { record ->
-                        RecordCard(
-                            record = record,
-                            onLongClick = { recordToDelete = record },
-                            onVenueClick = { venue ->
-                                text = RecordVenueFilter.queryFor(venue)
-                                onVenueClick(venue)
-                            },
-                            photoModel = photoModel,
-                            onThumbnailClick = onPhotoClick,
-                            onEditRecord = onEditRecord,
-                        )
-                    }
-                }
-            }
+        if (showSearch) {
+            RecordSearchField(text = query, onTextChange = search)
+        }
+        if (query.isNotBlank() && shown.isEmpty()) {
+            NoMatchingRecords()
+        } else {
+            RecordList(
+                records = shown,
+                listState = listState,
+                onLongClick = { recordToDelete = it },
+                onVenueClick = { venue -> search(RecordVenueFilter.queryFor(venue)) },
+                photoModel = photoModel,
+                onPhotoClick = onPhotoClick,
+                onEditRecord = onEditRecord,
+            )
         }
     }
 
     recordToDelete?.let { record ->
-        AlertDialog(
-            onDismissRequest = { recordToDelete = null },
-            title = { Text(text = "Delete") },
-            text = { Text(text = "Do you want to delete this record?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDelete(record)
-                    recordToDelete = null
-                }) {
-                    Text(text = "Yes")
-                }
+        DeleteRecordDialog(
+            record = record,
+            onConfirm = {
+                onDelete(it)
+                recordToDelete = null
             },
-            dismissButton = {
-                TextButton(onClick = { recordToDelete = null }) {
-                    Text(text = "No")
-                }
-            },
+            onDismiss = { recordToDelete = null },
         )
     }
 }
 
-/** The venue search field. Stateless: [RecordScreen] owns its text. The ✕ clears it through [onTextChange]. */
+/** The venue search field; [RecordScreen] owns its text. The ✕ clears it through [onTextChange]. */
 @Composable
 private fun RecordSearchField(
     text: String,
@@ -177,9 +160,70 @@ private fun RecordSearchField(
     )
 }
 
+@Composable
+private fun RecordList(
+    records: List<EatRecord>,
+    listState: LazyListState,
+    onLongClick: (EatRecord) -> Unit,
+    onVenueClick: (Venue) -> Unit,
+    photoModel: (String) -> Any?,
+    onPhotoClick: (List<String>, Int) -> Unit,
+    onEditRecord: (Int) -> Unit,
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(12.dp),
+    ) {
+        items(records, key = { it.id }) { record ->
+            RecordCard(
+                record = record,
+                onLongClick = { onLongClick(record) },
+                onVenueClick = onVenueClick,
+                photoModel = photoModel,
+                onThumbnailClick = onPhotoClick,
+                onEditRecord = onEditRecord,
+            )
+        }
+    }
+}
+
+/** Stands in for the list when a search matches nothing; announced politely when it appears. */
+@Composable
+private fun NoMatchingRecords() {
+    Text(
+        text = stringResource(Res.string.record_search_empty),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(12.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+@Composable
+private fun DeleteRecordDialog(record: EatRecord, onConfirm: (EatRecord) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Delete") },
+        text = { Text(text = "Do you want to delete this record?") },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(record) }) {
+                Text(text = "Yes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "No")
+            }
+        },
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-@Suppress("LongMethod") // cohesive card layout: header, note, photo carousel, location
+@Suppress("LongMethod") // cohesive card layout: header (date, time, venue), note, photo carousel, location
 private fun RecordCard(
     record: EatRecord,
     onLongClick: () -> Unit,
@@ -321,8 +365,7 @@ private fun VenueLines(venue: Venue, onClick: () -> Unit, onLongClick: () -> Uni
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        val address = venue.address
-        if (!address.isNullOrBlank()) {
+        VenueAddress.clean(venue.address)?.let { address ->
             Text(
                 text = address,
                 style = MaterialTheme.typography.labelSmall,
