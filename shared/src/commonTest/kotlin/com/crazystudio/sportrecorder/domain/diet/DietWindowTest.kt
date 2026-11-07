@@ -107,6 +107,15 @@ class DietWindowTest {
         assertEquals(DietPhase.EATING, s.phase) // still mid-meal, so not fasting yet
     }
 
+    @Test fun windowEnd_isTheLatestEnd_evenWhenItBelongsToAnEarlierStartedMeal() {
+        // The middle meal ends last (+10h); the meal that started last ends sooner (+8h15m).
+        val meals = listOf(meal(f), meal(f + h(7), 180), meal(f + h(8), 15))
+        val s = DietWindow.compute(meals, eh, fh, f + h(9))
+        assertEquals(f + h(10), s.windowEnd)
+        assertEquals(f + h(10), s.fastStartAt)
+        assertEquals(DietPhase.EATING, s.phase) // the long meal is still going, so not fasting yet
+    }
+
     @Test fun aMealThatCrossesMidnight_isHandledLikeAnyOther() {
         // f is 22:13 UTC; a snack starts 30 minutes before the next UTC midnight and lasts 90.
         val dayMs = h(24)

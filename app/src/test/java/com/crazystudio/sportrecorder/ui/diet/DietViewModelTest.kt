@@ -164,7 +164,7 @@ class DietViewModelTest {
 
         vm.uiState.test {
             skipItems(1) // initial default
-            // Single meal: fast clock starts 1h after the meal, so +12h shows 11h.
+            // Single meal: the fast clock starts when the 1-hour meal ends, so +12h shows 11h.
             assertEquals("11:00:00", awaitItem().elapsedText)
 
             nowMs += TimeUnit.SECONDS.toMillis(1)
