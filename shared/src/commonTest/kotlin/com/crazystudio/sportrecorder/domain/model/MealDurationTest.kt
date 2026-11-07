@@ -30,4 +30,9 @@ class MealDurationTest {
         assertEquals(1_000L + 5_400_000L, record.endTime)
         assertEquals(1_000L + 3_600_000L, EatRecord(0, 1_000L, null, null, emptyList()).endTime)
     }
+
+    /** 40_000 minutes is legal restore input; times 60_000 it overflows Int, so the end must be a Long sum. */
+    @Test fun endTimeOfAVeryLongMeal_doesNotOverflow() {
+        assertEquals(2_400_001_000L, EatRecord(0, 1_000L, null, null, emptyList(), durationMinutes = 40_000).endTime)
+    }
 }
