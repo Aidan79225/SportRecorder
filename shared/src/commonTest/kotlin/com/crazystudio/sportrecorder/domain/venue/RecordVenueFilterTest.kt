@@ -164,4 +164,23 @@ class RecordVenueFilterTest {
         assertEquals(listOf(4, 2), idsMatching(records, RecordVenueFilter.queryFor(xinyi)))
         assertEquals(listOf(3), idsMatching(records, RecordVenueFilter.queryFor(zhongxiao)))
     }
+
+    @Test fun anAddressWithPaddingLeavesNoDoubleSpaceInTheQuery() {
+        assertEquals("Ichiran X", RecordVenueFilter.queryFor(venue(1, "Ichiran", address = "  X  ")))
+    }
+
+    @Test fun canSearch_isFalseWhenNoRecordHasAVenueAndNothingIsTyped() {
+        assertEquals(false, RecordVenueFilter.canSearch(listOf(record(1, venue = null)), ""))
+        assertEquals(false, RecordVenueFilter.canSearch(emptyList(), ""))
+    }
+
+    @Test fun canSearch_isTrueWhenARecordHasAVenue() {
+        val records = listOf(record(2, venue = null), record(1, venue(1, "Ichiran")))
+        assertEquals(true, RecordVenueFilter.canSearch(records, ""))
+    }
+
+    @Test fun canSearch_staysTrueWhileAQueryIsTyped_evenIfNoRecordHasAVenueAnymore() {
+        assertEquals(true, RecordVenueFilter.canSearch(listOf(record(1, venue = null)), "shop"))
+        assertEquals(true, RecordVenueFilter.canSearch(emptyList(), "shop"))
+    }
 }

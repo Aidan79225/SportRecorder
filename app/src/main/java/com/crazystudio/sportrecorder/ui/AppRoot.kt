@@ -169,15 +169,9 @@ fun AppRoot(
             composable<Route.Record> {
                 val vm: DietRecordViewModel = koinViewModel()
                 val records by vm.records.collectAsStateWithLifecycle()
-                val query by vm.query.collectAsStateWithLifecycle()
-                val showSearch by vm.showSearch.collectAsStateWithLifecycle()
                 PhotoViewerHost { onPhotoClick ->
                     RecordScreen(
                         records = records,
-                        query = query,
-                        showSearch = showSearch,
-                        onQueryChange = vm::setQuery,
-                        onVenueClick = vm::searchVenue,
                         onDelete = vm::deleteRecord,
                         onEditRecord = { id -> navController.navigate(Route.EatTimeEditor(eatTimeId = id)) },
                         photoModel = vm::photoModel,

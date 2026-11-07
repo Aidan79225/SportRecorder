@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.domain.venue
 
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 
 private const val WORD_SEPARATOR = " "
@@ -35,11 +36,20 @@ object RecordVenueFilter {
 
     /**
      * What tapping a card's venue puts in the search field: "<name> <address>", or just the name when
-     * there is no (or a blank) address, every character spelled as stored — nothing is folded here. It
+     * there is no address ([VenueAddress.clean]: trimmed, blank is none), spelled as stored — nothing is
+     * folded here. It
      * is the text [matching] searches, so the venue always finds its own records, while a branch that
      * shares its name drops out unless its address holds the same words.
      */
     fun queryFor(venue: Venue): String = searchText(venue)
+
+    /**
+     * Whether the Record tab offers its search field: when some record has a venue, and for as long as a
+     * query is typed — so deleting the last record with a venue mid-search never takes the field (and
+     * the only way to clear the query) away.
+     */
+    fun canSearch(records: List<EatRecord>, query: String): Boolean =
+        query.isNotEmpty() || records.any { it.venue != null }
 
     private fun wordsOf(query: String): List<String> =
         fold(VenueName.normalize(query)).split(WORD_SEPARATOR).filter { it.isNotEmpty() }
@@ -50,7 +60,7 @@ object RecordVenueFilter {
     }
 
     private fun searchText(venue: Venue): String =
-        listOfNotNull(venue.name, venue.address?.takeIf { it.isNotBlank() }).joinToString(WORD_SEPARATOR)
+        listOfNotNull(venue.name, VenueAddress.clean(venue.address)).joinToString(WORD_SEPARATOR)
 
     /** [text] ready to be compared, never to be shown: the one place 臺 and 台 are made the same character. */
     private fun fold(text: String): String = text.replace(TAI_FORMAL, TAI_COMMON)
