@@ -38,7 +38,8 @@ Three small changes, each the simplest thing that works:
 ### A2. Search
 
 - One single-line field above the list, 「搜尋店家（名稱或地址）」, with a ✕ that clears it. It is
-  **shown only when at least one record has a venue**, so people who never use venues see no change.
+  **shown only when at least one record has a venue — or while a query is typed**, so people who never
+  use venues see no change and a query can always be cleared (`RecordVenueFilter.canSearch`).
 - **Matching** is a pure function (`RecordVenueFilter`). The query is whitespace-normalised
   (`VenueName.normalize`, so full-width spaces work) and split into words; a record matches when
   **every word** occurs, case-insensitively, in `"<venue name> <venue address>"`. A blank query keeps
@@ -52,8 +53,10 @@ Three small changes, each the simplest thing that works:
   when another branch shares its name. (Rare edge: a venue with no address matches by name only, and
   a sibling whose address contains all of this venue's address words also matches.)
 - When nothing matches: one gentle line under the field, 「沒有符合的紀錄」.
-- The query lives in the Record tab's ViewModel only. It is not saved, and it resets when the user
-  leaves the tab.
+- **The Record screen owns the query and filters its own list** (the way the venue picker already
+  does) — the ViewModel is unchanged. The query survives a rotation and resets when the user leaves
+  the tab. Typing, the ✕ and a venue tap all go through one path, which also scrolls the list back to
+  the newest match.
 - **No counts, no ranking, no "most visited".** The list is the answer.
 
 ## Part B — meal duration
@@ -108,11 +111,11 @@ for the default; changing the duration from the record card; durations finer tha
 ## Testing
 
 - **Pure, `commonTest` (JVM + iOS):** `RecordVenueFilter` (blank query, case, address, every word,
-  same-name branches, no venue, order); `MealDuration`; the new `DietWindow` rules (one meal at the
+  same-name branches, no venue, order, when to offer the search); `MealDuration`; the new `DietWindow` rules (one meal at the
   default is unchanged; a different duration moves the start; two meals; overlapping meals; the window
   end; midnight), `ReminderPlanner`.
-- **ViewModels, `app/src/test`:** the Record tab's query / visible records / `hasVenues`; the editor's
-  default, change, load and save of the duration; a quick record lasts 1 hour; the Home ViewModel.
+- **ViewModels, `app/src/test`:** the editor's default, change, load and save of the duration; a quick
+  record lasts 1 hour; the Home ViewModel.
 - **Room, androidTest:** a 9 → 10 migration keeps every meal and reads it as 60; the repository
   round-trips a duration.
 - **Backup:** a duration round-trips; a snapshot without one restores as 60; the golden fixtures are
