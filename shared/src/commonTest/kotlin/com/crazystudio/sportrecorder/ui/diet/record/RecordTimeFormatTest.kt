@@ -40,4 +40,13 @@ class RecordTimeFormatTest {
         assertEquals("12:30 – 13:30", formatClockRange(start, end, taipei))
         assertEquals("04:30 – 05:30", formatClockRange(start, end, zone))
     }
+
+    /** The times are wall-clock ones: an hour that spans the spring-forward jump reads as two on the clock. */
+    @Test fun aRangeAcrossASpringForwardShowsWallClockTimes() {
+        val newYork = TimeZone.of("America/New_York")
+        // On 2026-03-08 the clocks jump from 02:00 to 03:00, so one hour after 01:30 is 03:30 on the wall.
+        val start = LocalDateTime(2026, 3, 8, 1, 30).toInstant(newYork).toEpochMilliseconds()
+        val end = start + 60 * MILLIS_PER_MINUTE
+        assertEquals("01:30 – 03:30", formatClockRange(start, end, newYork))
+    }
 }
