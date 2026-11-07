@@ -25,6 +25,7 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_locatio
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.duration_hours
 import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
+import com.crazystudio.sportrecorder.shared.resources.duration_minutes
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
@@ -143,6 +144,21 @@ class EatTimeEditorSheetTest {
         assertEquals(listOf(90), durations)
         // The menu closed with the choice: its items are gone again.
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertDoesNotExist()
+    }
+
+    // Expected in English: "1 hr 15 min" (zh-TW 「1 小時 15 分鐘」) — 75 is not on the menu, shown as stored.
+    @Test
+    fun anOffMenuDurationIsDisplayedAsStored() {
+        show(EatTimeEditorUiState(durationMinutes = 75))
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 15)).assertIsDisplayed()
+    }
+
+    // Expected in English: "15 min" (zh-TW 「15 分鐘」), never "0 hr 15 min".
+    @Test
+    fun aShortDurationReadsInMinutes() {
+        show(EatTimeEditorUiState(durationMinutes = 15))
+        compose.onNodeWithText(str(Res.string.duration_minutes, 15)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 0, 15)).assertDoesNotExist()
     }
 
     @Test

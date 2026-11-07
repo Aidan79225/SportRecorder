@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -437,15 +438,15 @@ private fun PhotoTile(model: Any?, contentDescription: String, onRemove: () -> U
 @Composable
 private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        HeaderRow(
-            icon = Res.drawable.ic_baseline_access_time_24,
-            title = stringResource(Res.string.diet_eat_duration_title),
-            // A stored length the menu doesn't offer is shown as it is.
-            content = durationText(minutes),
-            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-            onActionClick = { expanded = true },
-        )
+    HeaderRow(
+        icon = Res.drawable.ic_baseline_access_time_24,
+        title = stringResource(Res.string.diet_eat_duration_title),
+        // A stored length the menu doesn't offer is shown as it is.
+        content = durationText(minutes),
+        actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+        onActionClick = { expanded = true },
+    ) {
+        // Anchored to the arrow, so the menu drops from it at the row's right edge.
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             MealDuration.CHOICES.forEach { choice ->
                 DropdownMenuItem(
@@ -477,6 +478,8 @@ private fun HeaderRow(
     content: String,
     actionIcon: DrawableResource,
     onActionClick: () -> Unit,
+    // Composed in a Box around the arrow: whatever pops up from the arrow (a menu) anchors to it.
+    anchor: @Composable BoxScope.() -> Unit = {},
 ) {
     Row(
         modifier = Modifier,
@@ -503,14 +506,17 @@ private fun HeaderRow(
                 .weight(1f)
                 .padding(horizontal = 10.dp),
         )
-        Image(
-            painter = painterResource(actionIcon),
-            contentDescription = "",
-            modifier = Modifier
-                .padding(10.dp)
-                .size(36.dp)
-                .clickable { onActionClick() },
-        )
+        Box {
+            Image(
+                painter = painterResource(actionIcon),
+                contentDescription = "",
+                modifier = Modifier
+                    .padding(10.dp)
+                    .size(36.dp)
+                    .clickable { onActionClick() },
+            )
+            anchor()
+        }
     }
 }
 
