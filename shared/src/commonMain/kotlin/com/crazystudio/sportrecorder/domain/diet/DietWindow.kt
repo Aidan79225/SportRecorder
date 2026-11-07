@@ -13,8 +13,6 @@ data class DietWindowState(
     val elapsedMillis: Long = 0L,
     val windowStart: Long? = null,
     val windowEnd: Long? = null,
-    /** The start of the last-started meal in the window. */
-    val lastEat: Long? = null,
     /** When the fast clock starts: the latest end of any meal in the window. */
     val fastStartAt: Long? = null,
     val fastTargetAt: Long? = null,
@@ -77,7 +75,6 @@ object DietWindow {
         // Only the latest window matters for the live state; see [groupIntoWindows] for the rule.
         val window = groupIntoWindows(mealsAsc, eatingHours, fastingHours) { it.start }.last()
         val first = window.first().start
-        val last = window.last().start
         val latestEnd = window.maxOf { it.end }
 
         // Window extends to the late meal's end if it overran the nominal eating hours.
@@ -92,7 +89,6 @@ object DietWindow {
                 elapsedMillis = (windowEnd - now).coerceAtLeast(0L),
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )
@@ -102,7 +98,6 @@ object DietWindow {
                 elapsedMillis = now - fastStartAt,
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )
@@ -112,7 +107,6 @@ object DietWindow {
                 elapsedMillis = now - fastStartAt,
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )

@@ -66,7 +66,6 @@ class DietWindowTest {
         val s = DietWindow.compute(listOf(meal(f)), eh, fh, f + h(12))
         assertEquals(f + h(1), s.fastStartAt)
         assertEquals(f + h(1) + fhMs, s.fastTargetAt)
-        assertEquals(f, s.lastEat)
     }
 
     @Test fun singleMeal_aDifferentDuration_movesTheFastStart() {
@@ -82,7 +81,6 @@ class DietWindowTest {
     @Test fun twoMeals_fastStartsWhenTheLastMealEnds() {
         val s = DietWindow.compute(listOf(meal(f), meal(f + h(3))), eh, fh, f + h(12))
         assertEquals(f + h(4), s.fastStartAt)
-        assertEquals(f + h(3), s.lastEat)
     }
 
     @Test fun multiMeal_fastStartsWhenTheLastMealEnds() {
@@ -97,7 +95,6 @@ class DietWindowTest {
         val s = DietWindow.compute(listOf(meal(f, 180), meal(f + h(1), 15)), eh, fh, f + h(12))
         assertEquals(f + h(3), s.fastStartAt)
         assertEquals(f + h(3) + fhMs, s.fastTargetAt)
-        assertEquals(f + h(1), s.lastEat) // still the start of the last-started meal
     }
 
     @Test fun windowEnd_extendsToTheLastMealsEnd() {
@@ -123,7 +120,6 @@ class DietWindowTest {
         val lateSnack = meal(midnight - min(30), 90)
         val s = DietWindow.compute(listOf(meal(f), lateSnack), eh, fh, midnight + h(12))
         assertEquals(f, s.windowStart) // grouped with the evening meal by its start
-        assertEquals(midnight - min(30), s.lastEat)
         assertEquals(midnight + h(1), s.fastStartAt)
         assertEquals(midnight + h(1) + fhMs, s.fastTargetAt)
         assertEquals(DietPhase.FASTING, s.phase)
@@ -133,7 +129,6 @@ class DietWindowTest {
         val s = DietWindow.compute(listOf(meal(f), meal(f + h(4)), meal(f + h(10))), eh, fh, f + h(11))
         assertEquals(DietPhase.FASTING, s.phase)
         assertEquals(f, s.windowStart)
-        assertEquals(f + h(10), s.lastEat)
         assertEquals(f + h(11), s.fastStartAt)
         assertEquals(f + h(11) + fhMs, s.fastTargetAt)
     }
@@ -147,7 +142,6 @@ class DietWindowTest {
     @Test fun mealBeyondTolerance_startsNewWindow() {
         val s = DietWindow.compute(listOf(meal(f), meal(f + h(17))), eh, fh, f + h(18))
         assertEquals(f + h(17), s.windowStart)
-        assertEquals(f + h(17), s.lastEat)
         assertEquals(f + h(17) + ehMs, s.windowEnd)
     }
 
@@ -168,10 +162,10 @@ class DietWindowTest {
         assertEquals(DietPhase.SUCCESS, DietWindow.compute(meals, eh, fh, f + h(4) + fhMs).phase)
     }
 
-    @Test fun multipleEatsInWindow_lastEatIsLatest() {
+    @Test fun multipleEatsInWindow_fastCountsFromTheLastMealsEnd() {
         val s = DietWindow.compute(listOf(meal(f), meal(f + h(1)), meal(f + h(3))), eh, fh, f + h(9))
         assertEquals(DietPhase.FASTING, s.phase)
-        assertEquals(f + h(3), s.lastEat)
+        assertEquals(f + h(4), s.fastStartAt)
         assertEquals(h(5), s.elapsedMillis)
     }
 
@@ -203,7 +197,6 @@ class DietWindowTest {
         val meals = listOf(meal(f), meal(f + h(2)), meal(f + h(20)), meal(f + h(21)))
         val s = DietWindow.compute(meals, eh, fh, f + h(22))
         assertEquals(f + h(20), s.windowStart)
-        assertEquals(f + h(21), s.lastEat)
         assertEquals(f + h(22), s.fastStartAt) // the latest window's last meal ends at +22h
     }
 }
