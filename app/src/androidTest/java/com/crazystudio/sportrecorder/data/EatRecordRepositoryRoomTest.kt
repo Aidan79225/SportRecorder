@@ -111,7 +111,7 @@ class EatRecordRepositoryRoomTest {
         assertTrue(h.files.deleted.isEmpty())
     }
 
-    @Test fun aDurationRoundTrips_onInsertAndOnUpdate() = runBlocking {
+    @Test fun aDurationRoundTrips_onInsertUpdateWindowAndReplaceAll() = runBlocking {
         val id = h.eatRepo.save(
             EatRecord(0, 1_000, null, "lunch", emptyList(), durationMinutes = 90),
             emptyList(),
@@ -121,6 +121,11 @@ class EatRecordRepositoryRoomTest {
 
         h.eatRepo.save(h.eatRepo.findById(id)!!.copy(durationMinutes = 30), emptyList(), emptyList())
         assertEquals(30, h.eatRepo.findById(id)!!.durationMinutes)
+        // Home's fast clock reads meals only through the window query, so it must carry the duration too.
+        assertEquals(
+            listOf(30),
+            h.eatRepo.observeInWindow(after = 999, before = 1_001).first().map { it.durationMinutes },
+        )
 
         h.eatRepo.replaceAll(listOf(EatRecord(0, 2_000, null, "restored", emptyList(), durationMinutes = 120)))
         assertEquals(listOf(120), h.eatRepo.observeAll().first().map { it.durationMinutes })
