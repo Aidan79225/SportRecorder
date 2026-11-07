@@ -22,10 +22,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,23 +37,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
+import com.crazystudio.sportrecorder.shared.resources.record_search_clear
+import com.crazystudio.sportrecorder.shared.resources.record_search_empty
+import com.crazystudio.sportrecorder.shared.resources.record_search_hint
+import com.crazystudio.sportrecorder.shared.resources.record_venue_search
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 import kotlin.math.roundToLong
 import kotlin.time.Instant
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-@Suppress("LongMethod") // cohesive screen: list + delete dialog
+@Suppress("LongMethod") // cohesive screen: search field + list + delete dialog
 fun RecordScreen(
     records: List<EatRecord>,
+    query: String,
+    showSearch: Boolean,
+    onQueryChange: (String) -> Unit,
+    onVenueClick: (Venue) -> Unit,
     onDelete: (EatRecord) -> Unit,
     onEditRecord: (Int) -> Unit,
     photoModel: (String) -> Any?,
@@ -64,19 +79,34 @@ fun RecordScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(12.dp),
-        ) {
-            items(records, key = { it.id }) { record ->
-                RecordCard(
-                    record = record,
-                    onLongClick = { recordToDelete = record },
-                    photoModel = photoModel,
-                    onThumbnailClick = onPhotoClick,
-                    onEditRecord = onEditRecord,
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (showSearch) {
+                RecordSearchField(query = query, onQueryChange = onQueryChange)
+            }
+            if (query.isNotBlank() && records.isEmpty()) {
+                Text(
+                    text = stringResource(Res.string.record_search_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(12.dp),
                 )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(12.dp),
+                ) {
+                    items(records, key = { it.id }) { record ->
+                        RecordCard(
+                            record = record,
+                            onLongClick = { recordToDelete = record },
+                            onVenueClick = onVenueClick,
+                            photoModel = photoModel,
+                            onThumbnailClick = onPhotoClick,
+                            onEditRecord = onEditRecord,
+                        )
+                    }
+                }
             }
         }
     }
@@ -103,12 +133,57 @@ fun RecordScreen(
     }
 }
 
+/**
+ * The venue search. Its text lives here, not in the caller's state: a round trip through an async flow
+ * would reset the field mid-composition and break Chinese IME input. [query] changing from outside
+ * (a tapped venue, the clear button) is copied in.
+ */
+@Composable
+private fun RecordSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var text by remember { mutableStateOf(query) }
+    LaunchedEffect(query) {
+        if (query != text) text = query
+    }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onQueryChange(it)
+        },
+        placeholder = { Text(stringResource(Res.string.record_search_hint)) },
+        singleLine = true,
+        trailingIcon = if (text.isNotEmpty()) {
+            {
+                IconButton(onClick = {
+                    text = ""
+                    onQueryChange("")
+                }) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_baseline_close_24),
+                        contentDescription = stringResource(Res.string.record_search_clear),
+                    )
+                }
+            }
+        } else {
+            null
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 @Suppress("LongMethod") // cohesive card layout: header, note, photo carousel, location
 private fun RecordCard(
     record: EatRecord,
     onLongClick: () -> Unit,
+    onVenueClick: (Venue) -> Unit,
     photoModel: (String) -> Any?,
     onThumbnailClick: (List<String>, Int) -> Unit,
     onEditRecord: (Int) -> Unit,
@@ -134,7 +209,7 @@ private fun RecordCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = formatDate(record.time),
                     style = MaterialTheme.typography.bodySmall,
@@ -145,6 +220,7 @@ private fun RecordCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
+                record.venue?.let { venue -> VenueLines(venue = venue, onClick = { onVenueClick(venue) }) }
             }
             Icon(
                 painter = painterResource(Res.drawable.ic_baseline_edit_24),
@@ -217,6 +293,32 @@ private fun RecordCard(
                 text = "📍 ${fmt4(loc.lat)}, ${fmt4(loc.lng)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/** The record's venue under its time: the name, then the address when there is one. Tapping searches for it. */
+@Composable
+private fun VenueLines(venue: Venue, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier.clickable(
+            onClickLabel = stringResource(Res.string.record_venue_search),
+            role = Role.Button,
+            onClick = onClick,
+        ),
+    ) {
+        Text(
+            text = venue.name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        val address = venue.address
+        if (!address.isNullOrBlank()) {
+            Text(
+                text = address,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
