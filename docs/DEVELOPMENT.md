@@ -165,6 +165,7 @@
 | 10-10 | 從 Google 地圖分享進來(分享地點 → 新餐點,店家與位置由 Maps 帶入) | ✓ | ✓ | 已實作(`claude/maps-share-84`,issue #84,PR 待開) |
 | 10-18 | 店家分店、地址、編輯與刪除、貼上地圖連結(同名不同地點可並存,自動帶地址) | ✓ | ✓ | 已實作(`claude/venue-branches-89`,issue #89,PR 待開) |
 | 10-28 | Google 地圖 app 產生的連結(貼上、分享與「貼上地圖連結更新」帶入正確的店名、地址與位置,啟動時修復黏著地址的店名) | ✓(10-18 spec 的 Addendum) | ✓ | 已實作(`claude/maps-app-links`,PR 待開) |
+| 11-07 | 紀錄頁店家與搜尋、用餐時長(Part A:每筆紀錄顯示店名與地址、依店名/地址搜尋紀錄;Part B:餐點用餐時長) | ✓ | ✓ | Part A 已實作(`claude/record-venue-search`,PR 待開);Part B(用餐時長)已設計,未實作 |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。
