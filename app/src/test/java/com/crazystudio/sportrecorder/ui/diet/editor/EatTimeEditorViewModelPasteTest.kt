@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -110,6 +111,8 @@ class EatTimeEditorViewModelPasteTest {
         // Two facts: the venue is where Maps says; the meal is still where you were.
         assertEquals(home, saved.location)
         assertEquals("鼎泰豐 信義店", saved.venue?.name)
+        // Pasting a link leaves the meal at the default hour.
+        assertEquals(MealDuration.DEFAULT_MINUTES, saved.durationMinutes)
     }
 
     @Test
