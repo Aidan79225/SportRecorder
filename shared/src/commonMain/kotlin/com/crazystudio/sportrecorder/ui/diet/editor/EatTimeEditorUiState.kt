@@ -2,12 +2,15 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 
 data class EatTimeEditorUiState(
     val dateMillis: Long = 0L, // the meal's date+time as epoch millis; formatted for display
     val isEditMode: Boolean = false,
+    /** How long the meal took; a stored length that is not one of the menu's choices is kept as is. */
+    val durationMinutes: Int = MealDuration.DEFAULT_MINUTES,
     val note: String = "",
     val existingPhotos: List<EatPhoto> = emptyList(), // already-saved photos (edit mode)
     val pendingPhotos: List<String> = emptyList(), // newly captured webp file names

@@ -33,6 +33,14 @@ class QuickRecordMealUseCaseTest {
         assertTrue(saved.photos.isEmpty())
     }
 
+    /** A tap asks nothing, so the meal lasts the hour every record gets by default. */
+    @Test
+    fun aQuickRecord_lastsOneHour() = runTest {
+        quickRecord(now)
+
+        assertEquals(60, repo.stored.single().durationMinutes)
+    }
+
     /** A meal shifts the eating window, so the reminders must be re-armed — same as in-app saves. */
     @Test
     fun remindersAreRescheduled() = runTest {

@@ -17,11 +17,14 @@ import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_ti
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_clear_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_none
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_note
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_recapture_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
+import com.crazystudio.sportrecorder.shared.resources.duration_hours
+import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
@@ -54,6 +57,7 @@ class EatTimeEditorSheetTest {
     private var clearLocation = 0
     private var recapture = 0
     private val notes = mutableListOf<String>()
+    private val durations = mutableListOf<Int>()
     private val removedPending = mutableListOf<String>()
     private val removedExisting = mutableListOf<EatPhoto>()
 
@@ -67,6 +71,7 @@ class EatTimeEditorSheetTest {
                     photoModel = { null },
                     onPickDate = { pickDate++ },
                     onPickTime = { pickTime++ },
+                    onDurationChange = { durations.add(it) },
                     onNoteChange = { notes.add(it) },
                     onAddPhoto = { addPhoto++ },
                     onSelectPhoto = { selectPhoto++ },
@@ -96,8 +101,8 @@ class EatTimeEditorSheetTest {
     // the Column's last child), leaving pickDate/addPhoto at 0 (see report for the RED run).
     // The action icons are the only nodes that are both clickable AND have contentDescription =
     // "" (the leading icons share the empty description but aren't clickable), so they're
-    // selected by that filter and taken by fixed document order: date, time, take-photo,
-    // choose-from-gallery.
+    // selected by that filter and taken by fixed document order: date, time, duration,
+    // take-photo, choose-from-gallery.
     private fun headerRowActionIcons() =
         compose.onAllNodes(hasContentDescription("") and hasClickAction(), useUnmergedTree = true)
             .assertCountEquals(HEADER_ROW_COUNT)
@@ -127,6 +132,20 @@ class EatTimeEditorSheetTest {
     }
 
     @Test
+    fun theDurationRowReadsOneHourByDefault_andChoosingNinetyMinutesReportsIt() {
+        show(EatTimeEditorUiState())
+        compose.onNodeWithText(str(Res.string.diet_eat_duration_title)).assertIsDisplayed()
+        compose.onNodeWithText(str(Res.string.duration_hours, 1)).assertIsDisplayed()
+
+        headerRowActionIcons()[2].performClick() // duration row opens its menu
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).performClick()
+
+        assertEquals(listOf(90), durations)
+        // The menu closed with the choice: its items are gone again.
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertDoesNotExist()
+    }
+
+    @Test
     fun noteField_emitsChanges() {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.diet_eat_note)).performTextInput("ramen")
@@ -138,9 +157,9 @@ class EatTimeEditorSheetTest {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.photo_add)).assertIsDisplayed()
         compose.onNodeWithText(str(Res.string.photo_select)).assertIsDisplayed()
-        headerRowActionIcons()[2].performClick() // take-photo row
+        headerRowActionIcons()[3].performClick() // take-photo row
         assertEquals(1, addPhoto)
-        headerRowActionIcons()[3].performClick() // choose-from-gallery row
+        headerRowActionIcons()[4].performClick() // choose-from-gallery row
         assertEquals(1, selectPhoto)
     }
 
@@ -210,7 +229,7 @@ class EatTimeEditorSheetTest {
     }
 
     private companion object {
-        /** Date, time, take-photo, choose-from-gallery. */
-        const val HEADER_ROW_COUNT = 4
+        /** Date, time, duration, take-photo, choose-from-gallery. */
+        const val HEADER_ROW_COUNT = 5
     }
 }

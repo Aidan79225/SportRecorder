@@ -143,6 +143,7 @@ class EatTimeEditorViewModel constructor(
                 _uiState.update {
                     it.copy(
                         dateMillis = currentMillis,
+                        durationMinutes = record.durationMinutes,
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         venue = record.venue,
@@ -744,6 +745,8 @@ class EatTimeEditorViewModel constructor(
             // The update path rewrites the whole row, so the venue must travel with the record:
             // leaving it out here would silently clear it whenever only the note was edited.
             venue = venue,
+            // Likewise the duration: as loaded (even one the menu doesn't offer) unless the user chose another.
+            durationMinutes = state.durationMinutes,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
@@ -771,6 +774,8 @@ class EatTimeEditorViewModel constructor(
         currentMillis = LocalDateTime(dt.date, newTime).toInstant(zone).toEpochMilliseconds()
         publishDate()
     }
+
+    fun setDuration(minutes: Int) = _uiState.update { it.copy(durationMinutes = minutes) }
 
     private fun publishDate() = _uiState.update { it.copy(dateMillis = currentMillis) }
 
