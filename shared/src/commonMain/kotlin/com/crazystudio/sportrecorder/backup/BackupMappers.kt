@@ -5,23 +5,30 @@ import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 
 fun EatRecord.toBackup() = BackupMeal(id, time, note,
     location?.let { BackupGeoPoint(it.lat, it.lng) },
     photos.map { BackupPhoto(it.id, it.fileName, it.createdAt) },
-    venueName = venue?.name, venueKey = venue?.id?.toString())
+    venueName = venue?.name, venueKey = venue?.id?.toString(),
+    durationMinutes = durationMinutes)
 
 fun Venue.toBackup() = BackupVenue(name, lat, lng, lastUsedAt, address, key = id.toString())
 
 /**
  * Always comes back without a venue: only [BackupService] knows the venues' local ids, and it
  * re-attaches them by [BackupMeal.venueKey] (or [BackupMeal.venueName] for schema 1) once they exist.
+ *
+ * The duration comes back as the default hour when the snapshot has none (written before durations)
+ * or has one that is not positive: a snapshot is a file from outside, and a meal with no length, or
+ * one that ends before it starts, must never be stored.
  */
 fun BackupMeal.toDomain() = EatRecord(id, time,
     location?.let { GeoPoint(it.lat, it.lng) }, note,
-    photos.map { EatPhoto(it.id, it.fileName, it.createdAt) })
+    photos.map { EatPhoto(it.id, it.fileName, it.createdAt) },
+    durationMinutes = durationMinutes?.takeIf { it > 0 } ?: MealDuration.DEFAULT_MINUTES)
 
 fun CustomFastingType.toBackup() = BackupFastingType(fastingHours, eatingHours, name)
 fun BackupFastingType.toDomain() = CustomFastingType(fastingHours, eatingHours, name)
