@@ -10,7 +10,8 @@ private val FULL_WIDTH_SPACE = Char(0x3000).toString()
 
 /**
  * The Record tab's search only narrows the list the user already has: every word of the query must
- * occur in the venue's name or address, whatever the case, and the order never changes.
+ * occur in the venue's name or address, whatever the case and whichever of 臺 and 台 is written, and
+ * the order never changes.
  */
 class RecordVenueFilterTest {
 
@@ -112,6 +113,23 @@ class RecordVenueFilterTest {
         assertEquals(listOf(xinyi), RecordVenueFilter.matching(records, padded))
     }
 
+    @Test fun taiwanVariantsMatchEachOther() {
+        // 臺 (U+81FA) and 台 (U+53F0) are two characters that read as one: an address may be written with
+        // either, and people type either. Each of these records spells it differently.
+        val addressWithTai = record(1, venue(1, "鼎泰豐", address = "臺北市大安區信義路二段194號"))
+        val addressWithVariant = record(2, venue(2, "路易莎", address = "台北市中山區南京東路"))
+        val nameWithTai = record(3, venue(3, "臺灣小吃"))
+        val unrelated = record(4, venue(4, "Ichiran"))
+        val records = listOf(addressWithTai, addressWithVariant, nameWithTai, unrelated)
+
+        // Whichever way it is typed, an address is found whichever way it was written.
+        assertEquals(listOf(addressWithTai, addressWithVariant), RecordVenueFilter.matching(records, "台北"))
+        assertEquals(listOf(addressWithTai, addressWithVariant), RecordVenueFilter.matching(records, "臺北"))
+        // So is a name.
+        assertEquals(listOf(nameWithTai), RecordVenueFilter.matching(records, "台灣"))
+        assertEquals(listOf(nameWithTai), RecordVenueFilter.matching(records, "臺灣"))
+    }
+
     @Test fun queryFor_isTheNameThenTheAddress() {
         val withAddress = venue(1, "麥當勞", address = "臺北市大安區信義路二段194號")
 
@@ -119,6 +137,16 @@ class RecordVenueFilterTest {
         for (blank in listOf(null, "", "   ", FULL_WIDTH_SPACE)) {
             assertEquals("Ichiran", RecordVenueFilter.queryFor(venue(2, "Ichiran", address = blank)), "address $blank")
         }
+    }
+
+    @Test fun queryFor_keepsTheCharactersAsStored() {
+        // Only matching treats 臺 and 台 alike. What goes into the search field is the venue's own text,
+        // each part spelled the way it was stored, and it still finds the venue's records.
+        val mixed = venue(1, "臺灣小吃", address = "台北市中山區南京東路")
+        val records = listOf(record(1, mixed), record(2, venue(2, "Ichiran")))
+
+        assertEquals("臺灣小吃 台北市中山區南京東路", RecordVenueFilter.queryFor(mixed))
+        assertEquals(listOf(1), idsMatching(records, RecordVenueFilter.queryFor(mixed)))
     }
 
     @Test fun queryFor_matchesExactlyThatVenuesRecords_evenWhenABranchSharesItsName() {

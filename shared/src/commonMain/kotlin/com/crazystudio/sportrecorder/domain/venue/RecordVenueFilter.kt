@@ -6,6 +6,11 @@ import com.crazystudio.sportrecorder.domain.model.VenueName
 
 private const val WORD_SEPARATOR = " "
 
+// 臺 (U+81FA) and 台 (U+53F0) read as one character, yet the same place is written either way: an address
+// may carry the first while a person types the second. Comparing folds the first onto the second.
+private const val TAI_FORMAL = '臺'
+private const val TAI_COMMON = '台'
+
 /**
  * The Record tab's venue search: which records came from the place the user is looking for.
  *
@@ -18,8 +23,9 @@ object RecordVenueFilter {
      * The [records] whose venue holds EVERY word of [query] in "<name> <address>", case-insensitively
      * and in any order, so 「麥當勞 信義」 narrows two 麥當勞 branches down to the one on 信義路. The query
      * is normalized first ([VenueName.normalize]): stray, doubled and full-width (U+3000) spaces never
-     * hide a match. A blank query keeps [records] as given; a record without a venue never matches a
-     * non-blank one. The order of [records] is kept.
+     * hide a match. 臺 and 台 count as the same character on both sides, so 「台北」 finds an address
+     * written 「臺北市…」 and the reverse. A blank query keeps [records] as given; a record without a
+     * venue never matches a non-blank one. The order of [records] is kept.
      */
     fun matching(records: List<EatRecord>, query: String): List<EatRecord> {
         val words = wordsOf(query)
@@ -29,20 +35,23 @@ object RecordVenueFilter {
 
     /**
      * What tapping a card's venue puts in the search field: "<name> <address>", or just the name when
-     * there is no (or a blank) address. It is the very text [matching] reads, so the venue always finds
-     * its own records, while a branch that shares its name drops out unless its address holds the same
-     * words.
+     * there is no (or a blank) address, every character spelled as stored — nothing is folded here. It
+     * is the text [matching] searches, so the venue always finds its own records, while a branch that
+     * shares its name drops out unless its address holds the same words.
      */
     fun queryFor(venue: Venue): String = searchText(venue)
 
     private fun wordsOf(query: String): List<String> =
-        VenueName.normalize(query).split(WORD_SEPARATOR).filter { it.isNotEmpty() }
+        fold(VenueName.normalize(query)).split(WORD_SEPARATOR).filter { it.isNotEmpty() }
 
     private fun matchesEveryWord(venue: Venue, words: List<String>): Boolean {
-        val text = searchText(venue)
+        val text = fold(searchText(venue))
         return words.all { word -> text.contains(word, ignoreCase = true) }
     }
 
     private fun searchText(venue: Venue): String =
         listOfNotNull(venue.name, venue.address?.takeIf { it.isNotBlank() }).joinToString(WORD_SEPARATOR)
+
+    /** [text] ready to be compared, never to be shown: the one place 臺 and 台 are made the same character. */
+    private fun fold(text: String): String = text.replace(TAI_FORMAL, TAI_COMMON)
 }
