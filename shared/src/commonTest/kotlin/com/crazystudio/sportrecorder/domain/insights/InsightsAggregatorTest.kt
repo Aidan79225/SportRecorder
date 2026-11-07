@@ -4,6 +4,7 @@ import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.model.Venue
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -437,5 +438,19 @@ class InsightsAggregatorTest {
         assertEquals(DayWindowState.WITHIN_WINDOW, result.calendarDays.single { it.dayOfMonth == 12 }.state)
         assertEquals(DayWindowState.NO_RECORD, result.calendarDays.single { it.dayOfMonth == 13 }.state)
         assertEquals(2, result.bands.single { it.dayOfMonth == 12 }.mealCount)
+    }
+
+    /** Insights read start times only: a meal's duration never moves it to another day or into a statistic. */
+    @Test fun compute_aLongMealCrossingMidnightCountsOnTheDayItStarted() {
+        val now = at(2026, 3, 15, 12)
+        val long = rec(at(2026, 3, 12, 23, 30)).copy(durationMinutes = 90) // ends 01:00 on the 13th
+        val result = InsightsAggregator.compute(listOf(long), settings, now, Period.WEEK, now, zone)
+        assertEquals(DayWindowState.WITHIN_WINDOW, result.calendarDays.single { it.dayOfMonth == 12 }.state)
+        assertEquals(DayWindowState.NO_RECORD, result.calendarDays.single { it.dayOfMonth == 13 }.state)
+        assertEquals(1, result.bands.single { it.dayOfMonth == 12 }.mealCount)
+        assertEquals(23 * 60 + 30, result.stats.avgFirstMealMinutes)
+
+        val default = rec(at(2026, 3, 12, 23, 30)).copy(durationMinutes = MealDuration.DEFAULT_MINUTES)
+        assertEquals(InsightsAggregator.compute(listOf(default), settings, now, Period.WEEK, now, zone), result)
     }
 }
