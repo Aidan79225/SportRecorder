@@ -530,19 +530,25 @@ class BackupServiceTest {
         assertEquals(listOf("first", null), meals.map { it.note }) // the same two meals, in order
     }
 
-    /** Additive on purpose: no schema bump, so an app that has never heard of durations still reads it. */
-    @Test fun aSnapshotWithADuration_isStillReadableByTheCurrentSchema() = runTest {
+    /** The manifest the service writes for one 90-minute meal at 100L. */
+    private suspend fun snapshotOfANinetyMinuteMeal(): String {
         val eat = FakeEatRecordRepository(listOf(EatRecord(1, 100L, null, null, emptyList(), durationMinutes = 90)))
         val store = FakeBackupStore()
         service(eat, store).backup()
-        val json = store.uploads.last().manifestJson
+        return store.uploads.last().manifestJson
+    }
 
-        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), json)
+    /** Additive on purpose: the duration rides along without a schema bump. */
+    @Test fun aSnapshotKeepsItsDurationWithoutASchemaBump() = runTest {
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), snapshotOfANinetyMinuteMeal())
         assertEquals(90, doc.meals.single().durationMinutes)
         assertEquals(2, doc.schemaVersion)
+    }
 
-        // An app from before durations reads the same snapshot and skips the keys it does not know.
-        val older = BackupJson.decodeFromString(SnapshotBeforeDurations.serializer(), json)
+    /** No schema bump means an app that has never heard of durations still reads the snapshot. */
+    @Test fun anAppFromBeforeDurations_stillReadsANewSnapshot() = runTest {
+        // It reads the same snapshot and skips the keys it does not know.
+        val older = BackupJson.decodeFromString(SnapshotBeforeDurations.serializer(), snapshotOfANinetyMinuteMeal())
         assertEquals(2, older.schemaVersion)
         assertEquals(listOf(100L), older.meals.map { it.time })
     }

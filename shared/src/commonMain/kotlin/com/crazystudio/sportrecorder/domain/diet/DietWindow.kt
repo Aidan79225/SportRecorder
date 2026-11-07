@@ -77,7 +77,8 @@ object DietWindow {
         val first = window.first().start
         val latestEnd = window.maxOf { it.end }
 
-        // Window extends to the late meal's end if it overran the nominal eating hours.
+        // Window extends to the latest end of any meal in it (not only the last-started one's)
+        // if that overran the nominal eating hours.
         val windowEnd = maxOf(first + ehMillis, latestEnd)
         val fastStartAt = latestEnd
         val fastTargetAt = fastStartAt + fhMillis

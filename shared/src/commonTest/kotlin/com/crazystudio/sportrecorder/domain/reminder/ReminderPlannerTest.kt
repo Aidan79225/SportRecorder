@@ -68,7 +68,7 @@ class ReminderPlannerTest {
     }
 
     @Test
-    fun fastComplete_atLastEatPlusFastingHours() {
+    fun fastComplete_atTheMealsEndPlusFastingHours() {
         // Single meal 10:00 (default hour) → fast from 11:00, when it ends → target 03:00 next day.
         val prefs = ReminderPrefs(fastCompleteEnabled = true)
         val out = ReminderPlanner.plan(listOf(meal(day0 + h(10))), settings, prefs, day0 + h(11), utc)

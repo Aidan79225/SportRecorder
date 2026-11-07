@@ -133,10 +133,15 @@ class EatTimeEditorSheetTest {
     }
 
     @Test
-    fun theDurationRowReadsOneHourByDefault_andChoosingNinetyMinutesReportsIt() {
+    fun theDurationRowReadsOneHourByDefault() {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.diet_eat_duration_title)).assertIsDisplayed()
         compose.onNodeWithText(str(Res.string.duration_hours, 1)).assertIsDisplayed()
+    }
+
+    @Test
+    fun choosingNinetyMinutesFromTheDurationMenu_reportsIt() {
+        show(EatTimeEditorUiState())
 
         headerRowActionIcons()[2].performClick() // duration row opens its menu
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).performClick()
