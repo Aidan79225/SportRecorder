@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
@@ -14,12 +15,15 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
@@ -32,6 +36,7 @@ import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -60,10 +65,10 @@ class RecordScreenTest {
         venue = venue,
     )
 
-    private fun show(all: List<EatRecord>, showSearch: Boolean = true) {
+    private fun show(all: List<EatRecord>, showSearch: Boolean = true, initialQuery: String = "") {
         compose.setContent {
             SportRecorderTheme {
-                var query by remember { mutableStateOf("") }
+                var query by remember { mutableStateOf(initialQuery) }
                 RecordScreen(
                     records = RecordVenueFilter.matching(all, query),
                     query = query,
@@ -88,6 +93,67 @@ class RecordScreenTest {
     }
 
     private fun searchField() = compose.onNode(hasSetTextAction())
+
+    @Test
+    fun theSearchFieldShowsWhenToldTo_evenIfNoRecordHasAVenue() {
+        show(listOf(record(1, note = "just a note")), showSearch = true, initialQuery = "x")
+        searchField().assert(hasText("x"))
+        compose.onNodeWithText(str(Res.string.record_search_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun aBlankAddressShowsNoAddressLine() {
+        show(listOf(record(1, venue(1, "Ramen Ya", "  "))))
+        compose.onNodeWithText("Ramen Ya").assertIsDisplayed()
+        // The venue block merges its lines' text: only the name is there.
+        venueBlocks().assertCountEquals(1).onFirst().assert(
+            SemanticsMatcher("only the name") { it.config.getOrNull(SemanticsProperties.Text)?.size == 1 },
+        )
+    }
+
+    @Test
+    fun longPressingTheVenueStillOffersToDeleteTheRecord() {
+        show(listOf(record(1, venue(1, "Ramen Ya", "No. 1, Noodle Road"))))
+        compose.onNodeWithText("Ramen Ya", useUnmergedTree = true).performTouchInput { longClick() }
+        compose.onNodeWithText("Do you want to delete this record?").assertIsDisplayed()
+    }
+
+    /**
+     * The ViewModel answers each keystroke later, through a flow. Here the caller does not echo at all
+     * until the test says so, then hands back a stale value — the first keystroke — after the second was
+     * typed. The field must keep what the user typed rather than jump back (which would also reset an IME).
+     */
+    @Test
+    fun aLateEchoOfAnEarlierKeystrokeDoesNotRewriteTheField() {
+        val query = mutableStateOf("")
+        val sent = mutableListOf<String>()
+        compose.setContent {
+            SportRecorderTheme {
+                RecordScreen(
+                    records = listOf(record(1, venue(1, "Ramen Ya"))),
+                    query = query.value,
+                    showSearch = true,
+                    onQueryChange = { sent += it },
+                    onVenueClick = {},
+                    onDelete = {},
+                    onEditRecord = {},
+                    photoModel = { null },
+                    onPhotoClick = { _, _ -> },
+                )
+            }
+        }
+        searchField().performTextInput("a")
+        searchField().performTextInput("b")
+        assertEquals(listOf("a", "ab"), sent)
+
+        compose.runOnIdle { query.value = "a" } // the stale echo of the first keystroke
+        searchField().assert(hasText("ab"))
+        compose.runOnIdle { query.value = "ab" } // the echo catches up
+        searchField().assert(hasText("ab"))
+
+        compose.runOnIdle { query.value = "Ramen Ya" } // a real change from outside is still taken
+        searchField().assert(hasText("Ramen Ya"))
+    }
 
     @Test
     fun aCardShowsItsVenueNameAndAddress() {

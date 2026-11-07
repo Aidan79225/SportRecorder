@@ -136,7 +136,11 @@ fun RecordScreen(
 /**
  * The venue search. Its text lives here, not in the caller's state: a round trip through an async flow
  * would reset the field mid-composition and break Chinese IME input. [query] changing from outside
- * (a tapped venue, the clear button) is copied in.
+ * (a tapped venue) is copied in.
+ *
+ * Every value sent to [onQueryChange] is remembered until [query] echoes it back. The echo can lag:
+ * after typing "a" then "b", [query] may still arrive as "a". A value we sent ourselves is an echo, never
+ * a change from outside, so it (and every older send it overtook) is dropped instead of rewriting the field.
  */
 @Composable
 private fun RecordSearchField(
@@ -145,23 +149,30 @@ private fun RecordSearchField(
     modifier: Modifier = Modifier,
 ) {
     var text by remember { mutableStateOf(query) }
+    val awaitingEcho = remember { mutableListOf<String>() }
+    val send: (String) -> Unit = { value ->
+        text = value
+        awaitingEcho += value
+        onQueryChange(value)
+    }
     LaunchedEffect(query) {
-        if (query != text) text = query
+        val echoed = awaitingEcho.indexOf(query)
+        if (echoed >= 0) {
+            awaitingEcho.subList(0, echoed + 1).clear()
+        } else {
+            awaitingEcho.clear()
+            text = query
+        }
     }
     OutlinedTextField(
         value = text,
-        onValueChange = {
-            text = it
-            onQueryChange(it)
-        },
-        placeholder = { Text(stringResource(Res.string.record_search_hint)) },
+        onValueChange = send,
+        // A label rather than a placeholder: it stays the field's accessible name while it holds text.
+        label = { Text(stringResource(Res.string.record_search_hint)) },
         singleLine = true,
         trailingIcon = if (text.isNotEmpty()) {
             {
-                IconButton(onClick = {
-                    text = ""
-                    onQueryChange("")
-                }) {
+                IconButton(onClick = { send("") }) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_baseline_close_24),
                         contentDescription = stringResource(Res.string.record_search_clear),
@@ -220,7 +231,9 @@ private fun RecordCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
-                record.venue?.let { venue -> VenueLines(venue = venue, onClick = { onVenueClick(venue) }) }
+                record.venue?.let { venue ->
+                    VenueLines(venue = venue, onClick = { onVenueClick(venue) }, onLongClick = onLongClick)
+                }
             }
             Icon(
                 painter = painterResource(Res.drawable.ic_baseline_edit_24),
@@ -298,13 +311,19 @@ private fun RecordCard(
     }
 }
 
-/** The record's venue under its time: the name, then the address when there is one. Tapping searches for it. */
+/**
+ * The record's venue under its time: the name, then the address when there is one. Tapping searches for
+ * it; a long press does what it does anywhere else on the card ([onLongClick]), since this block would
+ * otherwise take the press from the card.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VenueLines(venue: Venue, onClick: () -> Unit) {
+private fun VenueLines(venue: Venue, onClick: () -> Unit, onLongClick: () -> Unit) {
     Column(
-        modifier = Modifier.clickable(
+        modifier = Modifier.combinedClickable(
             onClickLabel = stringResource(Res.string.record_venue_search),
             role = Role.Button,
+            onLongClick = onLongClick,
             onClick = onClick,
         ),
     ) {
