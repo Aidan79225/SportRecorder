@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -145,7 +146,8 @@ fun AppRoot(
         NavHost(
             navController = navController,
             startDestination = Route.Diet,
-            modifier = Modifier.fillMaxSize().padding(padding),
+            // Consumed, so a destination's imePadding() doesn't add the bottom bar a second time.
+            modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
         ) {
             composable<Route.Diet> {
                 val vm: DietViewModel = koinViewModel()

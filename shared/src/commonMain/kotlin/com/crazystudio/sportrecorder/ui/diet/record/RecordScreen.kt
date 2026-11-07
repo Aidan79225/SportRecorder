@@ -102,7 +102,9 @@ fun RecordScreen(
         if (showSearch) {
             RecordSearchField(text = query, onTextChange = search)
         }
-        if (query.isNotBlank() && shown.isEmpty()) {
+        // Only when there are records to miss: after process death the query comes back before the
+        // records do, and an empty list then must not flash (and announce) "no matching records".
+        if (records.isNotEmpty() && shown.isEmpty() && query.isNotBlank()) {
             NoMatchingRecords()
         } else {
             RecordList(

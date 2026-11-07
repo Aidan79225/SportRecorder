@@ -130,6 +130,32 @@ class RecordScreenTest {
         compose.onAllNodesWithText(str(Res.string.record_search_empty)).assertCountEquals(0)
     }
 
+    /**
+     * After process death the saved query comes back before the records load. A query over an empty list
+     * has nothing to miss, so the screen must not flash (and announce) "no matching records".
+     */
+    @Test
+    fun aQueryOnAnEmptyListDoesNotClaimNoMatch() {
+        val records = mutableStateOf(listOf(record(1, venue(1, "Ramen Ya"))))
+        compose.setContent {
+            SportRecorderTheme {
+                RecordScreen(
+                    records = records.value,
+                    onDelete = {},
+                    onEditRecord = {},
+                    photoModel = { null },
+                    onPhotoClick = { _, _ -> },
+                )
+            }
+        }
+        searchField().performTextInput("sushi")
+        compose.onNodeWithText(str(Res.string.record_search_empty)).assertIsDisplayed()
+
+        compose.runOnIdle { records.value = emptyList() }
+        searchField().assert(hasText("sushi"))
+        compose.onAllNodesWithText(str(Res.string.record_search_empty)).assertCountEquals(0)
+    }
+
     @Test
     fun typingNarrowsTheList_andTheClearButtonShowsEverythingAgain() {
         show(listOf(record(1, venue(1, "Ramen Ya")), record(2, venue(2, "Burger Place"))))

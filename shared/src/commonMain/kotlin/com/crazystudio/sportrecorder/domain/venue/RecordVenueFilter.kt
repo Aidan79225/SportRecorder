@@ -37,9 +37,8 @@ object RecordVenueFilter {
     /**
      * What tapping a card's venue puts in the search field: "<name> <address>", or just the name when
      * there is no address ([VenueAddress.clean]: trimmed, blank is none), spelled as stored — nothing is
-     * folded here. It
-     * is the text [matching] searches, so the venue always finds its own records, while a branch that
-     * shares its name drops out unless its address holds the same words.
+     * folded here. It is the text [matching] searches, so the venue always finds its own records, while a
+     * branch that shares its name drops out unless its address holds the same words.
      */
     fun queryFor(venue: Venue): String = searchText(venue)
 
