@@ -43,12 +43,14 @@ Three small changes, each the simplest thing that works:
   (`VenueName.normalize`, so full-width spaces work) and split into words; a record matches when
   **every word** occurs, case-insensitively, in `"<venue name> <venue address>"`. A blank query keeps
   every record. A record with no venue never matches a non-blank query. The order (newest first) is
-  never changed.
+  never changed. **臺 and 台 count as the same character** on both sides (Google writes addresses
+  with 臺, people type 台), so 「台北」 finds 「臺北市…」.
   - 「麥當勞 信義」 shows only the branch whose address contains 「信義」 — the way to tell same-name
     branches apart without a new concept.
 - **Tapping the venue on a card** puts `"<name> <address>"` (just the name when there is no address)
-  into the field. Because every word must match, that shows exactly that venue's records even when
-  another branch shares its name.
+  into the field. Because the address words must match too, that narrows to that venue's records even
+  when another branch shares its name. (Rare edge: a venue with no address matches by name only, and
+  a sibling whose address contains all of this venue's address words also matches.)
 - When nothing matches: one gentle line under the field, 「沒有符合的紀錄」.
 - The query lives in the Record tab's ViewModel only. It is not saved, and it resets when the user
   leaves the tab.
