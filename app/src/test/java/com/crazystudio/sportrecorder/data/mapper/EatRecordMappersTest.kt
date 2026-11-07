@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.data.mapper
 
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
+import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.entity.EatTime
@@ -44,6 +45,23 @@ class EatRecordMappersTest {
         )
         assertEquals(90, entity.toDomain().durationMinutes)
         assertEquals(45, EatTime(id = 2, time = 0L, durationMinutes = 45).toDomain().durationMinutes)
+    }
+
+    @Test fun aRecordReachesTheRowWithEveryFieldIntact() {
+        val record = EatRecord(
+            id = 4,
+            time = 100L,
+            location = GeoPoint(1.5, 2.5),
+            note = "hi",
+            photos = emptyList(),
+            venue = Venue(id = 7, name = "大戶屋", lat = 25.0, lng = 121.5, lastUsedAt = 9L),
+            durationMinutes = 90,
+        )
+        assertEquals(
+            EatTime(id = 4, time = 100L, lat = 1.5, lng = 2.5, note = "hi", venueId = 7, durationMinutes = 90),
+            record.toEntity(),
+        )
+        assertEquals(0, record.toEntity(id = 0).id)
     }
 
     @Test fun nullLatLng_mapsToNullLocation() {

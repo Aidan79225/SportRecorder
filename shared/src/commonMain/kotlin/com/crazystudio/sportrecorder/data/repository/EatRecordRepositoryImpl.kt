@@ -6,11 +6,11 @@ import com.crazystudio.sportrecorder.dao.EatTimeDao
 import com.crazystudio.sportrecorder.dao.PhotoDao
 import com.crazystudio.sportrecorder.data.PhotoFileStore
 import com.crazystudio.sportrecorder.data.mapper.toDomain
+import com.crazystudio.sportrecorder.data.mapper.toEntity
 import com.crazystudio.sportrecorder.database.AppDatabase
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
-import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.Photo
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.Flow
@@ -41,17 +41,7 @@ class EatRecordRepositoryImpl(
         val recordId = appDatabase.useWriterConnection { transactor ->
             transactor.immediateTransaction {
                 val id = if (record.id > 0) {
-                    eatTimeDao.update(
-                        EatTime(
-                            id = record.id,
-                            time = record.time,
-                            lat = record.location?.lat,
-                            lng = record.location?.lng,
-                            note = record.note,
-                            venueId = record.venue?.id,
-                            durationMinutes = record.durationMinutes,
-                        ),
-                    )
+                    eatTimeDao.update(record.toEntity())
                     removedPhotos.forEach {
                         photoDao.delete(
                             Photo(id = it.id, eatTimeId = record.id, fileName = it.fileName, createdAt = it.createdAt),
@@ -59,16 +49,7 @@ class EatRecordRepositoryImpl(
                     }
                     record.id
                 } else {
-                    eatTimeDao.insert(
-                        EatTime(
-                            time = record.time,
-                            lat = record.location?.lat,
-                            lng = record.location?.lng,
-                            note = record.note,
-                            venueId = record.venue?.id,
-                            durationMinutes = record.durationMinutes,
-                        ),
-                    ).toInt()
+                    eatTimeDao.insert(record.toEntity(id = 0)).toInt()
                 }
                 val now = Clock.System.now().toEpochMilliseconds()
                 newPhotoFileNames.forEach { name ->
@@ -100,16 +81,7 @@ class EatRecordRepositoryImpl(
                 photoDao.deleteAll()
                 eatTimeDao.deleteAll()
                 records.forEach { record ->
-                    val newId = eatTimeDao.insert(
-                        EatTime(
-                            time = record.time,
-                            lat = record.location?.lat,
-                            lng = record.location?.lng,
-                            note = record.note,
-                            venueId = record.venue?.id,
-                            durationMinutes = record.durationMinutes,
-                        ),
-                    ).toInt()
+                    val newId = eatTimeDao.insert(record.toEntity(id = 0)).toInt()
                     record.photos.forEach { photo ->
                         photoDao.insert(
                             Photo(eatTimeId = newId, fileName = photo.fileName, createdAt = photo.createdAt),
