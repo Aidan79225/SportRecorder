@@ -12,9 +12,9 @@ class MealDurationTest {
         assertEquals(60, EatRecord(0, 0L, null, null, emptyList()).durationMinutes)
     }
 
-    @Test fun choicesAreAscending_andContainTheDefault() {
-        assertEquals(MealDuration.CHOICES.sorted(), MealDuration.CHOICES)
-        assertEquals(MealDuration.CHOICES.distinct(), MealDuration.CHOICES)
+    /** The exact list already fixes the order; the default check still catches a DEFAULT_MINUTES change. */
+    @Test fun choicesAreExactlyTheMenu_andContainTheDefault() {
+        assertEquals(listOf(15, 30, 45, 60, 90, 120, 180), MealDuration.CHOICES)
         assertTrue(MealDuration.DEFAULT_MINUTES in MealDuration.CHOICES)
     }
 
