@@ -121,10 +121,10 @@ class RecordScreenTest {
     /**
      * The ViewModel answers each keystroke later, through a flow. Here the caller does not echo at all
      * until the test says so, then hands back a stale value — the first keystroke — after the second was
-     * typed. The field must keep what the user typed rather than jump back (which would also reset an IME).
+     * typed. The field owns its text, so it keeps what the user typed (and an IME's composition with it).
      */
     @Test
-    fun aLateEchoOfAnEarlierKeystrokeDoesNotRewriteTheField() {
+    fun aLaggingQueryNeverRewritesWhatTheUserTyped() {
         val query = mutableStateOf("")
         val sent = mutableListOf<String>()
         compose.setContent {
@@ -148,11 +148,6 @@ class RecordScreenTest {
 
         compose.runOnIdle { query.value = "a" } // the stale echo of the first keystroke
         searchField().assert(hasText("ab"))
-        compose.runOnIdle { query.value = "ab" } // the echo catches up
-        searchField().assert(hasText("ab"))
-
-        compose.runOnIdle { query.value = "Ramen Ya" } // a real change from outside is still taken
-        searchField().assert(hasText("Ramen Ya"))
     }
 
     @Test

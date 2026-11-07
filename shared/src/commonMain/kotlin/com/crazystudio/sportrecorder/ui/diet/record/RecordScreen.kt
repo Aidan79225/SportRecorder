@@ -28,7 +28,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
@@ -73,6 +73,10 @@ fun RecordScreen(
     modifier: Modifier = Modifier,
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
+    // The search text is owned here; [query] only seeds it (e.g. after the screen is recreated). Nothing
+    // outside this screen changes the query, so it is never copied back — a lagging echo of a keystroke
+    // can never rewrite the field or reset an IME's composition.
+    var text by remember { mutableStateOf(query) }
 
     Box(
         modifier = modifier
@@ -81,7 +85,13 @@ fun RecordScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (showSearch) {
-                RecordSearchField(query = query, onQueryChange = onQueryChange)
+                RecordSearchField(
+                    text = text,
+                    onTextChange = {
+                        text = it
+                        onQueryChange(it)
+                    },
+                )
             }
             if (query.isNotBlank() && records.isEmpty()) {
                 Text(
@@ -100,7 +110,10 @@ fun RecordScreen(
                         RecordCard(
                             record = record,
                             onLongClick = { recordToDelete = record },
-                            onVenueClick = onVenueClick,
+                            onVenueClick = { venue ->
+                                text = RecordVenueFilter.queryFor(venue)
+                                onVenueClick(venue)
+                            },
                             photoModel = photoModel,
                             onThumbnailClick = onPhotoClick,
                             onEditRecord = onEditRecord,
@@ -133,46 +146,22 @@ fun RecordScreen(
     }
 }
 
-/**
- * The venue search. Its text lives here, not in the caller's state: a round trip through an async flow
- * would reset the field mid-composition and break Chinese IME input. [query] changing from outside
- * (a tapped venue) is copied in.
- *
- * Every value sent to [onQueryChange] is remembered until [query] echoes it back. The echo can lag:
- * after typing "a" then "b", [query] may still arrive as "a". A value we sent ourselves is an echo, never
- * a change from outside, so it (and every older send it overtook) is dropped instead of rewriting the field.
- */
+/** The venue search field. Stateless: [RecordScreen] owns its text. The ✕ clears it through [onTextChange]. */
 @Composable
 private fun RecordSearchField(
-    query: String,
-    onQueryChange: (String) -> Unit,
+    text: String,
+    onTextChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember { mutableStateOf(query) }
-    val awaitingEcho = remember { mutableListOf<String>() }
-    val send: (String) -> Unit = { value ->
-        text = value
-        awaitingEcho += value
-        onQueryChange(value)
-    }
-    LaunchedEffect(query) {
-        val echoed = awaitingEcho.indexOf(query)
-        if (echoed >= 0) {
-            awaitingEcho.subList(0, echoed + 1).clear()
-        } else {
-            awaitingEcho.clear()
-            text = query
-        }
-    }
     OutlinedTextField(
         value = text,
-        onValueChange = send,
+        onValueChange = onTextChange,
         // A label rather than a placeholder: it stays the field's accessible name while it holds text.
         label = { Text(stringResource(Res.string.record_search_hint)) },
         singleLine = true,
         trailingIcon = if (text.isNotEmpty()) {
             {
-                IconButton(onClick = { send("") }) {
+                IconButton(onClick = { onTextChange("") }) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_baseline_close_24),
                         contentDescription = stringResource(Res.string.record_search_clear),
