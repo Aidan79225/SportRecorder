@@ -69,8 +69,9 @@ Three small changes, each the simplest thing that works:
 - **Room 9 → 10:** add `duration_minutes INTEGER NOT NULL DEFAULT 60` to `eat_time`. Every existing
   meal therefore reads as 1 hour — the same length the app has always assumed for a one-meal day.
 - **Backup:** `BackupMeal.durationMinutes: Int? = null`. It is additive, so `SCHEMA_VERSION` does
-  **not** change: an older app restoring a newer snapshot ignores the field, and a snapshot without it
-  restores as 60 minutes.
+  **not** change: an older app restoring a newer snapshot ignores the field (its meals come back as
+  1 hour), and a snapshot without the field, or with one that is not positive (no real meal has
+  that), restores as 60 minutes.
 - Every way of recording — the home button, the quick-settings tile, a Maps share, a pasted link —
   produces 60 without being touched, because the default lives in the domain type.
 
@@ -101,7 +102,12 @@ Three small changes, each the simplest thing that works:
   day behaves exactly as before; a different duration now moves the fast start, as it should.
 - **A visible change, by design:** on a day with two or more meals the fast starts later than before
   by the last meal's duration (1 hour at the default), because the last meal now has a length.
-- Used by Home and by the two reminders (window closing, fast complete).
+- Used by Home and by the two reminders (window closing, fast complete). The quick-settings tile's
+  subtitle keeps showing when the last meal **started**.
+- **Alarms armed by the previous version are re-armed once on update.** An update keeps the app's
+  alarms, but they hold times the old rule computed, so `BootReceiver` also listens for
+  `MY_PACKAGE_REPLACED` and re-plans from the stored meals. (Checked by hand with a real
+  `adb install -r`; a receiver's action guard has no unit-test seam.)
 
 ## Out of scope
 
@@ -135,6 +141,7 @@ for the default; changing the duration from the record card; durations finer tha
   it: Insights ignores it and no statistic uses it.
 - ⚠️ **Drift risk — the fast clock reads as shorter or longer.** On multi-meal days the fast now
   starts later than before. It is arithmetic on what the user recorded, and the owner chose it, but it
-  is a visible change to the core clock and is called out in the release notes.
+  is a visible change to the core clock: the PR calls it out, and the release note says so (it is
+  written at release time, with `/release`).
 - ⚠️ **Old records read as 1 hour** although the user never said so. It is the length the app already
   assumed, so no clock changes for one-meal days; the user can edit any record.
