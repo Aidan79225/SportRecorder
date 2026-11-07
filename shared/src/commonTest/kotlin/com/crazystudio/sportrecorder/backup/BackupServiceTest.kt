@@ -541,7 +541,7 @@ class BackupServiceTest {
         assertEquals(90, doc.meals.single().durationMinutes)
         assertEquals(2, doc.schemaVersion)
 
-        // An app from before durations reads the same snapshot and skips the field it does not know.
+        // An app from before durations reads the same snapshot and skips the keys it does not know.
         val older = BackupJson.decodeFromString(SnapshotBeforeDurations.serializer(), json)
         assertEquals(2, older.schemaVersion)
         assertEquals(listOf(100L), older.meals.map { it.time })
@@ -573,8 +573,8 @@ class BackupServiceTest {
 }
 
 /**
- * An app from before meals had durations, cut down to the fields the test reads: it has no
- * durationMinutes and, like every reader, skips the keys it does not know.
+ * An app from before meals had durations, cut down to schemaVersion and each meal's id and time (all
+ * the test reads): it has no durationMinutes and, like every reader, skips the keys it does not know.
  */
 @Serializable
 private data class SnapshotBeforeDurations(val schemaVersion: Int, val meals: List<MealBeforeDurations>)
