@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.ui.diet.record
 import app.cash.turbine.test
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
+import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
@@ -11,7 +12,9 @@ import com.crazystudio.sportrecorder.fake.FakePhotoImageSource
 import com.crazystudio.sportrecorder.fake.FakeRemindersRescheduler
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -41,8 +44,8 @@ class DietRecordViewModelTest {
     private val withoutVenue = record(1, 1_000L)
     private val everyRecord = listOf(atMcdonalds, atIchiran, withoutVenue)
 
-    private fun viewModel(repo: FakeEatRecordRepository) = DietRecordViewModel(
-        observeEatRecords = ObserveEatRecordsUseCase(repo),
+    private fun viewModel(repo: FakeEatRecordRepository, observed: EatRecordRepository = repo) = DietRecordViewModel(
+        observeEatRecords = ObserveEatRecordsUseCase(observed),
         deleteEatRecord = DeleteEatRecordUseCase(repo, FakeRemindersRescheduler()),
         photoImageSource = FakePhotoImageSource(),
     )
@@ -176,5 +179,52 @@ class DietRecordViewModelTest {
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun theSearchStaysWhileAQueryIsActive_evenWhenNoRecordHasAVenueAnymore() =
+        runTest(mainRule.testDispatcher.scheduler) {
+            val repo = FakeEatRecordRepository(initial = listOf(atMcdonalds, withoutVenue))
+            val vm = viewModel(repo)
+            vm.hasVenues.launchIn(backgroundScope) // kept live, to see that the venues really are gone
+
+            vm.showSearch.test {
+                assertFalse(awaitItem()) // StateFlow initial value
+                assertTrue(awaitItem()) // a stored record has a venue
+                assertTrue(vm.hasVenues.value)
+
+                vm.setQuery("麥當勞")
+                advanceUntilIdle()
+                expectNoEvents()
+
+                // The only record with a venue goes while the search is on. The list is empty now, so the
+                // field has to stay: it is the only way to clear what is filtering the list.
+                vm.deleteRecord(atMcdonalds)
+                advanceUntilIdle()
+                assertFalse(vm.hasVenues.value)
+                expectNoEvents()
+
+                vm.setQuery("")
+                assertFalse(awaitItem())
+
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun theRepositoryIsObservedOnce_noMatterHowManyFlowsAreCollected() = runTest(mainRule.testDispatcher.scheduler) {
+        val repo = FakeEatRecordRepository(initial = everyRecord)
+        var observations = 0
+        val observed = object : EatRecordRepository by repo {
+            override fun observeAll(): Flow<List<EatRecord>> = repo.observeAll().onStart { observations++ }
+        }
+        val vm = viewModel(repo, observed)
+
+        vm.records.launchIn(backgroundScope)
+        vm.hasVenues.launchIn(backgroundScope)
+        vm.showSearch.launchIn(backgroundScope)
+        advanceUntilIdle()
+
+        assertEquals(1, observations)
     }
 }

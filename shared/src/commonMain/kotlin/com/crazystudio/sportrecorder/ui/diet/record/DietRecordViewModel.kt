@@ -23,7 +23,10 @@ class DietRecordViewModel constructor(
     private val photoImageSource: PhotoImageSource,
 ) : ViewModel() {
 
-    private val allRecords = observeEatRecords()
+    // The one observation of the repository: records, hasVenues and showSearch all derive from it, so the
+    // database is observed once however many of them are collected.
+    private val allRecords: StateFlow<List<EatRecord>> = observeEatRecords()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
     private val _query = MutableStateFlow("")
 
     /** What the search field holds. Plain in-memory state: not saved, and gone with this ViewModel. */
@@ -35,12 +38,22 @@ class DietRecordViewModel constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
 
     /**
-     * True when at least one record (before filtering) has a venue — the search field only shows then.
-     * Counted before filtering, so a search that matches nothing never takes the field away.
+     * True when at least one record (before filtering) has a venue, so there is something to search.
+     * Counted before filtering, so a search that matches nothing does not change it. The search field
+     * follows [showSearch], which builds on this.
      */
     val hasVenues: StateFlow<Boolean> = allRecords
         .map { all -> all.any { it.venue != null } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
+    /**
+     * Whether the search field shows: when some record has a venue ([hasVenues]), and also for as long as
+     * the field holds text. Otherwise deleting the last record with a venue during a search would take the
+     * field away while its text still filters the list, leaving no way to clear it.
+     */
+    val showSearch: StateFlow<Boolean> = combine(hasVenues, _query) { anyVenue, text ->
+        anyVenue || text.isNotEmpty()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
 
     fun setQuery(value: String) {
         _query.value = value
