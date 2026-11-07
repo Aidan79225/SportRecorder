@@ -89,8 +89,10 @@
   /** What the list shows: every record, or those matching [query]. Newest first, as the repository gives them. */
   val records: StateFlow<List<EatRecord>>
   val query: StateFlow<String>
-  /** True when at least one record (before filtering) has a venue — the search field only shows then. */
+  /** True when at least one record (before filtering) has a venue. */
   val hasVenues: StateFlow<Boolean>
+  /** Whether the search field shows: [hasVenues] OR a query is active (so a query can always be cleared). */
+  val showSearch: StateFlow<Boolean>
   fun setQuery(value: String)
   fun searchVenue(venue: Venue)      // setQuery(RecordVenueFilter.queryFor(venue))
   ```
@@ -101,11 +103,12 @@
   @Test fun records_followTheQuery()                    // 3 records at venues A, B and none; setQuery("A-name") → only A's
   @Test fun clearingTheQuery_showsEveryRecordAgain()
   @Test fun hasVenues_isFalseUntilARecordHasOne()       // repo.setRecords(...) with a venue flips it true; filtering never flips it back
+  @Test fun theSearchStaysWhileAQueryIsActive_evenWhenNoRecordHasAVenueAnymore()   // showSearch true while query non-empty; false again once cleared
   @Test fun searchVenue_putsTheNameAndAddressInTheField()   // query == RecordVenueFilter.queryFor(venue); records == that venue's only
   @Test fun deleteStillWorksWhileFiltered()             // deleteRecord(record) → repo.deletedIds contains its id
   ```
 - [ ] **Step 2: Run, watch them fail** — `testDebugUnitTest --tests "*DietRecordViewModelTest*"`.
-- [ ] **Step 3: Implement** — keep the unfiltered flow private (`allRecords`); `records = combine(allRecords, query) { r, q -> RecordVenueFilter.matching(r, q) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())`; `hasVenues` from `allRecords`.
+- [ ] **Step 3: Implement** — one private upstream `allRecords = observeEatRecords().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())` (Room is observed once); `records = combine(allRecords, query) { r, q -> RecordVenueFilter.matching(r, q) }.stateIn(…)`; `hasVenues` and `showSearch` derive from `allRecords` / `query`.
 - [ ] **Step 4: Run, watch them pass.**
 - [ ] **Step 5: Commit** — `feat(records): the Record tab keeps a venue search query`.
 
@@ -120,7 +123,7 @@
 - Test: `app/src/androidTest/java/com/crazystudio/sportrecorder/ui/diet/record/RecordScreenTest.kt` (new; mirror the compose-rule setup of the existing `ui/diet/editor/EatTimeEditorSheetTest.kt`)
 
 **Interfaces:**
-- Consumes: `DietRecordViewModel.query / hasVenues / setQuery / searchVenue` (Task 2), `RecordVenueFilter`.
+- Consumes: `DietRecordViewModel.query / showSearch / setQuery / searchVenue` (Task 2), `RecordVenueFilter`.
 - Produces:
   ```kotlin
   fun RecordScreen(
@@ -145,7 +148,7 @@
   | `record_search_empty` | No matching records | 沒有符合的紀錄 |
   | `record_venue_search` | Show this place's records | 看這家店的紀錄 |
 
-- Layout: a `Column` — the search field (only when `showSearch`: `OutlinedTextField`, `singleLine`, hint as placeholder, a trailing ✕ `IconButton` with `ic_baseline_close_24` shown only while the query is non-empty, content description `record_search_clear`; 12 dp side padding, 8 dp top) above the existing `LazyColumn`. On the card, **under the time**: when `record.venue` is non-null, the name (`bodyMedium`) and, if present and not blank, the address (`labelSmall`, `onSurfaceVariant`), the whole block `clickable(role = Role.Button, onClickLabel = record_venue_search)` calling `onVenueClick(venue)`. When `query.isNotBlank() && records.isEmpty()`, one `bodySmall` line `record_search_empty` in place of the list. The "📍 lat, lng" line and the delete dialog stay as they are.
+- Layout: a `Column` — the search field (only when `showSearch`: `OutlinedTextField`, `singleLine`, hint as placeholder, a trailing ✕ `IconButton` with `ic_baseline_close_24` shown only while the query is non-empty, content description `record_search_clear`; 12 dp side padding, 8 dp top) above the existing `LazyColumn`. **The field's text lives in LOCAL state** (`var text by remember { mutableStateOf(query) }`; `onValueChange = { text = it; onQueryChange(it) }`; `LaunchedEffect(query) { if (query != text) text = query }` for changes from outside — tapping a venue, ✕), never bound straight to the ViewModel's StateFlow, so Chinese IME composition is not disturbed by an async round trip. `AppRoot` passes `showSearch = vm.showSearch`. On the card, **under the time**: when `record.venue` is non-null, the name (`bodyMedium`) and, if present and not blank, the address (`labelSmall`, `onSurfaceVariant`), the whole block `clickable(role = Role.Button, onClickLabel = record_venue_search)` calling `onVenueClick(venue)`. When `query.isNotBlank() && records.isEmpty()`, one `bodySmall` line `record_search_empty` in place of the list. The "📍 lat, lng" line and the delete dialog stay as they are.
 
 - [ ] **Step 1: Write the failing UI tests** (state-hoisting wrapper inside the test: it holds `var query` and passes `RecordVenueFilter.matching(all, query)` — the ViewModel's job — so the screen's wiring is what is under test)
   ```kotlin
@@ -157,7 +160,7 @@
   @Test fun aSearchWithNoMatchSaysSo()
   ```
 - [ ] **Step 2: Run, watch them fail** — on `emulator-5554`: class `com.crazystudio.sportrecorder.ui.diet.record.RecordScreenTest` (compile error until the new parameters exist).
-- [ ] **Step 3: Implement** the screen, the strings and the `AppRoot` wiring (`collectAsStateWithLifecycle` on `records`, `query`, `hasVenues`; `onQueryChange = vm::setQuery`, `onVenueClick = vm::searchVenue`). Update every other call site of `RecordScreen`.
+- [ ] **Step 3: Implement** the screen, the strings and the `AppRoot` wiring (`collectAsStateWithLifecycle` on `records`, `query`, `showSearch`; `showSearch = vm.showSearch`; `onQueryChange = vm::setQuery`, `onVenueClick = vm::searchVenue`). Update every other call site of `RecordScreen`.
 - [ ] **Step 4: Run, watch them pass; run the full gate.**
 - [ ] **Step 5: Commit** — `feat(records): show each record's venue and search the Record tab by venue`.
 
