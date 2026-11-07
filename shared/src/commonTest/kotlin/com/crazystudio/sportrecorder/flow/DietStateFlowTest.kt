@@ -9,6 +9,7 @@ import com.crazystudio.sportrecorder.domain.diet.DietWindowState
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
@@ -41,14 +42,20 @@ class DietStateFlowTest {
         val selectWindow = SaveFastingSelectionUseCase(settingsRepo, rescheduler)
     }
 
-    private fun meal(time: Long) =
-        EatRecord(id = 0, time = time, location = null, note = null, photos = emptyList())
+    private fun meal(time: Long, durationMinutes: Int = MealDuration.DEFAULT_MINUTES) = EatRecord(
+        id = 0,
+        time = time,
+        location = null,
+        note = null,
+        photos = emptyList(),
+        durationMinutes = durationMinutes,
+    )
 
     /** Runs the snapshot the app would render at [now] through the same calculator the UI uses. */
     private suspend fun Harness.stateAt(now: Long): DietWindowState {
         val snapshot = observeDietState(now).first()
         return DietWindow.compute(
-            eatTimesAsc = snapshot.eatTimesAsc,
+            mealsAsc = snapshot.mealsAsc,
             eatingHours = snapshot.settings.eatingHours,
             fastingHours = snapshot.settings.fastingHours,
             now = now,
@@ -81,7 +88,8 @@ class DietStateFlowTest {
         val app = Harness()
         app.save(meal(f), emptyList(), emptyList(), now = f)
 
-        // Single meal, 16:8 → window closes at +8h; the fast clock starts at +1h and targets +17h.
+        // Single meal, 16:8 → window closes at +8h; the fast clock starts when the meal ends (+1h at the
+        // default) and targets +17h.
         assertEquals(DietPhase.EATING, app.stateAt(f + h(2)).phase)
         assertEquals(DietPhase.FASTING, app.stateAt(f + h(12)).phase)
         assertEquals(DietPhase.SUCCESS, app.stateAt(f + h(17)).phase)
@@ -96,10 +104,21 @@ class DietStateFlowTest {
         app.save(meal(f + h(3)), emptyList(), emptyList(), now = f + h(3))
         val afterSecondMeal = app.stateAt(f + h(3))
 
-        // Single-meal window got a 1h grace; two meals start the fast at the later bite instead.
+        // The fast starts when the last meal ends: first the 1-hour meal at f, then the one at +3h.
         assertEquals(f + h(1), beforeSecondMeal.fastStartAt)
-        assertEquals(f + h(3), afterSecondMeal.fastStartAt)
+        assertEquals(f + h(4), afterSecondMeal.fastStartAt)
         assertEquals(f, afterSecondMeal.windowStart)
+    }
+
+    @Test
+    fun aLongerMeal_movesTheHomeFastStart() = runTest {
+        val app = Harness()
+        app.save(meal(f, durationMinutes = 120), emptyList(), emptyList(), now = f)
+
+        val state = app.stateAt(f + h(12))
+
+        assertEquals(f + h(2), state.fastStartAt)
+        assertEquals(f + h(2) + h(16), state.fastTargetAt)
     }
 
     @Test

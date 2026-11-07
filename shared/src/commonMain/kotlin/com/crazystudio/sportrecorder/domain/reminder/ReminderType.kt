@@ -5,6 +5,6 @@ enum class ReminderType {
     /** "進食視窗即將關閉" — fires at windowEnd − leadMinutes, only while EATING. */
     WINDOW_CLOSING,
 
-    /** "斷食達標 🎉" — fires at fastTargetAt (lastEat + fastingHours). */
+    /** "斷食達標 🎉" — fires at fastTargetAt (when the last meal ends + fastingHours). */
     FAST_COMPLETE,
 }

@@ -73,7 +73,7 @@ class QuickRecordTileService : TileService(), KoinComponent {
     }
 
     private suspend fun lastMealTime(): Long? =
-        observeDietState(Clock.System.now().toEpochMilliseconds()).first().eatTimesAsc.lastOrNull()
+        observeDietState(Clock.System.now().toEpochMilliseconds()).first().mealsAsc.lastOrNull()?.start
 
     /** Tile changes are a binder call back to System UI; make them from the main thread. */
     private suspend fun setSubtitle(text: String) = withContext(Dispatchers.Main) {

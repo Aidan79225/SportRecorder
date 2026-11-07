@@ -145,7 +145,7 @@ class ReminderFlowTest {
 
         app.reschedule.reschedule()
 
-        // Single meal → the fast clock starts at +1h, so the target is meal + 1h + 16h.
+        // Single meal → the fast clock starts when it ends (+1h at the default): meal + 1h + 16h.
         assertEquals(listOf(ReminderType.FAST_COMPLETE), app.scheduler.lastScheduled.map { it.type })
         assertEquals(day0 + h(27), triggerOf(app, ReminderType.FAST_COMPLETE))
     }
@@ -267,9 +267,9 @@ class ReminderFlowTest {
             now = day0 + h(13),
         )
 
-        // Two meals in the window → no 1h grace; the target moves to the later bite + 16h.
+        // Two meals in the window → the target moves to the later meal's end (14:00) + 16h.
         assertEquals(2, app.scheduler.scheduleCount)
-        assertEquals(day0 + h(29), triggerOf(app, ReminderType.FAST_COMPLETE))
+        assertEquals(day0 + h(30), triggerOf(app, ReminderType.FAST_COMPLETE))
     }
 
     @Test
@@ -298,7 +298,7 @@ class ReminderFlowTest {
 
         app.selectWindow(FastingWindow(fastingHours = 20, eatingHours = 4))
 
-        // 20h fast from the same +1h grace start → meal + 1h + 20h.
+        // 20h fast from the same start (the meal's end) → meal + 1h + 20h.
         assertEquals(day0 + h(31), triggerOf(app, ReminderType.FAST_COMPLETE))
     }
 

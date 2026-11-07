@@ -5,6 +5,7 @@ import com.crazystudio.sportrecorder.domain.diet.HomeTagline
 import com.crazystudio.sportrecorder.domain.diet.TaglineMood
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.usecase.ObserveDietStateUseCase
 import com.crazystudio.sportrecorder.fake.FakeDietSettingsRepository
 import com.crazystudio.sportrecorder.fake.FakeEatRecordRepository
@@ -36,8 +37,14 @@ class DietViewModelTest {
 
     private val f = 1_700_000_000_000L
     private fun h(n: Long) = TimeUnit.HOURS.toMillis(n)
-    private fun eat(time: Long) =
-        EatRecord(id = 1, time = time, location = null, note = null, photos = emptyList())
+    private fun eat(time: Long, id: Int = 1, minutes: Int = MealDuration.DEFAULT_MINUTES) = EatRecord(
+        id = id,
+        time = time,
+        location = null,
+        note = null,
+        photos = emptyList(),
+        durationMinutes = minutes,
+    )
 
     private lateinit var defaultTz: TimeZone
     private lateinit var defaultLocale: Locale
@@ -79,12 +86,27 @@ class DietViewModelTest {
             assertEquals(TaglineMood.FASTING, s.tagline.mood)
             assertEquals(Res.drawable.ic_baseline_no_food_24, s.statusIcon)
             assertEquals(Res.string.diet_fasting_time, s.promptText)
-            // Single meal: fast clock starts 1h after the meal, so at +12h it's 11h (68.75%).
+            // Single meal: the fast clock starts when the 1-hour meal ends, so at +12h it's 11h (68.75%).
             assertEquals(68.75f, s.progress, 0.01f)
             assertEquals("16 : 8", s.fastingLabel)
             assertEquals("11:00:00", s.elapsedText)
-            // Fast start is the meal + 1h grace (f = 22:13 UTC → 23:13), not windowEnd.
+            // Fast start is when the meal ends (f = 22:13 UTC + 1h → 23:13), not windowEnd.
             assertEquals("23:13", s.fastStart?.time)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun fasting_twoMeals_fastStartIsWhenTheLastMealEnds() = runTest(mainRule.testDispatcher.scheduler) {
+        // Meals at 22:13 and 01:13 (30 minutes) UTC → the fast starts at 01:43; at +12h it is 8.5h in.
+        val vm = viewModel(eats = listOf(eat(f), eat(f + h(3), id = 2, minutes = 30))) { f + h(12) }
+
+        vm.uiState.test {
+            skipItems(1)
+            val s = awaitItem()
+            assertEquals(Res.string.diet_fasting_time, s.promptText)
+            assertEquals("08:30:00", s.elapsedText)
+            assertEquals("01:43", s.fastStart?.time)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -107,7 +129,7 @@ class DietViewModelTest {
 
     @Test
     fun success_mapsStatusAndFullProgress() = runTest(mainRule.testDispatcher.scheduler) {
-        // Single meal: success at meal + 1h grace + 16h fasting.
+        // Single meal: success at the meal's end (+1h) + 16h fasting.
         val vm = viewModel(eats = listOf(eat(f))) { f + h(17) }
 
         vm.uiState.test {
