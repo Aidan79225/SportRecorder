@@ -1,7 +1,7 @@
 # 紀錄頁的店家、店家搜尋，與用餐時間 · Venues on the record page, venue search, and meal duration
 
 - **Date:** 2026-11-07
-- **Status:** Part A implemented on claude/record-venue-search (PR pending); Part B designed, not implemented. Requested by the owner on 2026-11-07; "design on the simplest basis".
+- **Status:** Implemented: Part A in PR #92 (claude/record-venue-search), Part B on claude/meal-duration (PR pending). Requested by the owner on 2026-11-07; "design on the simplest basis".
 - **Builds on:** `2026-10-05-venue-design.md` (#83), `2026-10-18-venue-branches-design.md` (#89) — the
   venues and their addresses already exist and are already loaded with every record — and the pure
   `DietWindow` calculator.
