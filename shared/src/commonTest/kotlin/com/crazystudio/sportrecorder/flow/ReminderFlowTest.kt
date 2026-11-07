@@ -7,6 +7,7 @@ import com.crazystudio.sportrecorder.backup.fakes.FakeReminderScheduler
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.FastingWindow
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 import com.crazystudio.sportrecorder.domain.reminder.ReminderType
 import com.crazystudio.sportrecorder.domain.usecase.DeleteEatRecordUseCase
@@ -35,16 +36,17 @@ class ReminderFlowTest {
     private fun h(n: Long) = n * 3_600_000L
     private fun min(n: Long) = n * 60_000L
 
+    private fun meal(time: Long, minutes: Int = MealDuration.DEFAULT_MINUTES) =
+        EatRecord(id = 0, time = time, location = null, note = null, photos = emptyList(), durationMinutes = minutes)
+
     private class Harness(
-        meals: List<Long>,
+        meals: List<EatRecord>,
         prefs: ReminderPrefs,
         settings: DietSettings = DietSettings(fastingHours = 16, eatingHours = 8),
         var now: Long,
     ) {
         val eatRepo = FakeEatRecordRepository(
-            meals.mapIndexed { index, time ->
-                EatRecord(id = index + 1, time = time, location = null, note = null, photos = emptyList())
-            },
+            meals.mapIndexed { index, record -> record.copy(id = index + 1) },
         )
         val settingsRepo = FakeDietSettingsRepository(settings)
         val prefsRepo = FakeReminderPreferencesRepository(prefs)
@@ -66,7 +68,7 @@ class ReminderFlowTest {
         prefs: ReminderPrefs = ReminderPrefs(),
         settings: DietSettings = DietSettings(fastingHours = 16, eatingHours = 8),
         now: Long,
-    ) = Harness(meals, prefs, settings, now)
+    ) = Harness(meals.map { meal(it) }, prefs, settings, now)
 
     private fun triggerOf(app: Harness, type: ReminderType): Long? =
         app.scheduler.lastScheduled.firstOrNull { it.type == type }?.triggerAtMillis
@@ -94,6 +96,21 @@ class ReminderFlowTest {
 
         assertEquals(listOf(ReminderType.WINDOW_CLOSING), app.scheduler.lastScheduled.map { it.type })
         assertEquals(day0 + h(18) - min(30), triggerOf(app, ReminderType.WINDOW_CLOSING))
+    }
+
+    @Test
+    fun windowClosing_opensAtTheEarliestMeal_whateverOrderTheRepositoryGives() = runTest {
+        // The shared fake's observeAll() is newest-first, like the real repository, so this
+        // fails if the use case stops sorting: the window would open at 13:00 and close at 21:00.
+        val app = harness(
+            meals = listOf(day0 + h(10), day0 + h(13)),
+            prefs = ReminderPrefs(windowClosingEnabled = true),
+            now = day0 + h(13) + min(30),
+        )
+
+        app.reschedule.reschedule()
+
+        assertEquals(day0 + h(17) + min(30), triggerOf(app, ReminderType.WINDOW_CLOSING))
     }
 
     @Test
@@ -148,6 +165,20 @@ class ReminderFlowTest {
         // Single meal → the fast clock starts when it ends (+1h at the default): meal + 1h + 16h.
         assertEquals(listOf(ReminderType.FAST_COMPLETE), app.scheduler.lastScheduled.map { it.type })
         assertEquals(day0 + h(27), triggerOf(app, ReminderType.FAST_COMPLETE))
+    }
+
+    @Test
+    fun fastComplete_countsFromTheEndOfALongerMeal() = runTest {
+        val app = Harness(
+            meals = listOf(meal(day0 + h(10), minutes = 120)),
+            prefs = ReminderPrefs(fastCompleteEnabled = true),
+            now = day0 + h(11),
+        )
+
+        app.reschedule.reschedule()
+
+        // The two-hour meal ends at 12:00, so the 16h fast completes at 28:00 (not 27:00).
+        assertEquals(day0 + h(28), triggerOf(app, ReminderType.FAST_COMPLETE))
     }
 
     @Test
