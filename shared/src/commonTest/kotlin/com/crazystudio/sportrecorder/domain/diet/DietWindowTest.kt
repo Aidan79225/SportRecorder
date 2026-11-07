@@ -62,7 +62,7 @@ class DietWindowTest {
 
     // --- the fast starts when the last meal ends -----------------------------
 
-    @Test fun singleMeal_atTheDefaultDuration_fastStartsOneHourAfter_asBefore() {
+    @Test fun singleMeal_atTheDefaultDuration_fastStartsWhenItsHourEnds() {
         val s = DietWindow.compute(listOf(meal(f)), eh, fh, f + h(12))
         assertEquals(f + h(1), s.fastStartAt)
         assertEquals(f + h(1) + fhMs, s.fastTargetAt)
@@ -119,7 +119,7 @@ class DietWindowTest {
         val midnight = (f / dayMs + 1) * dayMs
         val lateSnack = meal(midnight - min(30), 90)
         val s = DietWindow.compute(listOf(meal(f), lateSnack), eh, fh, midnight + h(12))
-        assertEquals(f, s.windowStart) // grouped with the evening meal by its start
+        assertEquals(f, s.windowStart) // stays in the evening's window although it ends after midnight
         assertEquals(midnight + h(1), s.fastStartAt)
         assertEquals(midnight + h(1) + fhMs, s.fastTargetAt)
         assertEquals(DietPhase.FASTING, s.phase)
@@ -131,6 +131,14 @@ class DietWindowTest {
         assertEquals(f, s.windowStart)
         assertEquals(f + h(11), s.fastStartAt)
         assertEquals(f + h(11) + fhMs, s.fastTargetAt)
+    }
+
+    @Test fun mealsAreGroupedByTheirStart_notTheirEnd() {
+        // By start the gap is 16h10m, over the 16h tolerance (8 + 16/2), so the snack opens a new
+        // window. Measured from the long meal's end the gap would be 13h25m and they would merge.
+        val meals = listOf(meal(f, 180), meal(f + h(16) + min(10), 15))
+        val s = DietWindow.compute(meals, eh, fh, f + h(17))
+        assertEquals(f + h(16) + min(10), s.windowStart)
     }
 
     @Test fun slightOverrun_extendsWindowEnd() {
