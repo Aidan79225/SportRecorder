@@ -304,4 +304,8 @@
     </plurals>
     <string name="editor_venue_merge_keep">兩家都保留</string>
     <string name="editor_venue_merge_where">那一家在 %1$s。</string>
+    <string name="record_search_hint">搜尋店家（名稱或地址）</string>
+    <string name="record_search_clear">清除搜尋</string>
+    <string name="record_search_empty">沒有符合的紀錄</string>
+    <string name="record_venue_search">看這家店的紀錄</string>
 </resources>
