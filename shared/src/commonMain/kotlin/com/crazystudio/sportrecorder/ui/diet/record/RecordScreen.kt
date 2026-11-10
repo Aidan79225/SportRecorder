@@ -53,6 +53,11 @@ import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
+import com.crazystudio.sportrecorder.shared.resources.record_delete_confirm
+import com.crazystudio.sportrecorder.shared.resources.record_delete_dismiss
+import com.crazystudio.sportrecorder.shared.resources.record_delete_message
+import com.crazystudio.sportrecorder.shared.resources.record_delete_title
+import com.crazystudio.sportrecorder.shared.resources.record_edit
 import com.crazystudio.sportrecorder.shared.resources.record_search_clear
 import com.crazystudio.sportrecorder.shared.resources.record_search_empty
 import com.crazystudio.sportrecorder.shared.resources.record_search_hint
@@ -208,16 +213,16 @@ private fun NoMatchingRecords() {
 private fun DeleteRecordDialog(record: EatRecord, onConfirm: (EatRecord) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Delete") },
-        text = { Text(text = "Do you want to delete this record?") },
+        title = { Text(text = stringResource(Res.string.record_delete_title)) },
+        text = { Text(text = stringResource(Res.string.record_delete_message)) },
         confirmButton = {
             TextButton(onClick = { onConfirm(record) }) {
-                Text(text = "Yes")
+                Text(text = stringResource(Res.string.record_delete_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(text = "No")
+                Text(text = stringResource(Res.string.record_delete_dismiss))
             }
         },
     )
@@ -272,7 +277,7 @@ private fun RecordCard(
             }
             Icon(
                 painter = painterResource(Res.drawable.ic_baseline_edit_24),
-                contentDescription = "Edit",
+                contentDescription = stringResource(Res.string.record_edit),
                 tint = colorScheme.primary,
                 modifier = Modifier
                     .size(24.dp)

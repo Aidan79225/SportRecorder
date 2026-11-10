@@ -13,6 +13,7 @@ import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -39,18 +40,39 @@ import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.Locale
 
 /**
  * Renders [RecordScreen] directly with `createComposeRule`, handing it every record: the screen owns the
  * search text and does the filtering itself, so these tests drive it the way a user does — typing,
  * the ✕, tapping a card's venue, long-pressing to delete.
+ *
+ * The app speaks the device's language, which is the JVM default locale to Compose Resources. Every test
+ * starts in English; the `inTraditionalChinese_` ones switch to zh-TW and assert hand-written literals, so
+ * a string that was never translated can't pass by being compared with itself.
  */
 @RunWith(AndroidJUnit4::class)
 class RecordScreenTest {
     @get:Rule val compose = createComposeRule()
+
+    private lateinit var defaultLocale: Locale
+
+    @Before
+    fun pinEnglish() {
+        defaultLocale = Locale.getDefault()
+        Locale.setDefault(Locale.US)
+    }
+
+    @After
+    fun restoreLocale() {
+        Locale.setDefault(defaultLocale)
+    }
 
     private fun str(res: StringResource) = runBlocking { getString(res) }
 
@@ -66,18 +88,32 @@ class RecordScreenTest {
         venue = venue,
     )
 
-    private fun show(records: List<EatRecord>) {
+    private fun show(records: List<EatRecord>, onDelete: (EatRecord) -> Unit = {}) {
         compose.setContent {
             SportRecorderTheme {
                 RecordScreen(
                     records = records,
-                    onDelete = {},
+                    onDelete = onDelete,
                     onEditRecord = {},
                     photoModel = { null },
                     onPhotoClick = { _, _ -> },
                 )
             }
         }
+    }
+
+    /**
+     * [show] in Traditional Chinese. The language is switched first because the screen reads its strings as
+     * it first composes; [restoreLocale] puts the device's back afterwards.
+     */
+    private fun showInTraditionalChinese(records: List<EatRecord>, onDelete: (EatRecord) -> Unit = {}) {
+        Locale.setDefault(Locale.TRADITIONAL_CHINESE)
+        show(records, onDelete)
+    }
+
+    /** Long-presses the card that shows [text], which is how a record's delete dialog opens. */
+    private fun longPress(text: String) {
+        compose.onNodeWithText(text).performTouchInput { longClick() }
     }
 
     /** The venue blocks: buttons whose click action carries the "show this place's records" label. */
@@ -246,6 +282,59 @@ class RecordScreenTest {
 
         searchField().performTextInput("ramen")
         compose.onNodeWithText("note 3").assertIsDisplayed()
+    }
+
+    @Test
+    fun theEditButtonIsLabelledEdit() {
+        show(listOf(record(1, note = "lunch")))
+        compose.onNodeWithContentDescription("Edit").assertIsDisplayed()
+    }
+
+    @Test
+    fun inTraditionalChinese_theEditButtonIsLabelledInChinese() {
+        showInTraditionalChinese(listOf(record(1, note = "lunch")))
+        compose.onNodeWithContentDescription("編輯").assertIsDisplayed()
+    }
+
+    @Test
+    fun theDeleteDialogReadsInEnglish() {
+        show(listOf(record(1, note = "lunch")))
+        longPress("lunch")
+        compose.onNodeWithText("Delete").assertIsDisplayed()
+        compose.onNodeWithText("Do you want to delete this record?").assertIsDisplayed()
+        compose.onNodeWithText("Yes").assertIsDisplayed()
+        compose.onNodeWithText("No").assertIsDisplayed()
+    }
+
+    @Test
+    fun inTraditionalChinese_theDeleteDialogReadsInChinese() {
+        showInTraditionalChinese(listOf(record(1, note = "lunch")))
+        longPress("lunch")
+        // 「刪除」 is both the title and the confirm button; only the button has a click action.
+        compose.onNode(hasText("刪除") and !hasClickAction()).assertIsDisplayed()
+        compose.onNodeWithText("要刪除這筆紀錄嗎？").assertIsDisplayed()
+        compose.onNode(hasText("刪除") and hasClickAction()).assertIsDisplayed()
+        compose.onNodeWithText("取消").assertIsDisplayed()
+    }
+
+    /**
+     * The translated buttons must keep their meaning: swapping the two Chinese labels would still show
+     * every word of the dialog, yet make "取消" delete the record.
+     */
+    @Test
+    fun inTraditionalChinese_cancelKeepsTheRecord_andDeleteDeletesIt() {
+        val lunch = record(1, note = "lunch")
+        val deleted = mutableListOf<EatRecord>()
+        showInTraditionalChinese(listOf(lunch), onDelete = { deleted += it })
+
+        longPress("lunch")
+        compose.onNodeWithText("取消").performClick()
+        compose.onAllNodesWithText("要刪除這筆紀錄嗎？").assertCountEquals(0)
+        assertEquals(emptyList<EatRecord>(), deleted)
+
+        longPress("lunch")
+        compose.onNode(hasText("刪除") and hasClickAction()).performClick()
+        assertEquals(listOf(lunch), deleted)
     }
 
     private companion object {
