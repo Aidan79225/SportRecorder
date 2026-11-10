@@ -25,6 +25,10 @@
 
     <string name="photo_saved">已儲存到相簿</string>
     <string name="photo_save_failed">儲存照片失敗</string>
+    <!-- 照片檢視器工具列：只有圖示的按鈕，這些文字就是螢幕閱讀器會念出的內容。 -->
+    <string name="photo_viewer_share">分享</string>
+    <string name="photo_viewer_save">儲存</string>
+    <string name="photo_viewer_close">關閉</string>
     <!-- photo_add/select, diet_eat_note/location*/create/save/recapture/clear/remove_photo
          已移至 :shared composeResources（編輯畫面已共用）。 -->
 
