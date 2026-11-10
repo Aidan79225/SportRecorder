@@ -181,7 +181,7 @@
   ReminderPlanner.plan(mealsAsc: List<MealSpan>, settings: DietSettings, prefs: ReminderPrefs, now: Long, timeZone: TimeZone = …)
   ObserveDietStateUseCase.DietSnapshot(val mealsAsc: List<MealSpan>, val settings: DietSettings)
   ```
-  Rules inside `compute`: group with `groupIntoWindows(mealsAsc, …) { it.start }`, take the last window; `first = window.first().start`; `latestEnd = window.maxOf { it.end }`; `windowEnd = maxOf(first + eatingMillis, latestEnd)`; `fastStartAt = latestEnd`; `fastTargetAt = fastStartAt + fastingMillis`; `lastEat` stays the START of the last-started meal. **Delete `SINGLE_MEAL_FAST_GRACE_MILLIS` and the `mealCount == 1` branch.** Callers build `MealSpan(it.time, it.endTime)`; `RescheduleRemindersUseCase` sorts by `start`.
+  Rules inside `compute`: group with `groupIntoWindows(mealsAsc, …) { it.start }`, take the last window; `first = window.first().start`; `latestEnd = window.maxOf { it.end }`; `windowEnd = maxOf(first + eatingMillis, latestEnd)`; `fastStartAt = latestEnd`; `fastTargetAt = fastStartAt + fastingMillis`; `lastEat` is gone: the review loop deleted it, because nothing but DietWindowTest read it. **Delete `SINGLE_MEAL_FAST_GRACE_MILLIS` and the `mealCount == 1` branch.** Callers build `MealSpan(it.time, it.endTime)`; `RescheduleRemindersUseCase` sorts by `start`.
 
 - [ ] **Step 1: Failing tests** (in `DietWindowTest`; `eh = 8`, `fh = 16`, `f = 1_700_000_000_000L`; a helper `meal(start, minutes = 60)`)
   ```kotlin

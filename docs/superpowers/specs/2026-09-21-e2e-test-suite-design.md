@@ -153,7 +153,7 @@ virtual clock — only the state change is asserted).
 | 2.3 | Clock advances → FASTING | A | ticker recomputation flips the phase live |
 | 2.4 | Clock advances past target → SUCCESS | A | `progress == 100f` |
 | 2.5 | Cross-midnight window (22:00 meal, UTC pinned) | A | `windowEnd`/`fastTargetAt` land on **TOMORROW** (`RelativeDay`) |
-| 2.6 | Second meal during the window | S | window merges; fast clock moves to the later meal (no 1h grace) |
+| 2.6 | Second meal during the window | S | window merges; fast clock moves to the later meal (no 1h grace) — *since 2026-11-07 the fast starts when the later meal ENDS, see `2026-11-07-record-venues-and-meal-duration-design.md` B4* |
 | 2.7 | Meal beyond the merge tolerance | S | a **new** window opens |
 | 2.8 | Settings changed 16:8 → 20:4 while observing | S + A | snapshot re-emits; `fastingLabel` and phase follow |
 | 2.9 | Empty → populated → emptied again | S | returns to IDLE |

@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.domain.usecase
 
+import com.crazystudio.sportrecorder.domain.diet.MealSpan
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPlanner
 import com.crazystudio.sportrecorder.domain.reminder.ReminderScheduler
 import com.crazystudio.sportrecorder.domain.reminder.RemindersRescheduler
@@ -36,9 +37,11 @@ class RescheduleRemindersUseCase(
     )
 
     override suspend fun reschedule() {
-        val eatTimesAsc = eatRecordRepository.observeAll().first().map { it.time }.sorted()
+        val mealsAsc = eatRecordRepository.observeAll().first()
+            .map { MealSpan(it.time, it.endTime) }
+            .sortedBy { it.start }
         val settings = dietSettingsRepository.settings.first()
         val prefs = reminderPreferencesRepository.prefs.first()
-        scheduler.schedule(ReminderPlanner.plan(eatTimesAsc, settings, prefs, now()))
+        scheduler.schedule(ReminderPlanner.plan(mealsAsc, settings, prefs, now()))
     }
 }

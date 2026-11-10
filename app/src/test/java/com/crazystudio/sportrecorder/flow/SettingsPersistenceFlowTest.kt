@@ -147,7 +147,7 @@ class SettingsPersistenceFlowTest {
             )
         }
 
-        // Single meal at +10h → the fast clock starts at +11h; a 20h fast targets +31h.
+        // Single meal at +10h (the default hour) ends at +11h, when the fast clock starts; a 20h fast targets +31h.
         assertEquals(1, scheduler.scheduleCount)
         assertEquals(ReminderType.FAST_COMPLETE, scheduler.lastScheduled.single().type)
         assertEquals(day0 + h(31), scheduler.lastScheduled.single().triggerAtMillis)

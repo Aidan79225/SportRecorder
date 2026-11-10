@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.domain.reminder
 import com.crazystudio.sportrecorder.domain.diet.DietPhase
 import com.crazystudio.sportrecorder.domain.diet.DietWindow
 import com.crazystudio.sportrecorder.domain.diet.DietWindowState
+import com.crazystudio.sportrecorder.domain.diet.MealSpan
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
@@ -20,15 +21,15 @@ object ReminderPlanner {
     private const val MILLIS_PER_MINUTE = 60_000L
 
     fun plan(
-        eatTimesAsc: List<Long>,
+        mealsAsc: List<MealSpan>,
         settings: DietSettings,
         prefs: ReminderPrefs,
         now: Long,
         timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): List<ScheduledReminder> {
-        if (eatTimesAsc.isEmpty()) return emptyList()
+        if (mealsAsc.isEmpty()) return emptyList()
         val state = DietWindow.compute(
-            eatTimesAsc = eatTimesAsc,
+            mealsAsc = mealsAsc,
             eatingHours = settings.eatingHours,
             fastingHours = settings.fastingHours,
             now = now,

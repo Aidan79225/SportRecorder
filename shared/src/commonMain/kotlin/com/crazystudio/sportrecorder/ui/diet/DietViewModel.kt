@@ -64,7 +64,7 @@ class DietViewModel(
         val fastingLabel = "$fastingHours : $eatingHours"
 
         val s = DietWindow.compute(
-            eatTimesAsc = snapshot.eatTimesAsc,
+            mealsAsc = snapshot.mealsAsc,
             eatingHours = eatingHours,
             fastingHours = fastingHours,
             now = now,
@@ -92,7 +92,7 @@ class DietViewModel(
             DietPhase.FASTING -> base.copy(
                 statusIcon = Res.drawable.ic_baseline_no_food_24,
                 promptText = Res.string.diet_fasting_time,
-                // Show when the fast actually started (last meal, or +1h for a single-meal window).
+                // Show when the fast actually started: when the last meal ended.
                 fastStart = timeLabel(s.fastStartAt, now),
             )
             DietPhase.SUCCESS -> base.copy(

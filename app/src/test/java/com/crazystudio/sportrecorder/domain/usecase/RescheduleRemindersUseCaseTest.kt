@@ -37,7 +37,7 @@ class RescheduleRemindersUseCaseTest {
     fun reschedule_passesPlannedRemindersToScheduler() = runTest {
         val scheduler = FakeReminderScheduler()
         val prefs = ReminderPrefs(fastCompleteEnabled = true)
-        // Single meal 10:00 → fast from 11:00 (meal + 1h grace) → target 03:00 next day. now 11:00.
+        // Single meal 10:00 → fast from 11:00, when it ends → target 03:00 next day. now 11:00.
         useCase(listOf(eat(day0 + h(10))), prefs, scheduler) { day0 + h(11) }.reschedule()
 
         assertEquals(1, scheduler.scheduleCount)

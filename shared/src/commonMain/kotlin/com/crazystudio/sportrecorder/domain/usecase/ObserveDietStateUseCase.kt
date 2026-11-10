@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.domain.usecase
 
+import com.crazystudio.sportrecorder.domain.diet.MealSpan
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.repository.EatRecordRepository
@@ -21,11 +22,12 @@ class ObserveDietStateUseCase constructor(
     private val dietSettingsRepository: DietSettingsRepository,
 ) {
     data class DietSnapshot(
-        val eatTimesAsc: List<Long>,
+        /** Recent meals, ascending by start. */
+        val mealsAsc: List<MealSpan>,
         val settings: DietSettings,
     )
 
-    /** [now] anchors the (fixed-at-subscription) window of recent eat times fed to DietWindow. */
+    /** [now] anchors the (fixed-at-subscription) window of recent meals fed to DietWindow. */
     operator fun invoke(now: Long): Flow<DietSnapshot> {
         val before = dayStart(now, DAY_OFFSET_TOMORROW)
         val after = windowStart(now)
@@ -33,7 +35,7 @@ class ObserveDietStateUseCase constructor(
             eatRecordRepository.observeInWindow(after = after, before = before),
             dietSettingsRepository.settings,
         ) { records, settings ->
-            DietSnapshot(eatTimesAsc = records.map { it.time }, settings = settings)
+            DietSnapshot(mealsAsc = records.map { MealSpan(it.time, it.endTime) }, settings = settings)
         }
     }
 
