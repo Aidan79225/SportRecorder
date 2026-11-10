@@ -23,10 +23,7 @@
     <!-- diet_fasting_type_title/trainee/normal/expert/master/monk moved to :shared composeResources. -->
     <string name="diet_fasting_type_create_duplicate">It was skipped, you already have the same fasting type!</string>
 
-    <string name="diet_eat_time_delete_title">Delete</string>
-    <string name="diet_eat_time_delete_message">Do you want to delete this record?</string>
-    <string name="yes">Yes</string>
-    <string name="no">No</string>
+    <!-- diet_eat_time_delete_title/message + yes/no removed (unused); the delete dialog's text is :shared record_delete_*. -->
 
     <string name="photo_saved">Saved to gallery</string>
     <string name="photo_save_failed">Couldn\'t save photo</string>
