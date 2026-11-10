@@ -14,7 +14,6 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.centerY
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
@@ -121,6 +120,10 @@ class EatTimeEditorSheetTest {
     // The row behind an open menu shows the current value too, so a bare text lookup would find two nodes.
     private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
 
+    // Menu items carrying a selection state, whatever its value: the current choice, and nothing else.
+    private fun menuItemsWithASelectionState() =
+        compose.onAllNodes(hasAnyAncestor(isPopup()) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected))
+
     // Mirrors the sheet's private formatDate / formatTime: "yyyy/MM/dd" and "HH:mm" (zero-padded)
     // in the device's default time zone.
     private fun formatLocal(millis: Long, pattern: String): String =
@@ -189,12 +192,13 @@ class EatTimeEditorSheetTest {
         }
     }
 
-    // The arrows used to be clickable images described as "": controls a screen reader can't name.
+    // A description of "" still makes an image a stop for a screen reader, and says nothing: the arrows were
+    // clickable images described that way (controls it can't name), the Location row's icon a silent stop.
+    // An image that is only decoration carries null instead.
     @Test
-    fun noClickableNodeIsLeftWithAnEmptyDescription() {
+    fun noNodeIsLeftWithAnEmptyDescription() {
         show(EatTimeEditorUiState())
-        compose.onAllNodes(hasContentDescription("") and hasClickAction(), useUnmergedTree = true)
-            .assertCountEquals(0)
+        compose.onAllNodes(hasContentDescription(""), useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
@@ -224,6 +228,7 @@ class EatTimeEditorSheetTest {
     }
 
     // The arrow is no longer a node of its own; the spot where it sits is still part of the row.
+    // (Left-to-right only: the arrow is at the row's right end, so the offset is measured from the right.)
     @Test
     fun tappingWhereTheArrowSits_stillOpensTheDurationMenu() {
         show(EatTimeEditorUiState())
@@ -233,16 +238,14 @@ class EatTimeEditorSheetTest {
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
     }
 
-    // Expected in English: "1 hr 30 min" is selected; the others ("1 hr", "2 hr") carry no selection state.
+    // Expected in English: "1 hr 30 min" is selected, and it is the only item with a selection state at all.
     @Test
     fun theDurationMenuMarksTheCurrentChoiceAsSelected() {
         show(EatTimeEditorUiState(durationMinutes = 90))
         label(Res.string.diet_eat_duration_title).performClick()
 
         menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsSelected()
-        listOf(str(Res.string.duration_hours, 1), str(Res.string.duration_hours, 2)).forEach {
-            menuItem(it).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
-        }
+        menuItemsWithASelectionState().assertCountEquals(1)
     }
 
     // 75 is not on the menu, so nothing there is marked (the row itself still shows "1 hr 15 min").
@@ -252,8 +255,7 @@ class EatTimeEditorSheetTest {
         label(Res.string.diet_eat_duration_title).performClick()
 
         menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
-        compose.onAllNodes(hasAnyAncestor(isPopup()) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected))
-            .assertCountEquals(0)
+        menuItemsWithASelectionState().assertCountEquals(0)
     }
 
     // Expected in English: "1 hr 15 min" (zh-TW 「1 小時 15 分鐘」) — 75 is not on the menu, shown as stored.

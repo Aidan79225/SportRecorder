@@ -146,7 +146,7 @@ fun EatTimeEditorSheet(
             icon = Res.drawable.ic_baseline_date_range_24,
             title = stringResource(Res.string.diet_create_eating_date_title),
             content = formatDate(state.dateMillis),
-            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+            trailingIcon = Res.drawable.ic_baseline_arrow_drop_down,
             onClick = onPickDate,
             onClickLabel = stringResource(Res.string.diet_create_eating_date_pick),
         )
@@ -155,7 +155,7 @@ fun EatTimeEditorSheet(
             icon = Res.drawable.ic_baseline_access_time_24,
             title = stringResource(Res.string.diet_create_eating_time_title),
             content = formatTime(state.dateMillis),
-            actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+            trailingIcon = Res.drawable.ic_baseline_arrow_drop_down,
             onClick = onPickTime,
             onClickLabel = stringResource(Res.string.diet_create_eating_time_pick),
         )
@@ -239,7 +239,7 @@ fun EatTimeEditorSheet(
         ) {
             Image(
                 painter = painterResource(Res.drawable.ic_baseline_date_range_24),
-                contentDescription = "",
+                contentDescription = null, // Decoration: the title beside it names the row.
                 modifier = Modifier
                     .padding(10.dp)
                     .size(36.dp),
@@ -284,7 +284,7 @@ fun EatTimeEditorSheet(
             icon = Res.drawable.ic_baseline_photo_camera_24,
             title = stringResource(Res.string.photo_add),
             content = "",
-            actionIcon = Res.drawable.ic_baseline_add_24,
+            trailingIcon = Res.drawable.ic_baseline_add_24,
             onClick = onAddPhoto,
         )
         // SELECT PHOTO (gallery) row
@@ -292,7 +292,7 @@ fun EatTimeEditorSheet(
             icon = Res.drawable.ic_baseline_photo_library_24,
             title = stringResource(Res.string.photo_select),
             content = "",
-            actionIcon = Res.drawable.ic_baseline_add_24,
+            trailingIcon = Res.drawable.ic_baseline_add_24,
             onClick = onSelectPhoto,
         )
         // EXISTING photos (edit mode)
@@ -442,7 +442,7 @@ private fun PhotoTile(model: Any?, contentDescription: String, onRemove: () -> U
     }
 }
 
-/** Built like the Date and Time rows; tapping it opens a menu of [MealDuration.CHOICES] under its arrow. */
+/** Built like the Date and Time rows; tapping it opens a menu of [MealDuration.CHOICES] at its arrow. */
 @Composable
 private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
@@ -451,7 +451,7 @@ private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
         title = stringResource(Res.string.diet_eat_duration_title),
         // A stored length the menu doesn't offer is shown as it is.
         content = durationText(minutes),
-        actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+        trailingIcon = Res.drawable.ic_baseline_arrow_drop_down,
         onClick = { expanded = true },
         onClickLabel = stringResource(Res.string.diet_eat_duration_pick),
     ) {
@@ -499,20 +499,20 @@ private fun durationText(minutes: Int): String {
 }
 
 /**
- * Icon, [title], [content] and a small arrow at the end, as one button: a tap anywhere on the row acts,
- * and a screen reader reads "[title], [content]" as a single stop. The arrow only hints that something
- * opens, so it has no description of its own.
+ * Icon, [title], [content] and a small trailing icon (an arrow, or a plus) as one button: a tap anywhere
+ * on the row acts, and a screen reader reads "[title], [content]" as a single stop. The trailing icon only
+ * hints that something opens or can be added, so it has no description of its own.
  */
 @Composable
 private fun HeaderRow(
     icon: DrawableResource,
     title: String,
     content: String,
-    actionIcon: DrawableResource,
+    trailingIcon: DrawableResource,
     onClick: () -> Unit,
     // What a tap does, read after the row ("Double tap to choose a date"); null where the title says it.
     onClickLabel: String? = null,
-    // Composed in a Box around the arrow: whatever pops up from the arrow (a menu) anchors to it.
+    // Composed in a Box around the trailing icon: whatever pops up from it (a menu) anchors to it.
     anchor: @Composable BoxScope.() -> Unit = {},
 ) {
     Row(
@@ -545,7 +545,7 @@ private fun HeaderRow(
         )
         Box {
             Image(
-                painter = painterResource(actionIcon),
+                painter = painterResource(trailingIcon),
                 contentDescription = null,
                 modifier = Modifier
                     .padding(10.dp)
