@@ -27,6 +27,10 @@
 
     <string name="photo_saved">Saved to gallery</string>
     <string name="photo_save_failed">Couldn\'t save photo</string>
+    <!-- Photo viewer toolbar: icon-only buttons, so these are what a screen reader says. -->
+    <string name="photo_viewer_share">Share</string>
+    <string name="photo_viewer_save">Save</string>
+    <string name="photo_viewer_close">Close</string>
     <!-- photo_add/select, diet_eat_note/location*/create/save/recapture/clear/remove_photo
          moved to :shared composeResources (editor sheet is shared). -->
 

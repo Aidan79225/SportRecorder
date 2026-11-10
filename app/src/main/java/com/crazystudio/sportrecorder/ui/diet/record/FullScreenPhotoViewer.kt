@@ -20,18 +20,12 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,7 +48,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -293,35 +286,11 @@ fun FullScreenPhotoViewer(
                 exit = fadeOut(),
                 modifier = Modifier.align(Alignment.TopEnd),
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    IconButton(onClick = { PhotoStorage.share(context, currentFileName) }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_baseline_share_24),
-                            contentDescription = "Share",
-                            tint = Color.White,
-                        )
-                    }
-                    IconButton(onClick = { onSaveClick() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_baseline_download_24),
-                            contentDescription = "Save",
-                            tint = Color.White,
-                        )
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_baseline_close_24),
-                            contentDescription = "Close",
-                            tint = Color.White,
-                        )
-                    }
-                }
+                PhotoViewerToolbar(
+                    onShare = { PhotoStorage.share(context, currentFileName) },
+                    onSave = { onSaveClick() },
+                    onClose = onDismiss,
+                )
             }
 
             AnimatedVisibility(
