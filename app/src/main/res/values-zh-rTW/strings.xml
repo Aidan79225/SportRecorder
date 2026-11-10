@@ -21,10 +21,7 @@
 
     <string name="diet_fasting_type_create_duplicate">已略過，你已經有相同的斷食類型！</string>
 
-    <string name="diet_eat_time_delete_title">刪除</string>
-    <string name="diet_eat_time_delete_message">確定要刪除這筆紀錄嗎？</string>
-    <string name="yes">是</string>
-    <string name="no">否</string>
+    <!-- diet_eat_time_delete_title/message + yes/no 已移除（未使用）；刪除確認的文字在 :shared 的 record_delete_*。 -->
 
     <string name="photo_saved">已儲存到相簿</string>
     <string name="photo_save_failed">儲存照片失敗</string>

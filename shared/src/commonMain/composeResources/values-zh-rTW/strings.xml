@@ -316,4 +316,9 @@
     <string name="record_search_clear">清除搜尋</string>
     <string name="record_search_empty">沒有符合的紀錄</string>
     <string name="record_venue_search">看這家店的紀錄</string>
+    <string name="record_edit">編輯</string>
+    <string name="record_delete_title">刪除</string>
+    <string name="record_delete_message">要刪除這筆紀錄嗎？</string>
+    <string name="record_delete_confirm">刪除</string>
+    <string name="record_delete_dismiss">取消</string>
 </resources>
