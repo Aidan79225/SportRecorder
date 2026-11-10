@@ -228,7 +228,7 @@ class EatTimeEditorSheetTest {
     fun tappingWhereTheArrowSits_stillOpensTheDurationMenu() {
         show(EatTimeEditorUiState())
         row(Res.string.diet_eat_duration_title).performTouchInput {
-            click(Offset(width - ARROW_CELL_CENTER.toPx(), centerY))
+            click(Offset(width - ARROW_CENTER_FROM_END.toPx(), centerY))
         }
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
     }
@@ -355,7 +355,7 @@ class EatTimeEditorSheetTest {
     }
 
     private companion object {
-        /** The arrow cell at a row's trailing end is 56 dp wide (36 dp icon + 10 dp padding each side). */
-        val ARROW_CELL_CENTER = 28.dp
+        /** The arrow's cell at a row's trailing end is 56 dp wide (36 dp icon + 10 dp padding each side). */
+        val ARROW_CENTER_FROM_END = 28.dp
     }
 }
