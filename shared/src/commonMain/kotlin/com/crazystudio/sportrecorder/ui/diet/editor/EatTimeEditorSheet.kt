@@ -48,10 +48,13 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_title
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_clear_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
@@ -141,7 +144,8 @@ fun EatTimeEditorSheet(
             title = stringResource(Res.string.diet_create_eating_date_title),
             content = formatDate(state.dateMillis),
             actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-            onActionClick = onPickDate,
+            onClick = onPickDate,
+            onClickLabel = stringResource(Res.string.diet_create_eating_date_pick),
         )
         // TIME row
         HeaderRow(
@@ -149,7 +153,8 @@ fun EatTimeEditorSheet(
             title = stringResource(Res.string.diet_create_eating_time_title),
             content = formatTime(state.dateMillis),
             actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-            onActionClick = onPickTime,
+            onClick = onPickTime,
+            onClickLabel = stringResource(Res.string.diet_create_eating_time_pick),
         )
         // DURATION row: already reads 1 小時, so a quick capture needs no tap here.
         DurationRow(minutes = state.durationMinutes, onDurationChange = onDurationChange)
@@ -277,7 +282,7 @@ fun EatTimeEditorSheet(
             title = stringResource(Res.string.photo_add),
             content = "",
             actionIcon = Res.drawable.ic_baseline_add_24,
-            onActionClick = onAddPhoto,
+            onClick = onAddPhoto,
         )
         // SELECT PHOTO (gallery) row
         HeaderRow(
@@ -285,7 +290,7 @@ fun EatTimeEditorSheet(
             title = stringResource(Res.string.photo_select),
             content = "",
             actionIcon = Res.drawable.ic_baseline_add_24,
-            onActionClick = onSelectPhoto,
+            onClick = onSelectPhoto,
         )
         // EXISTING photos (edit mode)
         if (state.existingPhotos.isNotEmpty()) {
@@ -434,7 +439,7 @@ private fun PhotoTile(model: Any?, contentDescription: String, onRemove: () -> U
     }
 }
 
-/** Built like the Date and Time rows; its arrow opens a menu of [MealDuration.CHOICES]. */
+/** Built like the Date and Time rows; tapping it opens a menu of [MealDuration.CHOICES] under its arrow. */
 @Composable
 private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
@@ -444,7 +449,8 @@ private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
         // A stored length the menu doesn't offer is shown as it is.
         content = durationText(minutes),
         actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
-        onActionClick = { expanded = true },
+        onClick = { expanded = true },
+        onClickLabel = stringResource(Res.string.diet_eat_duration_pick),
     ) {
         // Anchored to the arrow, so the menu drops from it at the row's right edge.
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -471,23 +477,33 @@ private fun durationText(minutes: Int): String {
     }
 }
 
+/**
+ * Icon, [title], [content] and a small arrow at the end, as one button: a tap anywhere on the row acts,
+ * and a screen reader reads "[title], [content]" as a single stop. The arrow only hints that something
+ * opens, so it has no description of its own.
+ */
 @Composable
 private fun HeaderRow(
     icon: DrawableResource,
     title: String,
     content: String,
     actionIcon: DrawableResource,
-    onActionClick: () -> Unit,
+    onClick: () -> Unit,
+    // What a tap does, read after the row ("Double tap to choose a date"); null where the title says it.
+    onClickLabel: String? = null,
     // Composed in a Box around the arrow: whatever pops up from the arrow (a menu) anchors to it.
     anchor: @Composable BoxScope.() -> Unit = {},
 ) {
     Row(
-        modifier = Modifier,
+        // clickable also merges the icon and both texts into this one node, and gives it the button role.
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             painter = painterResource(icon),
-            contentDescription = "",
+            contentDescription = null,
             modifier = Modifier
                 .padding(10.dp)
                 .size(36.dp),
@@ -509,11 +525,10 @@ private fun HeaderRow(
         Box {
             Image(
                 painter = painterResource(actionIcon),
-                contentDescription = "",
+                contentDescription = null,
                 modifier = Modifier
                     .padding(10.dp)
-                    .size(36.dp)
-                    .clickable { onActionClick() },
+                    .size(36.dp),
             )
             anchor()
         }
