@@ -2,6 +2,7 @@
 
 **Date:** 2026-06-19
 **Status:** Approved design, pending implementation
+**Note (2026-11-07):** `fastTargetAt` is now the end of the last meal + `fastingHours` (a meal has a duration; the old 1-hour single-meal grace is gone) — see `2026-11-07-record-venues-and-meal-duration-design.md` B4.
 
 ## Context
 

@@ -16,6 +16,7 @@ import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.reminder.ReminderPrefs
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -488,4 +489,101 @@ class BackupServiceTest {
         assertEquals(listOf("My place"), safetyDoc.venues.map { it.name })
         assertEquals(emptyList(), venueRepo.stored) // and the restore still applied
     }
+
+    @Test fun aMealsDurationRoundTripsThroughABackup() = runTest {
+        val eat = FakeEatRecordRepository(
+            listOf(
+                EatRecord(1, 100L, null, null, emptyList(), durationMinutes = 90),
+                EatRecord(2, 200L, null, null, emptyList()),
+            ),
+        )
+        val store = FakeBackupStore()
+        val service = service(eat, store)
+
+        val info = service.backup()
+        eat.state.value = emptyList()
+        service.restore(info.id)
+
+        // The 90 survives, and so does the default hour: it is written to the snapshot like any other.
+        assertEquals(listOf(90, 60), eat.state.value.sortedBy { it.time }.map { it.durationMinutes })
+    }
+
+    /** What the app wrote after venue keys (0.14) and before durations: schema 2, no duration anywhere. */
+    @Test fun aSnapshotWithoutDurations_restoresEveryMealAsOneHour() = runTest {
+        val json = """
+            {"schemaVersion":2,"createdAt":1,"appVersionName":"0.14.1",
+             "meals":[{"id":1,"time":100,"note":"first","location":null,"photos":[],"venueName":"Cafe","venueKey":"3"},
+                      {"id":2,"time":200,"note":null,"location":null,"photos":[],"venueName":null,"venueKey":null}],
+             "fastingTypes":[],"dietSettings":{"fastingHours":16,"eatingHours":8},
+             "reminderPrefs":{"windowClosingEnabled":false,"fastCompleteEnabled":false,
+             "leadMinutes":30,"quietHoursEnabled":false,"quietStartMinutes":1320,"quietEndMinutes":480},
+             "venues":[{"name":"Cafe","lat":1.0,"lng":2.0,"lastUsedAt":9,"address":null,"key":"3"}]}
+        """.trimIndent()
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("before-durations", 1L, "0.14.1", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("before-durations")
+
+        val meals = eat.state.value.sortedBy { it.time }
+        assertEquals(listOf(60, 60), meals.map { it.durationMinutes })
+        assertEquals(listOf("first", null), meals.map { it.note }) // the same two meals, in order
+    }
+
+    /** The manifest the service writes for one 90-minute meal at 100L. */
+    private suspend fun snapshotOfANinetyMinuteMeal(): String {
+        val eat = FakeEatRecordRepository(listOf(EatRecord(1, 100L, null, null, emptyList(), durationMinutes = 90)))
+        val store = FakeBackupStore()
+        service(eat, store).backup()
+        return store.uploads.last().manifestJson
+    }
+
+    /** Additive on purpose: the duration rides along without a schema bump. */
+    @Test fun aSnapshotKeepsItsDurationWithoutASchemaBump() = runTest {
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), snapshotOfANinetyMinuteMeal())
+        assertEquals(90, doc.meals.single().durationMinutes)
+        assertEquals(2, doc.schemaVersion)
+    }
+
+    /** No schema bump means an app that has never heard of durations still reads the snapshot. */
+    @Test fun anAppFromBeforeDurations_stillReadsANewSnapshot() = runTest {
+        // It reads the same snapshot and skips the keys it does not know.
+        val older = BackupJson.decodeFromString(SnapshotBeforeDurations.serializer(), snapshotOfANinetyMinuteMeal())
+        assertEquals(2, older.schemaVersion)
+        assertEquals(listOf(100L), older.meals.map { it.time })
+    }
+
+    /** A snapshot is a file from outside: a length that cannot be real must never reach the database. */
+    @Test fun aNonPositiveDurationInASnapshot_restoresAsOneHour() = runTest {
+        val snapshot = BackupDocument(
+            schemaVersion = BackupDocument.SCHEMA_VERSION, createdAt = 1L, appVersionName = "0.14.1",
+            meals = listOf(
+                BackupMeal(1, 100L, null, null, emptyList(), durationMinutes = 0),
+                BackupMeal(2, 200L, null, null, emptyList(), durationMinutes = -30),
+                BackupMeal(3, 300L, null, null, emptyList(), durationMinutes = 45),
+            ),
+            fastingTypes = emptyList(),
+            dietSettings = BackupDietSettings(16, 8),
+            reminderPrefs = BackupReminderPrefs(false, false, 30, false, 1320, 480),
+        )
+        val json = BackupJson.encodeToString(BackupDocument.serializer(), snapshot)
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.14.1", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("s")
+
+        // The two impossible lengths become the default hour; the sane 45 next to them is left alone.
+        assertEquals(listOf(60, 60, 45), eat.state.value.sortedBy { it.time }.map { it.durationMinutes })
+    }
 }
+
+/**
+ * An app from before meals had durations, cut down to schemaVersion and each meal's id and time (all
+ * the test reads): it has no durationMinutes and, like every reader, skips the keys it does not know.
+ */
+@Serializable
+private data class SnapshotBeforeDurations(val schemaVersion: Int, val meals: List<MealBeforeDurations>)
+
+@Serializable
+private data class MealBeforeDurations(val id: Int, val time: Long)

@@ -89,12 +89,20 @@ class BackupRoundTripRoomTest {
         appVersionName = "test",
     ) { 4_242L }
 
+    // The lunch lasts 90 minutes and the dinner keeps the default hour: a backup that dropped the
+    // field would still restore every meal as 60, so only the lunch can tell the two apart.
     private suspend fun seedTwoMeals() {
-        eatRepo.save(EatRecord(0, 1_000L, GeoPoint(25.03, 121.56), "lunch", emptyList()), listOf("a.webp"), emptyList())
+        eatRepo.save(
+            EatRecord(0, 1_000L, GeoPoint(25.03, 121.56), "lunch", emptyList(), durationMinutes = 90),
+            listOf("a.webp"),
+            emptyList(),
+        )
         eatRepo.save(EatRecord(0, 2_000L, null, "dinner", emptyList()), emptyList(), emptyList())
     }
 
-    private fun List<EatRecord>.shape() = map { Triple(it.time, it.note, it.location) to it.photos.map { p -> p.fileName to p.createdAt } }
+    private fun List<EatRecord>.shape() = map {
+        listOf(it.time, it.note, it.location, it.durationMinutes) to it.photos.map { p -> p.fileName to p.createdAt }
+    }
 
     @Test fun backup_thenRestore_bringsEverythingBack() = runBlocking {
         seedTwoMeals()
@@ -115,6 +123,7 @@ class BackupRoundTripRoomTest {
 
         val after = eatRepo.observeAll().first()
         assertEquals(before.shape(), after.shape()) // newest-first, same content, same photo names
+        assertEquals(listOf(60, 90), after.map { it.durationMinutes }) // dinner, then the 90-minute lunch
         assertEquals(listOf(CustomFastingType(18, 6, "my-18-6")), fastingRepo.observeRecentCustomTypes().first())
         assertEquals(DietSettings(20, 4), settingsRepo.settings.first())
         assertEquals(45L, prefsRepo.prefs.first().leadMinutes)
@@ -173,9 +182,12 @@ class BackupRoundTripRoomTest {
         val safety = store.uploads.single()
         val safetyDoc = BackupJson.decodeFromString(BackupDocument.serializer(), safety.manifestJson)
         assertEquals(listOf("dinner", "lunch"), safetyDoc.meals.map { it.note }) // newest-first, the pre-restore data
+        assertEquals(listOf(60, 90), safetyDoc.meals.map { it.durationMinutes }) // the lengths go along too
         assertEquals(listOf("a.webp"), safety.uploadedPhotos)
         assertEquals(0, store.pruneCalls)
         assertEquals(listOf("from-cloud"), eatRepo.observeAll().first().map { it.note })
+        // The seed meal has no duration (a snapshot from before durations): Room stores the default hour.
+        assertEquals(listOf(60), eatRepo.observeAll().first().map { it.durationMinutes })
         assertTrue(deletedPhotos.isEmpty())
     }
 

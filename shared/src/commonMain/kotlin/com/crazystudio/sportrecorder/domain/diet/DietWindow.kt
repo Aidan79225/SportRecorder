@@ -4,23 +4,22 @@ import kotlin.time.Duration.Companion.hours
 
 enum class DietPhase { IDLE, EATING, FASTING, SUCCESS }
 
+/** One eating occasion, as epoch millis. */
+data class MealSpan(val start: Long, val end: Long)
+
 data class DietWindowState(
     val phase: DietPhase,
     val ringProgress: Float = 0f,
     val elapsedMillis: Long = 0L,
     val windowStart: Long? = null,
     val windowEnd: Long? = null,
-    val lastEat: Long? = null,
-    /** When the fast clock starts: the last meal, or last meal + 1h for a single-meal window. */
+    /** When the fast clock starts: the latest end of any meal in the window. */
     val fastStartAt: Long? = null,
     val fastTargetAt: Long? = null,
 )
 
 /** Pure (Android-free) eating/fasting window calculator. */
 object DietWindow {
-
-    /** Grace before the fast clock starts when a window holds a single meal. */
-    private val SINGLE_MEAL_FAST_GRACE_MILLIS = 1.hours.inWholeMilliseconds
 
     /**
      * Splits meals (ascending by time) into eating windows. A meal joins the current window while
@@ -57,26 +56,31 @@ object DietWindow {
         return windows
     }
 
+    /**
+     * The live state for meals [mealsAsc] (ascending by start). Meals are grouped into eating
+     * windows by their **start** ([groupIntoWindows]); within the latest window the fast starts
+     * when the last meal **ends** — the latest end, so a long meal with a quick drink inside it
+     * ends when the long meal does.
+     */
     fun compute(
-        eatTimesAsc: List<Long>,
+        mealsAsc: List<MealSpan>,
         eatingHours: Long,
         fastingHours: Long,
         now: Long,
     ): DietWindowState {
-        if (eatTimesAsc.isEmpty()) return DietWindowState(phase = DietPhase.IDLE)
+        if (mealsAsc.isEmpty()) return DietWindowState(phase = DietPhase.IDLE)
 
         val ehMillis = eatingHours.hours.inWholeMilliseconds
         val fhMillis = fastingHours.hours.inWholeMilliseconds
         // Only the latest window matters for the live state; see [groupIntoWindows] for the rule.
-        val window = groupIntoWindows(eatTimesAsc, eatingHours, fastingHours) { it }.last()
-        val first = window.first()
-        val last = window.last()
-        val mealCount = window.size
+        val window = groupIntoWindows(mealsAsc, eatingHours, fastingHours) { it.start }.last()
+        val first = window.first().start
+        val latestEnd = window.maxOf { it.end }
 
-        // Window extends to the late meal if it overran the nominal eating hours.
-        val windowEnd = maxOf(first + ehMillis, last)
-        // A single-meal window doesn't start fasting the instant you eat — give it 1h grace.
-        val fastStartAt = if (mealCount == 1) last + SINGLE_MEAL_FAST_GRACE_MILLIS else last
+        // Window extends to the latest end of any meal in it (not only the last-started one's)
+        // if that overran the nominal eating hours.
+        val windowEnd = maxOf(first + ehMillis, latestEnd)
+        val fastStartAt = latestEnd
         val fastTargetAt = fastStartAt + fhMillis
 
         return when {
@@ -86,7 +90,6 @@ object DietWindow {
                 elapsedMillis = (windowEnd - now).coerceAtLeast(0L),
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )
@@ -96,7 +99,6 @@ object DietWindow {
                 elapsedMillis = now - fastStartAt,
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )
@@ -106,7 +108,6 @@ object DietWindow {
                 elapsedMillis = now - fastStartAt,
                 windowStart = first,
                 windowEnd = windowEnd,
-                lastEat = last,
                 fastStartAt = fastStartAt,
                 fastTargetAt = fastTargetAt,
             )

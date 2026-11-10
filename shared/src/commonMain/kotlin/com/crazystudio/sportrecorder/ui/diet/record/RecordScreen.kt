@@ -262,7 +262,7 @@ private fun RecordCard(
                     color = colorScheme.onSurface,
                 )
                 Text(
-                    text = formatTime(record.time),
+                    text = formatClockRange(record.time, record.endTime),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
@@ -385,9 +385,16 @@ private fun formatDate(millis: Long): String {
     return "${dt.year}/${pad2(dt.month.ordinal + 1)}/${pad2(dt.day)}"
 }
 
-/** "HH:mm" in the system timezone. */
-private fun formatTime(millis: Long): String {
-    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
+/**
+ * "HH:mm – HH:mm" in [zone]: when a meal started and when it ended, joined by an en dash with a space on
+ * each side. Clock times only, so a meal that ends after midnight reads "23:30 – 00:30" with no date.
+ */
+internal fun formatClockRange(start: Long, end: Long, zone: TimeZone = TimeZone.currentSystemDefault()): String =
+    "${formatClock(start, zone)} – ${formatClock(end, zone)}"
+
+/** "HH:mm" in [zone]. */
+private fun formatClock(millis: Long, zone: TimeZone): String {
+    val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(zone)
     return "${pad2(dt.hour)}:${pad2(dt.minute)}"
 }
 

@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,6 +39,10 @@ class EatTimeEditorViewModelPasteTest {
         assertEquals(1, editor.resolver.calls)
         assertFalse(vm.uiState.value.resolvingLink)
         assertNull(vm.uiState.value.pasteDialog)
+
+        // A new meal made from a paste never asks how long it took: it saves the default hour.
+        assertTrue(vm.save())
+        assertEquals(MealDuration.DEFAULT_MINUTES, editor.records.stored.single().durationMinutes)
     }
 
     @Test
@@ -95,7 +100,7 @@ class EatTimeEditorViewModelPasteTest {
 
     @Test
     fun pasteInEditMode_changesTheVenueButNotTheLocation() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(listOf(mealAt(venue = daHuWu)), listOf(daHuWu))
+        val editor = Editor(listOf(mealAt(venue = daHuWu).copy(durationMinutes = 90)), listOf(daHuWu))
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel(eatTimeId = 1)
         advanceUntilIdle()
@@ -110,6 +115,8 @@ class EatTimeEditorViewModelPasteTest {
         // Two facts: the venue is where Maps says; the meal is still where you were.
         assertEquals(home, saved.location)
         assertEquals("鼎泰豐 信義店", saved.venue?.name)
+        // A paste changes the venue, not how long the meal took: it keeps its own duration.
+        assertEquals(90, saved.durationMinutes)
     }
 
     @Test

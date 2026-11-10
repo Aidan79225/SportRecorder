@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 
 import androidx.lifecycle.SavedStateHandle
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
@@ -531,6 +532,8 @@ class EatTimeEditorViewModelTest {
         // Two different facts: the venue is where Maps says; the record is where you were.
         assertEquals(home, saved.location)
         assertEquals(25.0335035, saved.venue?.lat)
+        // A shared link never asks how long the meal took: it gets the default hour.
+        assertEquals(MealDuration.DEFAULT_MINUTES, saved.durationMinutes)
     }
 
     @Test

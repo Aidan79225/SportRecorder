@@ -15,7 +15,7 @@ import com.crazystudio.sportrecorder.entity.VenueEntity
 
 @Database(
     entities = [EatTime::class, FastingType::class, Photo::class, VenueEntity::class],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +31,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,12 +45,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
+import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_title
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_clear_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_none
@@ -53,6 +62,9 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_save
 import com.crazystudio.sportrecorder.shared.resources.distance_kilometers
 import com.crazystudio.sportrecorder.shared.resources.distance_meters
+import com.crazystudio.sportrecorder.shared.resources.duration_hours
+import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
+import com.crazystudio.sportrecorder.shared.resources.duration_minutes
 import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_store_body
@@ -94,6 +106,7 @@ fun EatTimeEditorSheet(
     photoModel: (String) -> Any?,
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
+    onDurationChange: (Int) -> Unit,
     onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
     onSelectPhoto: () -> Unit,
@@ -138,6 +151,8 @@ fun EatTimeEditorSheet(
             actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
             onActionClick = onPickTime,
         )
+        // DURATION row: already reads 1 小時, so a quick capture needs no tap here.
+        DurationRow(minutes = state.durationMinutes, onDurationChange = onDurationChange)
         // NOTE field
         OutlinedTextField(
             value = state.note,
@@ -419,6 +434,43 @@ private fun PhotoTile(model: Any?, contentDescription: String, onRemove: () -> U
     }
 }
 
+/** Built like the Date and Time rows; its arrow opens a menu of [MealDuration.CHOICES]. */
+@Composable
+private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    HeaderRow(
+        icon = Res.drawable.ic_baseline_access_time_24,
+        title = stringResource(Res.string.diet_eat_duration_title),
+        // A stored length the menu doesn't offer is shown as it is.
+        content = durationText(minutes),
+        actionIcon = Res.drawable.ic_baseline_arrow_drop_down,
+        onActionClick = { expanded = true },
+    ) {
+        // Anchored to the arrow, so the menu drops from it at the row's right edge.
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            MealDuration.CHOICES.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(durationText(choice)) },
+                    onClick = {
+                        expanded = false
+                        onDurationChange(choice)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun durationText(minutes: Int): String {
+    val (hours, rest) = MealDuration.parts(minutes)
+    return when {
+        hours == 0 -> stringResource(Res.string.duration_minutes, minutes)
+        rest == 0 -> stringResource(Res.string.duration_hours, hours)
+        else -> stringResource(Res.string.duration_hours_minutes, hours, rest)
+    }
+}
+
 @Composable
 private fun HeaderRow(
     icon: DrawableResource,
@@ -426,6 +478,8 @@ private fun HeaderRow(
     content: String,
     actionIcon: DrawableResource,
     onActionClick: () -> Unit,
+    // Composed in a Box around the arrow: whatever pops up from the arrow (a menu) anchors to it.
+    anchor: @Composable BoxScope.() -> Unit = {},
 ) {
     Row(
         modifier = Modifier,
@@ -452,14 +506,17 @@ private fun HeaderRow(
                 .weight(1f)
                 .padding(horizontal = 10.dp),
         )
-        Image(
-            painter = painterResource(actionIcon),
-            contentDescription = "",
-            modifier = Modifier
-                .padding(10.dp)
-                .size(36.dp)
-                .clickable { onActionClick() },
-        )
+        Box {
+            Image(
+                painter = painterResource(actionIcon),
+                contentDescription = "",
+                modifier = Modifier
+                    .padding(10.dp)
+                    .size(36.dp)
+                    .clickable { onActionClick() },
+            )
+            anchor()
+        }
     }
 }
 

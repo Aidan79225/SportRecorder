@@ -42,6 +42,12 @@ data class BackupMeal(
      */
     val venueName: String? = null,
     val venueKey: String? = null,
+    /**
+     * How long the meal lasted, in minutes. Added without a [BackupDocument.SCHEMA_VERSION] bump: an
+     * older app skips the field, and a snapshot written before it carries none. A missing value, or one
+     * that is not positive (never a real length), restores as `MealDuration.DEFAULT_MINUTES`, one hour.
+     */
+    val durationMinutes: Int? = null,
 )
 
 @Serializable

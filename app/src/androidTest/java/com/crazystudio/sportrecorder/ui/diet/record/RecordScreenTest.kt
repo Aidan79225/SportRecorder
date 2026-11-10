@@ -37,6 +37,9 @@ import com.crazystudio.sportrecorder.shared.resources.record_search_hint
 import com.crazystudio.sportrecorder.shared.resources.record_venue_search
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.junit.Rule
@@ -99,6 +102,19 @@ class RecordScreenTest {
         compose.onNodeWithText("Ramen Ya").assertIsDisplayed()
         compose.onNodeWithText("No. 1, Noodle Road").assertIsDisplayed()
         venueBlocks().assertCountEquals(1)
+    }
+
+    /**
+     * Built from a known LOCAL time: the emulator's zone is not fixed, and the card prints local clock
+     * times, so the expected text is spelled out rather than derived from the formatter.
+     */
+    @Test
+    fun aCardShowsItsTimeRange() {
+        val noon = LocalDateTime(2026, 11, 7, 12, 0)
+            .toInstant(TimeZone.currentSystemDefault())
+            .toEpochMilliseconds()
+        show(listOf(record(1).copy(time = noon, durationMinutes = 90)))
+        compose.onNodeWithText("12:00 – 13:30").assertIsDisplayed()
     }
 
     @Test

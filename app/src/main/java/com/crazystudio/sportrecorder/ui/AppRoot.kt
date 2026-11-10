@@ -310,6 +310,7 @@ fun AppRoot(
                             )
                         }.show()
                     },
+                    onDurationChange = vm::setDuration,
                     onNoteChange = vm::setNote,
                     onAddPhoto = {
                         val (file, uri) = PhotoStorage.newCaptureTarget(context)

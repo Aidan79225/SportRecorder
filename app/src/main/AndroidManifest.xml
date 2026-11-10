@@ -68,12 +68,14 @@
             android:name=".reminder.ReminderReceiver"
             android:exported="false" />
 
-        <!-- Re-arms reminders after reboot; receives the system BOOT_COMPLETED broadcast. -->
+        <!-- Re-arms reminders after a reboot (BOOT_COMPLETED: alarms don't survive one) and after an
+             app update (MY_PACKAGE_REPLACED: alarms survive, but may hold times the old version computed). -->
         <receiver
             android:name=".reminder.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
