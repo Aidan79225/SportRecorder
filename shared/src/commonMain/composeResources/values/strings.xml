@@ -238,6 +238,10 @@
     <string name="diet_create_eating_date_title">Date</string>
     <string name="diet_create_eating_time_title">Time</string>
     <string name="diet_eat_duration_title">Duration</string>
+    <!-- What a tap on the Date / Time / Duration row does, for screen readers ("Double tap to choose a date"). -->
+    <string name="diet_create_eating_date_pick">Choose a date</string>
+    <string name="diet_create_eating_time_pick">Choose a time</string>
+    <string name="diet_eat_duration_pick">Choose a duration</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="duration_hours">%1$d hr</string>
     <string name="duration_hours_minutes">%1$d hr %2$d min</string>

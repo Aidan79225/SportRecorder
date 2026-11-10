@@ -1,22 +1,41 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.centerY
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.width
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_title
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_time_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_clear_location
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
+import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_duration_title
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_loading
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_location_none
@@ -91,22 +110,19 @@ class EatTimeEditorSheetTest {
         }
     }
 
-    // HeaderRow's action icon carries no text and the same empty contentDescription ("") as its
-    // own leading icon, so it can't be found by text or content description alone. `HeaderRow`'s
-    // `Row` itself sets no semantics config, so it is NOT a semantics node at all -- confirmed by
-    // dumping `onRoot(useUnmergedTree = true).printToLog(...)`: every row's 4 children (leading
-    // icon, title, content, action icon) are flattened as direct children of the sheet's
-    // scrollable Column, alongside every other row. That ruled out the brief's suggested
-    // `onNodeWithText(title).onParent().onChildren().onLast()` -- its "onParent()" resolves to
-    // the whole Column, not the row, so "onLast()" always hit the CONFIRM button instead (it is
-    // the Column's last child), leaving pickDate/addPhoto at 0 (see report for the RED run).
-    // The action icons are the only nodes that are both clickable AND have contentDescription =
-    // "" (the leading icons share the empty description but aren't clickable), so they're
-    // selected by that filter and taken by fixed document order: date, time, duration,
-    // take-photo, choose-from-gallery.
-    private fun headerRowActionIcons() =
-        compose.onAllNodes(hasContentDescription("") and hasClickAction(), useUnmergedTree = true)
-            .assertCountEquals(HEADER_ROW_COUNT)
+    // A header row is ONE node (clickable merges its icon, title and value), so it is found by its title.
+    // That is the node a screen reader lands on, and tapping it taps the middle of the row.
+    private fun row(title: StringResource) = compose.onNodeWithText(str(title))
+
+    // The title's own Text, looked up below the merged row: tapping it is tapping the label, not the arrow.
+    private fun label(title: StringResource) = compose.onNodeWithText(str(title), useUnmergedTree = true)
+
+    // The row behind an open menu shows the current value too, so a bare text lookup would find two nodes.
+    private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
+
+    // Menu items carrying a selection state, whatever its value: the current choice, and nothing else.
+    private fun menuItemsWithASelectionState() =
+        compose.onAllNodes(hasAnyAncestor(isPopup()) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected))
 
     // Mirrors the sheet's private formatDate / formatTime: "yyyy/MM/dd" and "HH:mm" (zero-padded)
     // in the device's default time zone.
@@ -126,10 +142,63 @@ class EatTimeEditorSheetTest {
         compose.onNodeWithText(str(Res.string.diet_create_eating_time_title)).assertIsDisplayed()
         compose.onNodeWithText(expectedTime(millis)).assertIsDisplayed()
 
-        headerRowActionIcons()[0].performClick() // date row
+        row(Res.string.diet_create_eating_date_title).performClick()
         assertEquals(1, pickDate)
-        headerRowActionIcons()[1].performClick() // time row
+        row(Res.string.diet_create_eating_time_title).performClick()
         assertEquals(1, pickTime)
+    }
+
+    // The label used to be dead: only the small arrow at the row's end answered a tap.
+    @Test
+    fun tappingARowsLabelActs_notJustItsArrow() {
+        show(EatTimeEditorUiState())
+        label(Res.string.diet_create_eating_date_title).performClick()
+        label(Res.string.diet_create_eating_time_title).performClick()
+        label(Res.string.photo_add).performClick()
+        label(Res.string.photo_select).performClick()
+        assertEquals(listOf(1, 1, 1, 1), listOf(pickDate, pickTime, addPhoto, selectPhoto))
+    }
+
+    // What a screen reader announces: the row is one button, "title, value", that says what a tap does.
+    @Test
+    fun dateTimeAndDurationRows_areEachOneButtonReadingTitleThenValue() {
+        val millis = 1_700_000_000_000L
+        show(EatTimeEditorUiState(dateMillis = millis))
+        listOf(
+            Res.string.diet_create_eating_date_title to expectedDate(millis),
+            Res.string.diet_create_eating_time_title to expectedTime(millis),
+            Res.string.diet_eat_duration_title to str(Res.string.duration_hours, 1),
+        ).forEach { (title, value) ->
+            compose.onNode(hasText(str(title)) and hasText(value))
+                .assertHasClickAction()
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        }
+    }
+
+    @Test
+    fun dateTimeAndDurationRows_sayWhatATapDoes() {
+        show(EatTimeEditorUiState())
+        listOf(
+            Res.string.diet_create_eating_date_title to Res.string.diet_create_eating_date_pick,
+            Res.string.diet_create_eating_time_title to Res.string.diet_create_eating_time_pick,
+            Res.string.diet_eat_duration_title to Res.string.diet_eat_duration_pick,
+        ).forEach { (title, pick) ->
+            val announced = str(pick)
+            row(title).assert(
+                SemanticsMatcher("a tap is announced as \"$announced\"") {
+                    it.config.getOrNull(SemanticsActions.OnClick)?.label == announced
+                },
+            )
+        }
+    }
+
+    // A description of "" still makes an image a stop for a screen reader, and says nothing: the arrows were
+    // clickable images described that way (controls it can't name), the Location row's icon a silent stop.
+    // An image that is only decoration carries null instead.
+    @Test
+    fun noNodeIsLeftWithAnEmptyDescription() {
+        show(EatTimeEditorUiState())
+        compose.onAllNodes(hasContentDescription(""), useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
@@ -143,12 +212,50 @@ class EatTimeEditorSheetTest {
     fun choosingNinetyMinutesFromTheDurationMenu_reportsIt() {
         show(EatTimeEditorUiState())
 
-        headerRowActionIcons()[2].performClick() // duration row opens its menu
+        row(Res.string.diet_eat_duration_title).performClick() // the row opens its menu
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).performClick()
 
         assertEquals(listOf(90), durations)
         // The menu closed with the choice: its items are gone again.
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertDoesNotExist()
+    }
+
+    @Test
+    fun tappingTheDurationLabel_opensTheMenu() {
+        show(EatTimeEditorUiState())
+        label(Res.string.diet_eat_duration_title).performClick()
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
+    }
+
+    // The arrow is no longer a node of its own; the spot where it sits is still part of the row.
+    // (Left-to-right only: the arrow is at the row's right end, so the offset is measured from the right.)
+    @Test
+    fun tappingWhereTheArrowSits_stillOpensTheDurationMenu() {
+        show(EatTimeEditorUiState())
+        row(Res.string.diet_eat_duration_title).performTouchInput {
+            click(Offset(width - ARROW_CENTER_FROM_END.toPx(), centerY))
+        }
+        compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
+    }
+
+    // Expected in English: "1 hr 30 min" is selected, and it is the only item with a selection state at all.
+    @Test
+    fun theDurationMenuMarksTheCurrentChoiceAsSelected() {
+        show(EatTimeEditorUiState(durationMinutes = 90))
+        label(Res.string.diet_eat_duration_title).performClick()
+
+        menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsSelected()
+        menuItemsWithASelectionState().assertCountEquals(1)
+    }
+
+    // 75 is not on the menu, so nothing there is marked (the row itself still shows "1 hr 15 min").
+    @Test
+    fun anOffMenuDuration_marksNothingInTheMenu() {
+        show(EatTimeEditorUiState(durationMinutes = 75))
+        label(Res.string.diet_eat_duration_title).performClick()
+
+        menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
+        menuItemsWithASelectionState().assertCountEquals(0)
     }
 
     // Expected in English: "1 hr 15 min" (zh-TW 「1 小時 15 分鐘」) — 75 is not on the menu, shown as stored.
@@ -178,9 +285,9 @@ class EatTimeEditorSheetTest {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.photo_add)).assertIsDisplayed()
         compose.onNodeWithText(str(Res.string.photo_select)).assertIsDisplayed()
-        headerRowActionIcons()[3].performClick() // take-photo row
+        row(Res.string.photo_add).performClick()
         assertEquals(1, addPhoto)
-        headerRowActionIcons()[4].performClick() // choose-from-gallery row
+        row(Res.string.photo_select).performClick()
         assertEquals(1, selectPhoto)
     }
 
@@ -250,7 +357,7 @@ class EatTimeEditorSheetTest {
     }
 
     private companion object {
-        /** Date, time, duration, take-photo, choose-from-gallery. */
-        const val HEADER_ROW_COUNT = 5
+        /** The arrow's cell at a row's trailing end is 56 dp wide (36 dp icon + 10 dp padding each side). */
+        val ARROW_CENTER_FROM_END = 28.dp
     }
 }
