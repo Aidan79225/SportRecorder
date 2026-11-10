@@ -40,6 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -85,6 +87,7 @@ import com.crazystudio.sportrecorder.shared.resources.editor_venue_resolving
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_access_time_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
+import com.crazystudio.sportrecorder.shared.resources.ic_baseline_check_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_date_range_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_delete_24
@@ -455,9 +458,10 @@ private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
         // Anchored to the arrow, so the menu drops from it at the row's right edge.
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             MealDuration.CHOICES.forEach { choice ->
-                DropdownMenuItem(
-                    text = { Text(durationText(choice)) },
-                    onClick = {
+                DurationMenuItem(
+                    minutes = choice,
+                    current = choice == minutes,
+                    onChoose = {
                         expanded = false
                         onDurationChange(choice)
                     },
@@ -465,6 +469,23 @@ private fun DurationRow(minutes: Int, onDurationChange: (Int) -> Unit) {
             }
         }
     }
+}
+
+/** One choice of the duration menu; the current one is ticked, and announced as selected. */
+@Composable
+private fun DurationMenuItem(minutes: Int, current: Boolean, onChoose: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(durationText(minutes)) },
+        onClick = onChoose,
+        // Only the current choice carries a state, so a screen reader says nothing about the others.
+        modifier = if (current) Modifier.semantics { selected = true } else Modifier,
+        // Decorative: "selected" is what a screen reader reports, so the tick needs no description.
+        trailingIcon = if (current) {
+            { Icon(painter = painterResource(Res.drawable.ic_baseline_check_24), contentDescription = null) }
+        } else {
+            null
+        },
+    )
 }
 
 @Composable

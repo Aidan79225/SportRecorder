@@ -10,11 +10,14 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.centerY
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -114,6 +117,9 @@ class EatTimeEditorSheetTest {
 
     // The title's own Text, looked up below the merged row: tapping it is tapping the label, not the arrow.
     private fun label(title: StringResource) = compose.onNodeWithText(str(title), useUnmergedTree = true)
+
+    // The row behind an open menu shows the current value too, so a bare text lookup would find two nodes.
+    private fun menuItem(text: String) = compose.onNode(hasText(text) and hasAnyAncestor(isPopup()))
 
     // Mirrors the sheet's private formatDate / formatTime: "yyyy/MM/dd" and "HH:mm" (zero-padded)
     // in the device's default time zone.
@@ -225,6 +231,29 @@ class EatTimeEditorSheetTest {
             click(Offset(width - ARROW_CELL_CENTER.toPx(), centerY))
         }
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
+    }
+
+    // Expected in English: "1 hr 30 min" is selected; the others ("1 hr", "2 hr") carry no selection state.
+    @Test
+    fun theDurationMenuMarksTheCurrentChoiceAsSelected() {
+        show(EatTimeEditorUiState(durationMinutes = 90))
+        label(Res.string.diet_eat_duration_title).performClick()
+
+        menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsSelected()
+        listOf(str(Res.string.duration_hours, 1), str(Res.string.duration_hours, 2)).forEach {
+            menuItem(it).assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+        }
+    }
+
+    // 75 is not on the menu, so nothing there is marked (the row itself still shows "1 hr 15 min").
+    @Test
+    fun anOffMenuDuration_marksNothingInTheMenu() {
+        show(EatTimeEditorUiState(durationMinutes = 75))
+        label(Res.string.diet_eat_duration_title).performClick()
+
+        menuItem(str(Res.string.duration_hours_minutes, 1, 30)).assertIsDisplayed()
+        compose.onAllNodes(hasAnyAncestor(isPopup()) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Selected))
+            .assertCountEquals(0)
     }
 
     // Expected in English: "1 hr 15 min" (zh-TW 「1 小時 15 分鐘」) — 75 is not on the menu, shown as stored.
