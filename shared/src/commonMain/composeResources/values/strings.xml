@@ -231,6 +231,8 @@
     <string name="diet_fasting_type_expert">Expert</string>
     <string name="diet_fasting_type_master">Master</string>
     <string name="diet_fasting_type_monk">Monk</string>
+    <!-- The picker's "+" tile is an icon, so this is all a screen reader has to name it by. -->
+    <string name="diet_fasting_type_add">Add fasting type</string>
     <string name="diet_create_fasting_hours">Fasting hours</string>
     <string name="diet_create_eating_hours">Eating hours</string>
     <string name="diet_create_fasting_name">Name (optional)</string>
@@ -244,6 +246,9 @@
     <string name="diet_create_eating_date_pick">Choose a date</string>
     <string name="diet_create_eating_time_pick">Choose a time</string>
     <string name="diet_eat_duration_pick">Choose a duration</string>
+    <!-- Same for the create-fasting-type sheet's two hours rows, and the name of the picker each opens. -->
+    <string name="diet_create_fasting_hours_pick">Choose fasting hours</string>
+    <string name="diet_create_eating_hours_pick">Choose eating hours</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="duration_hours">%1$d hr</string>
     <string name="duration_hours_minutes">%1$d hr %2$d min</string>

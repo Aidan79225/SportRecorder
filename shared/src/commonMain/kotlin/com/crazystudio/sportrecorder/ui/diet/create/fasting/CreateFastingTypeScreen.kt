@@ -25,14 +25,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_hours
+import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_hours_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_cancel
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_confirm
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_hours
+import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_hours_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_name
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_fastfood_24
@@ -45,18 +51,22 @@ import org.jetbrains.compose.resources.stringResource
 
 enum class Type(
     val titleRes: StringResource,
+    // What a tap on the row does, read after it by a screen reader; it also names the picker the row opens.
+    val pickRes: StringResource,
     val iconRes: DrawableResource,
     val defaultValue: String,
     val values: List<String>,
 ) {
     Fasting(
         Res.string.diet_create_fasting_hours,
+        Res.string.diet_create_fasting_hours_pick,
         Res.drawable.ic_baseline_no_food_24,
         "16",
         (8..49).map { it.toString() },
     ),
     Eating(
         Res.string.diet_create_eating_hours,
+        Res.string.diet_create_eating_hours_pick,
         Res.drawable.ic_baseline_fastfood_24,
         "8",
         (1..11).map { it.toString() },
@@ -149,10 +159,15 @@ private fun ActionButtons(onCancel: () -> Unit, onConfirm: () -> Unit) {
 @Composable
 private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) {
     var showSelectedDialog by remember { mutableStateOf(false) }
-    Row(modifier = Modifier) {
+    val pick = stringResource(type.pickRes)
+    Row(
+        // clickable merges the icons and both texts into this one node; with the button role a screen reader
+        // reads "title, value" as a single stop, then what a tap does.
+        modifier = Modifier.clickable(onClickLabel = pick, role = Role.Button) { showSelectedDialog = true },
+    ) {
         Image(
             painter = painterResource(type.iconRes),
-            contentDescription = "",
+            contentDescription = null, // Decoration: the title beside it names the row.
         )
         Text(
             text = stringResource(type.titleRes),
@@ -166,20 +181,18 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
             text = selectedValueState.value,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .padding(end = 10.dp)
-                .clickable {
-                    showSelectedDialog = true
-                },
+            modifier = Modifier.padding(end = 10.dp),
         )
         Image(
             painter = painterResource(Res.drawable.ic_baseline_arrow_drop_down),
-            contentDescription = "",
+            contentDescription = null, // Only hints that something opens.
         )
     }
 
     if (showSelectedDialog) {
         SelectListDialog(
+            title = pick,
+            current = selectedValueState.value,
             onDismissRequest = {
                 showSelectedDialog = false
             },
@@ -191,8 +204,15 @@ private fun TimeSelectRow(type: Type, selectedValueState: MutableState<String>) 
     }
 }
 
+/**
+ * The [values] in a dialog of their own. It holds nothing but numbers, so [title] is what names it for a
+ * screen reader, and the [current] one is announced as selected (the others say nothing about it, as in the
+ * meal editor's duration menu).
+ */
 @Composable
 private fun SelectListDialog(
+    title: String,
+    current: String,
     onDismissRequest: () -> Unit,
     onSelectedListener: (String) -> Unit,
     values: List<String>,
@@ -201,7 +221,8 @@ private fun SelectListDialog(
         Column(
             Modifier
                 .background(MaterialTheme.colorScheme.background)
-                .fillMaxSize(0.5f),
+                .fillMaxSize(0.5f)
+                .semantics { paneTitle = title },
         ) {
             LazyColumn {
                 items(values) {
@@ -211,6 +232,7 @@ private fun SelectListDialog(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .then(if (it == current) Modifier.semantics { selected = true } else Modifier)
                             .padding(10.dp)
                             .clickable {
                                 onSelectedListener(it)

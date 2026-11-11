@@ -231,6 +231,8 @@
     <string name="diet_fasting_type_expert">專家</string>
     <string name="diet_fasting_type_master">大師</string>
     <string name="diet_fasting_type_monk">苦行僧</string>
+    <!-- The picker's "+" tile is an icon, so this is all a screen reader has to name it by. -->
+    <string name="diet_fasting_type_add">新增斷食類型</string>
     <string name="diet_create_fasting_hours">斷食時數</string>
     <string name="diet_create_eating_hours">進食時數</string>
     <string name="diet_create_fasting_name">名稱（選填）</string>
@@ -244,6 +246,9 @@
     <string name="diet_create_eating_date_pick">選擇日期</string>
     <string name="diet_create_eating_time_pick">選擇時間</string>
     <string name="diet_eat_duration_pick">選擇用餐時長</string>
+    <!-- Same for the create-fasting-type sheet's two hours rows, and the name of the picker each opens. -->
+    <string name="diet_create_fasting_hours_pick">選擇斷食時數</string>
+    <string name="diet_create_eating_hours_pick">選擇進食時數</string>
     <string name="duration_minutes">%1$d 分鐘</string>
     <string name="duration_hours">%1$d 小時</string>
     <string name="duration_hours_minutes">%1$d 小時 %2$d 分鐘</string>
