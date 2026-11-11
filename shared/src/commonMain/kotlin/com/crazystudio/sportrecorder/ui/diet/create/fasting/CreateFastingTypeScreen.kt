@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_hours
+import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_cancel
+import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_confirm
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_hours
 import com.crazystudio.sportrecorder.shared.resources.diet_create_fasting_name
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_arrow_drop_down
@@ -124,7 +126,7 @@ private fun ActionButtons(onCancel: () -> Unit, onConfirm: () -> Unit) {
             onClick = onCancel,
         ) {
             Text(
-                text = "CANCEL",
+                text = stringResource(Res.string.diet_create_fasting_cancel),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -136,7 +138,7 @@ private fun ActionButtons(onCancel: () -> Unit, onConfirm: () -> Unit) {
             onClick = onConfirm,
         ) {
             Text(
-                text = "OK",
+                text = stringResource(Res.string.diet_create_fasting_confirm),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onPrimary,
             )
