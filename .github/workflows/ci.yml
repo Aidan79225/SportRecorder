@@ -39,6 +39,12 @@ jobs:
       - name: Build, unit tests, detekt, lint
         run: ./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest --stacktrace
 
+      # Release builds run R8 (see app/proguard-rules.pro). Debug builds don't, so without this a
+      # dependency bump that R8 rejects (e.g. a missing-class error) would only surface on the
+      # release tag. A green build here does not prove the minified app behaves; see the release skill.
+      - name: R8 (minified release) build
+        run: ./gradlew :app:minifyReleaseWithR8 --stacktrace
+
       - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@v5

@@ -54,7 +54,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         getByName("release") {
-            isMinifyEnabled = false
+            // R8 shrinks, obfuscates and optimizes the release DEX. Google Play's "DEX code
+            // optimization" vital wants each of those at 25% or more once a bundle holds more than
+            // 10 MB of DEX. Rules for what R8 must leave alone live in proguard-rules.pro.
+            // Resource shrinking stays off: it is not part of that vital, and AGP's optimized
+            // shrinker needs android.nonFinalResIds=true, which this repo still opts out of.
+            isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             // Sign only when upload credentials are present (CI/local dev); otherwise unsigned.
             if (hasUploadSigning) {

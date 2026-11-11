@@ -16,7 +16,7 @@ Pushing the version tag also **builds and uploads to Google Play** via `.github/
 So the per-release manual work is just: **bump the version → edit `distribution/whatsnew/whatsnew-en-US` + `whatsnew-zh-TW` → commit → tag → push the tag.** The Action does the build + upload.
 
 - **Default track:** `internal`, `status=completed`. For production, run the workflow manually with `track=production` and **`status=draft`** so nothing auto-goes-live without a click in the Console.
-- **One-time setup (required before it works):** add repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** — the full JSON key of a Google Cloud service account granted access in Play Console → Users & permissions. Signing needs no secret (the keystore + passwords are in the repo).
+- **One-time setup (required before it works):** add repo secret **`PLAY_SERVICE_ACCOUNT_JSON`** — the full JSON key of a Google Cloud service account granted access in Play Console → Users & permissions. Signing needs three more repo secrets — `UPLOAD_KEYSTORE_BASE64`, `UPLOAD_KEYSTORE_PASSWORD`, `UPLOAD_KEY_PASSWORD` (see the header of `release.yml`); the upload keystore is not kept in the repo.
 - **Still manual in the Console (no API):** the `SCHEDULE_EXACT_ALARM` use-case declaration, the data-safety form (see below), and the **foreground-service (`dataSync`) declaration** for the backup service (App content → Foreground service permissions: justify `FOREGROUND_SERVICE_DATA_SYNC` as a user-started Google Drive backup/restore that must keep running with the screen off).
 - **Data safety: the app is no longer local-only.** It was until 0.7.0; since then Drive backup
   sends meals, notes, locations and photos off the device, and since **0.11.0 a background job does
@@ -49,7 +49,7 @@ The steps below remain the **local fallback** (and the source of truth for versi
    $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
    .\gradlew.bat bundleRelease
    ```
-   Output: `app/build/outputs/bundle/release/app-release.aab` (signed by the `release` signingConfig; `release.keystore` is committed, so no extra setup). Use a generous timeout (~600000 ms).
+   Output: `app/build/outputs/bundle/release/app-release.aab` (signed by the `release` signingConfig when the upload key is set in `local.properties` — `UPLOAD_KEYSTORE_FILE`, `UPLOAD_KEYSTORE_PASSWORD`, `UPLOAD_KEY_ALIAS`, `UPLOAD_KEY_PASSWORD`, see `app/build.gradle.kts`; without them the bundle comes out unsigned). Use a generous timeout (~600000 ms). The build runs R8 (adds under a minute); see "Common mistakes" for when the minified app also needs an emulator smoke test.
 
 4. **Verify the embedded version** matches what you set (a wrong/duplicate `versionCode` is the #1 Play-rejection cause):
    ```bash
@@ -86,7 +86,7 @@ The steps below remain the **local fallback** (and the source of truth for versi
 | AAB path | `app/build/outputs/bundle/release/app-release.aab` |
 | Commit | `[Release] X.Y.Z (versionCode N)` — direct to `master` |
 | Tag | annotated `X.Y.Z` |
-| Signing | `release` signingConfig (keystore committed) — no setup needed |
+| Signing | `release` signingConfig — upload key from `local.properties` (local) or repo secrets (CI); unsigned without it |
 
 ## Common mistakes
 
@@ -95,4 +95,5 @@ The steps below remain the **local fallback** (and the source of truth for versi
 - **Not bumping `versionCode`** → Play rejects the upload as a duplicate.
 - **Bumping the version but forgetting to commit `app/build.gradle.kts`** before tagging → the tag points at the old version.
 - **Putting internal refactors in the store "what's new"** → those notes are for users; keep them user-facing.
-- Release builds currently have **R8/minify OFF** (`isMinifyEnabled = false`), so the AAB is unminified — that's expected unless that's changed separately.
+- **Skipping the minified-build smoke test when something R8-sensitive changed.** Release builds run **R8** (`isMinifyEnabled = true`, no app-specific keep rules, resource shrinking off), so the AAB is minified and a green `bundleRelease` only proves it *builds*. If dependencies, `app/proguard-rules.pro`, or code reached by name/reflection (Room, WorkManager, serialization, Koin, manifest components) changed since the last release, install the release APK on the emulator and run the checklist in `docs/superpowers/specs/2026-11-11-release-r8-design.md` **before** tagging.
+- **Looking for a mapping file to upload.** There is nothing to upload: the AAB embeds R8's `proguard.map`, so Play deobfuscates crashes/ANRs itself. For a stack trace from anywhere else, retrace it with `app/build/outputs/mapping/release/mapping.txt`.

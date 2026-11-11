@@ -93,7 +93,7 @@
 ## 5. 建置、測試與發布
 
 ```bash
-# 完整本地 gate(與 CI 相同)
+# 完整本地 gate(CI `build` job 的第一步;第二步是 `:app:minifyReleaseWithR8`,見下)
 ./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest
 ```
 
@@ -113,8 +113,14 @@
   `app/build/reports/androidTests/connected/debug/index.html`。請用專門的測試模擬器:connected test
   跑完會解除安裝 app,也會對裝置上現有資料做一次真的備份流程。
 - **CI**(`.github/workflows/ci.yml`,PR 與 push to `master` 觸發)
-  - `build`(ubuntu):assemble + unit test + detekt + lint + `:shared:jvmTest`
+  - `build`(ubuntu):assemble + unit test + detekt + lint + `:shared:jvmTest`,再加一步
+    `:app:minifyReleaseWithR8`(release 有開 R8、debug 沒有;依賴升級若被 R8 擋下,在 PR 就會知道,不用等到 tag)
   - `ios-shared`(macOS):`:shared:iosSimulatorArm64Test`
+- **Release 有開 R8**(`isMinifyEnabled = true`,不寫自訂 keep 規則;`isShrinkResources` 因為
+  `android.nonFinalResIds=false` 沒開)。起因是 Play Console 的「DEX 程式碼最佳化」警示(模糊化 1%,要 ≥ 25%)。
+  建置綠燈不代表壓縮後的 app 能跑:動到依賴、`app/proguard-rules.pro` 或靠名稱/反射運作的東西
+  (Room、WorkManager、序列化、Koin、manifest 元件)後,要在模擬器上跑 release APK 走一遍,清單見
+  `docs/superpowers/specs/2026-11-11-release-r8-design.md`。mapping 檔內嵌在 AAB,Play 會自己還原崩潰堆疊。
 - **發布**(`.github/workflows/release.yml`):bump 版號 → 更新 `distribution/whatsnew/*` →
   推 `x.y.z` tag → 自動建置簽章 AAB 並上傳 Google Play(細節見 `.claude/skills/release`)。
   簽章金鑰與 Play service account 走 repo secrets,repo 內不放 keystore(`debug.keystore` 除外)。
@@ -166,6 +172,7 @@
 | 10-18 | 店家分店、地址、編輯與刪除、貼上地圖連結(同名不同地點可並存,自動帶地址) | ✓ | ✓ | 已實作(`claude/venue-branches-89`,issue #89,PR 待開) |
 | 10-28 | Google 地圖 app 產生的連結(貼上、分享與「貼上地圖連結更新」帶入正確的店名、地址與位置,啟動時修復黏著地址的店名) | ✓(10-18 spec 的 Addendum) | ✓ | 已實作(`claude/maps-app-links`,PR 待開) |
 | 11-07 | 紀錄頁店家與搜尋、用餐時長(Part A:每筆紀錄顯示店名與地址、依店名/地址搜尋紀錄;Part B:餐點用餐時長) | ✓ | ✓ | Part A 已實作(PR #92,`claude/record-venue-search`);Part B 已實作(PR #93,`claude/meal-duration`,疊在 #92 之上):用餐時長預設 1 小時、斷食從最後一餐結束起算、Room 9→10 |
+| 11-11 | 發行版開啟 R8(Play「DEX 程式碼最佳化」警示:模糊化 1%;DEX 33.6 → 4.5 MB,三項約 97%) | ✓ | — | 已實作(`claude/enable-r8`,隨下一版發布) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

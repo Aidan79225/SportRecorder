@@ -35,9 +35,15 @@ If a feature leans that way, prefer **neutral reflection** ("here's your pattern
 ## Build & verify
 
 - `JAVA_HOME` must point to the Android Studio JBR (Java isn't on PATH here).
-- Full local gate (matches CI): `./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest`.
+- Full local gate (CI's first build step): `./gradlew assembleDebug testDebugUnitTest :app:detekt :app:lintDebug :shared:jvmTest`.
 - Touching `commonMain`? iOS must compile too: `:shared:iosSimulatorArm64Test` (macOS only; CI's
   `ios-shared` job covers it on every PR).
+- Release builds run R8 (`isMinifyEnabled = true`); debug builds don't. CI adds a second build step,
+  `:app:minifyReleaseWithR8` — run it locally when you change dependencies or `app/proguard-rules.pro`.
+  A green R8 build doesn't prove the minified app works: after those changes, or after touching
+  anything reached by name/reflection (Room, WorkManager, serialization, Koin, manifest components,
+  navigator annotations), smoke-test the release APK on an emulator — checklist in
+  `docs/superpowers/specs/2026-11-11-release-r8-design.md`.
 - Domain calculators (`DietWindow`, `InsightsAggregator`, `ReminderPlanner`) are pure and
   unit-tested — keep new logic there, Android-free.
 - Specs/plans live in `docs/superpowers/`; current status + doc index: `docs/DEVELOPMENT.md`.
