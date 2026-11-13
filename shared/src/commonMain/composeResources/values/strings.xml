@@ -164,6 +164,8 @@
         <item>Next meal, whenever you're ready</item>
     </string-array>
     <string name="diet_no_record">Add your first meal</string>
+    <!-- The Home screen's "+" button is an icon, so this is all a screen reader has to name it by. -->
+    <string name="diet_add_meal">Add meal</string>
     <string name="fast_started_label">Started Fasting</string>
     <string name="fast_ending_label">Fast Ending</string>
     <string name="day_yesterday">Yesterday</string>
@@ -233,6 +235,8 @@
     <string name="diet_fasting_type_monk">Monk</string>
     <!-- The picker's "+" tile is an icon, so this is all a screen reader has to name it by. -->
     <string name="diet_fasting_type_add">Add fasting type</string>
+    <!-- What a tap on the Home screen's fasting-type chip does (it opens the picker), said by a screen reader after the chip's own text. -->
+    <string name="diet_fasting_type_pick">Choose a fasting type</string>
     <string name="diet_create_fasting_hours">Fasting hours</string>
     <string name="diet_create_eating_hours">Eating hours</string>
     <string name="diet_create_fasting_name">Name (optional)</string>
@@ -261,6 +265,9 @@
     <string name="photo_add">Take photo</string>
     <string name="photo_select">Choose from gallery</string>
     <string name="diet_eat_remove_photo">Remove photo</string>
+    <!-- A photo that opens the viewer: its place among the photos the viewer pages through, and what a tap does. -->
+    <string name="photo_position">Photo %1$d of %2$d</string>
+    <string name="photo_open">See this photo</string>
     <string name="diet_eat_create">CREATE</string>
     <string name="diet_eat_save">SAVE</string>
     <string name="editor_venue">Place</string>

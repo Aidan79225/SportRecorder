@@ -6,10 +6,9 @@ import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.StyleSpan
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -19,6 +18,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_add_meal
 import com.crazystudio.sportrecorder.shared.resources.diet_eat_create
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import kotlinx.coroutines.runBlocking
@@ -57,10 +57,8 @@ class ShareEntryTest {
     private fun waitForText(text: String) =
         compose.waitUntil(TIMEOUT_MS) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
 
-    /** The home screen's add-a-meal FAB: the only clickable there with neither text nor a description. */
-    private val addMealButton = hasClickAction() and
-        SemanticsMatcher("has no text") { SemanticsProperties.Text !in it.config } and
-        SemanticsMatcher("has no description") { SemanticsProperties.ContentDescription !in it.config }
+    /** The home screen's add-a-meal button, found by the name a screen reader gives it. */
+    private val addMealButton get() = hasClickAction() and hasContentDescription(str(Res.string.diet_add_meal))
 
     @Test fun aShareOpensTheEditor() {
         ActivityScenario.launch<MainActivity>(shareIntent("hello")).use {

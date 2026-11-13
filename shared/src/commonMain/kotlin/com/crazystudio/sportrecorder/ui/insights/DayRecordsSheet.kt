@@ -1,7 +1,6 @@
 package com.crazystudio.sportrecorder.ui.insights
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,10 @@ import com.crazystudio.sportrecorder.shared.resources.insights_day_empty
 import com.crazystudio.sportrecorder.shared.resources.insights_day_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_day_title
 import com.crazystudio.sportrecorder.shared.resources.insights_next_day_time
+import com.crazystudio.sportrecorder.shared.resources.photo_open
+import com.crazystudio.sportrecorder.shared.resources.photo_position
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
+import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
@@ -109,14 +111,19 @@ private fun MealRow(
         }
         if (record.photos.isNotEmpty()) {
             val photoNames = remember(record.photos) { record.photos.map { it.fileName } }
+            val open = stringResource(Res.string.photo_open)
             photoNames.withIndex().chunked(PHOTO_COLUMNS).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     row.forEach { (index, name) ->
+                        // Counted within this meal: the viewer opens on this meal's photos.
+                        val place = stringResource(Res.string.photo_position, index + 1, photoNames.size)
                         PhotoThumbnail(
                             model = photoModel(name),
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable { onPhotoClick(photoNames, index) },
+                                .photoButton(description = place, onClickLabel = open) {
+                                    onPhotoClick(photoNames, index)
+                                },
                         )
                     }
                     repeat(PHOTO_COLUMNS - row.size) { Box(Modifier.weight(1f)) }

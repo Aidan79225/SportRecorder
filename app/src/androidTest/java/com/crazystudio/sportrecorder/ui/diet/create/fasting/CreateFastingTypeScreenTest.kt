@@ -1,9 +1,6 @@
 package com.crazystudio.sportrecorder.ui.diet.create.fasting
 
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -19,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.crazystudio.sportrecorder.ui.announcedAs
+import com.crazystudio.sportrecorder.ui.isButton
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -84,11 +83,6 @@ class CreateFastingTypeScreenTest {
         }
     }
 
-    // What a screen reader reads after a row ("Double tap to choose fasting hours").
-    private fun announcedAs(label: String) = SemanticsMatcher("a tap is announced as \"$label\"") {
-        it.config.getOrNull(SemanticsActions.OnClick)?.label == label
-    }
-
     // The picker is a dialog of bare numbers, so its name is what tells a screen reader what it is.
     private fun pickerNamed(name: String) = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, name)
 
@@ -131,7 +125,7 @@ class CreateFastingTypeScreenTest {
         listOf("Fasting hours" to "16", "Eating hours" to "8").forEach { (title, value) ->
             compose.onNode(hasText(title) and hasText(value))
                 .assertHasClickAction()
-                .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+                .assert(isButton())
         }
     }
 
