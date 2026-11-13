@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.shared.resources.Res
+import com.crazystudio.sportrecorder.shared.resources.diet_fasting_type_add
 import com.crazystudio.sportrecorder.shared.resources.diet_fasting_type_title
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_add_24
 import org.jetbrains.compose.resources.painterResource
@@ -149,7 +150,8 @@ fun AddFastingItem(onClick: () -> Unit) {
     ) {
         Icon(
             painter = painterResource(Res.drawable.ic_baseline_add_24),
-            contentDescription = null,
+            // The tile is only this icon, so the description is the button's whole name.
+            contentDescription = stringResource(Res.string.diet_fasting_type_add),
             tint = MaterialTheme.colorScheme.primary,
         )
     }
