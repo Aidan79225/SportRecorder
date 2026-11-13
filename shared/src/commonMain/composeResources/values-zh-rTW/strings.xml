@@ -164,6 +164,8 @@
         <item>準備好了，再享用下一餐</item>
     </string-array>
     <string name="diet_no_record">新增第一餐</string>
+    <!-- The Home screen's "+" button is an icon, so this is all a screen reader has to name it by. -->
+    <string name="diet_add_meal">新增一餐</string>
     <string name="fast_started_label">開始斷食</string>
     <string name="fast_ending_label">結束斷食</string>
     <string name="day_yesterday">昨天</string>
@@ -233,6 +235,8 @@
     <string name="diet_fasting_type_monk">苦行僧</string>
     <!-- The picker's "+" tile is an icon, so this is all a screen reader has to name it by. -->
     <string name="diet_fasting_type_add">新增斷食類型</string>
+    <!-- What a tap on the Home screen's fasting-type chip does (it opens the picker), said by a screen reader after the chip's own text. -->
+    <string name="diet_fasting_type_pick">選擇斷食類型</string>
     <string name="diet_create_fasting_hours">斷食時數</string>
     <string name="diet_create_eating_hours">進食時數</string>
     <string name="diet_create_fasting_name">名稱（選填）</string>
@@ -261,6 +265,9 @@
     <string name="photo_add">拍照</string>
     <string name="photo_select">從相簿選擇</string>
     <string name="diet_eat_remove_photo">移除照片</string>
+    <!-- A photo that opens the viewer: its place among the photos the viewer pages through, and what a tap does. -->
+    <string name="photo_position">第 %1$d 張照片，共 %2$d 張</string>
+    <string name="photo_open">看這張照片</string>
     <string name="diet_eat_create">新增</string>
     <string name="diet_eat_save">儲存</string>
     <string name="editor_venue">店家</string>
