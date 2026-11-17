@@ -53,6 +53,8 @@ import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
+import com.crazystudio.sportrecorder.shared.resources.photo_open
+import com.crazystudio.sportrecorder.shared.resources.photo_position
 import com.crazystudio.sportrecorder.shared.resources.record_delete_confirm
 import com.crazystudio.sportrecorder.shared.resources.record_delete_dismiss
 import com.crazystudio.sportrecorder.shared.resources.record_delete_message
@@ -62,6 +64,7 @@ import com.crazystudio.sportrecorder.shared.resources.record_search_clear
 import com.crazystudio.sportrecorder.shared.resources.record_search_empty
 import com.crazystudio.sportrecorder.shared.resources.record_search_hint
 import com.crazystudio.sportrecorder.shared.resources.record_venue_search
+import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -299,11 +302,13 @@ private fun RecordCard(
         if (record.photos.isNotEmpty()) {
             val photoNames = remember(record.photos) { record.photos.map { it.fileName } }
             val pagerState = rememberPagerState(pageCount = { record.photos.size })
+            val open = stringResource(Res.string.photo_open)
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxWidth(),
             ) { page ->
                 val photo = record.photos[page]
+                val place = stringResource(Res.string.photo_position, page + 1, photoNames.size)
                 AsyncImage(
                     model = photoModel(photo.fileName),
                     contentDescription = null,
@@ -312,7 +317,9 @@ private fun RecordCard(
                         .fillMaxWidth()
                         .heightIn(max = 360.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onThumbnailClick(photoNames, page) },
+                        .photoButton(description = place, onClickLabel = open) {
+                            onThumbnailClick(photoNames, page)
+                        },
                 )
             }
 

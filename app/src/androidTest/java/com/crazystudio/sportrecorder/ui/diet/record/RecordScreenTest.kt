@@ -12,6 +12,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionCollection
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
@@ -26,9 +27,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.shared.resources.Res
@@ -36,6 +39,8 @@ import com.crazystudio.sportrecorder.shared.resources.record_search_clear
 import com.crazystudio.sportrecorder.shared.resources.record_search_empty
 import com.crazystudio.sportrecorder.shared.resources.record_search_hint
 import com.crazystudio.sportrecorder.shared.resources.record_venue_search
+import com.crazystudio.sportrecorder.ui.announcedAs
+import com.crazystudio.sportrecorder.ui.isButton
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
@@ -91,7 +96,15 @@ class RecordScreenTest {
         venue = venue,
     )
 
-    private fun show(records: List<EatRecord>, onDelete: (EatRecord) -> Unit = {}) {
+    private fun recordWithPhotos(vararg fileNames: String) = record(1).copy(
+        photos = fileNames.mapIndexed { index, name -> EatPhoto(id = index, fileName = name, createdAt = 0L) },
+    )
+
+    private fun show(
+        records: List<EatRecord>,
+        onDelete: (EatRecord) -> Unit = {},
+        onPhotoClick: (List<String>, Int) -> Unit = { _, _ -> },
+    ) {
         compose.setContent {
             SportRecorderTheme {
                 RecordScreen(
@@ -99,7 +112,7 @@ class RecordScreenTest {
                     onDelete = onDelete,
                     onEditRecord = {},
                     photoModel = { null },
-                    onPhotoClick = { _, _ -> },
+                    onPhotoClick = onPhotoClick,
                 )
             }
         }
@@ -310,6 +323,34 @@ class RecordScreenTest {
     fun inTraditionalChinese_theEditButtonIsLabelledInChinese() {
         showInTraditionalChinese(listOf(record(1, note = "lunch")))
         compose.onNodeWithContentDescription("編輯").assertIsDisplayed()
+    }
+
+    // A photo in a record's carousel opens the viewer. It was a bare clickable image: a screen reader had no
+    // name to give it and did not say it was a button, so it needs both, and what a tap does.
+    @Test
+    fun aPhotoInTheCarousel_isAButtonNamedForItsPlace_thatOpensTheViewer() {
+        val opened = mutableListOf<Pair<List<String>, Int>>()
+        show(
+            listOf(recordWithPhotos("a.jpg", "b.jpg")),
+            onPhotoClick = { names, index -> opened += names to index },
+        )
+
+        // No image is loaded here, so the photo has no height and a touch could not land on it. A screen
+        // reader's double tap invokes the click action itself, which is what this does.
+        compose.onNodeWithContentDescription("Photo 1 of 2")
+            .assertHasClickAction()
+            .assert(isButton())
+            .assert(announcedAs("See this photo"))
+            .performSemanticsAction(SemanticsActions.OnClick)
+
+        assertEquals(listOf(listOf("a.jpg", "b.jpg") to 0), opened)
+    }
+
+    @Test
+    fun inTraditionalChinese_aPhotoInTheCarouselIsNamedInChinese() {
+        showInTraditionalChinese(listOf(recordWithPhotos("a.jpg", "b.jpg")))
+
+        compose.onNodeWithContentDescription("第 1 張照片，共 2 張").assert(announcedAs("看這張照片"))
     }
 
     @Test

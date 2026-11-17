@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.domain.diet.HomeTagline
@@ -30,6 +31,8 @@ import com.crazystudio.sportrecorder.shared.resources.day_tomorrow
 import com.crazystudio.sportrecorder.shared.resources.day_yesterday
 import com.crazystudio.sportrecorder.shared.resources.fast_ending_label
 import com.crazystudio.sportrecorder.shared.resources.fast_started_label
+import com.crazystudio.sportrecorder.shared.resources.diet_add_meal
+import com.crazystudio.sportrecorder.shared.resources.diet_fasting_type_pick
 import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_morning
 import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_afternoon
 import com.crazystudio.sportrecorder.shared.resources.diet_tagline_idle_evening
@@ -92,7 +95,12 @@ fun DietScreen(
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(50))
                         .background(colorScheme.surfaceContainer)
-                        .clickable { onEditFastingType() }
+                        // Reads as the chip's text ("16 : 8"); the label says what a tap on it does.
+                        .clickable(
+                            onClickLabel = stringResource(Res.string.diet_fasting_type_pick),
+                            role = Role.Button,
+                            onClick = onEditFastingType,
+                        )
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -189,7 +197,8 @@ fun DietScreen(
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_baseline_add_24),
-                contentDescription = null,
+                // The button is only this icon, so the description is its whole name.
+                contentDescription = stringResource(Res.string.diet_add_meal),
             )
         }
     }

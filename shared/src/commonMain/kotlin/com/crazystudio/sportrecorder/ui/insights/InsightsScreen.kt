@@ -90,10 +90,13 @@ import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
+import com.crazystudio.sportrecorder.shared.resources.photo_open
+import com.crazystudio.sportrecorder.shared.resources.photo_position
 import com.crazystudio.sportrecorder.ui.insights.map.FullScreenPlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.placesMapDescription
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
+import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
@@ -555,17 +558,22 @@ private fun LazyListScope.photoWall(
         }
     }
     items(rows, key = { row -> "wall-${row.first().index}" }) { row ->
+        val open = stringResource(Res.string.photo_open)
         WallPiece(shape = RectangleShape) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 row.forEach { photo ->
+                    // Counted against the whole period: the viewer pages through all of it, not only the preview.
+                    val place = stringResource(Res.string.photo_position, photo.index + 1, fileNames.size)
                     PhotoThumbnail(
                         model = photoModel(photo.fileName),
                         modifier = Modifier
                             .weight(1f)
-                            .clickable { onPhotoClick(fileNames, photo.index) },
+                            .photoButton(description = place, onClickLabel = open) {
+                                onPhotoClick(fileNames, photo.index)
+                            },
                     )
                 }
                 repeat(PHOTO_COLUMNS - row.size) { Box(Modifier.weight(1f)) }

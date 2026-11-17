@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_fasting_type_add
@@ -92,7 +93,7 @@ fun DefaultFastingItem(
             .aspectRatio(1f)
             .padding(10.dp)
             .background(color = backgroundColors[position % backgroundColors.size])
-            .clickable { onItemClick(item.fastingHours, item.eatingHours) },
+            .clickable(role = Role.Button) { onItemClick(item.fastingHours, item.eatingHours) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -120,7 +121,7 @@ fun CustomFastingItem(
             .aspectRatio(1f)
             .padding(10.dp)
             .background(color = backgroundColors[position % backgroundColors.size])
-            .clickable { onItemClick(item.fastingHours, item.eatingHours) },
+            .clickable(role = Role.Button) { onItemClick(item.fastingHours, item.eatingHours) },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
