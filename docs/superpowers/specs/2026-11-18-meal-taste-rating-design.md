@@ -1,7 +1,7 @@
 # 每餐的好吃程度 · Rating how a meal tasted
 
 - **Date:** 2026-11-18
-- **Status:** Implemented on `claude/meal-rating`. Requested by the owner on 2026-11-18: a self-rating for each
+- **Status:** Implemented in PR #101 (`claude/meal-rating`). Requested by the owner on 2026-11-18: a self-rating for each
   meal, to record "how good it tasted, in the moment"; empty by default and optional; "1–5 maybe, or what do you
   recommend?".
 - **Builds on:** `2026-11-07-record-venues-and-meal-duration-design.md` — the same shape of change (one new field on a
@@ -68,7 +68,7 @@ as it does today.
   meal is unrated. The entity's column has no `defaultValue` to match, and the exported schema `11.json` is committed.
 - **Domain:** `EatRecord.tasteRating: Int?` is the last parameter (default `null`), so every existing construction
   compiles. A pure `TasteRating` object holds the range (1–5) and `sanitize`, which turns anything outside it into
-  `null`: a corrupt row or a hand-edited backup shows no face instead of crashing the card.
+  `null`: whatever a corrupt row or a hand-edited backup holds, the domain never carries a value off the scale.
 - **Backup:** `BackupMeal.tasteRating: Int? = null`, written always (`encodeDefaults`), **no `SCHEMA_VERSION` bump**
   — the additive route that venues and durations took. A snapshot without the field, or with an out-of-range integer,
   restores as unrated. (A value that is not an integer at all, in a hand-edited file, fails the decode like any other
