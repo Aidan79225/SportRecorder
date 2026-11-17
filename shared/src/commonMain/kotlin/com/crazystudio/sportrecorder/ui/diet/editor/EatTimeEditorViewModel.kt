@@ -8,6 +8,7 @@ import com.crazystudio.sportrecorder.data.PhotoImageSource
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
@@ -144,6 +145,7 @@ class EatTimeEditorViewModel constructor(
                     it.copy(
                         dateMillis = currentMillis,
                         durationMinutes = record.durationMinutes,
+                        tasteRating = TasteRating.sanitize(record.tasteRating),
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         venue = record.venue,
@@ -747,6 +749,8 @@ class EatTimeEditorViewModel constructor(
             venue = venue,
             // Likewise the duration: as loaded (even one the menu doesn't offer) unless the user chose another.
             durationMinutes = state.durationMinutes,
+            // And the rating, for the same reason: an edit of the note alone must not clear what the user chose.
+            tasteRating = state.tasteRating,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
@@ -776,6 +780,12 @@ class EatTimeEditorViewModel constructor(
     }
 
     fun setDuration(minutes: Int) = _uiState.update { it.copy(durationMinutes = minutes) }
+
+    /** Sets how the meal tasted, or takes the rating back with null. A value off the scale changes nothing. */
+    fun setTasteRating(value: Int?) {
+        if (value != null && value !in TasteRating.LEVELS) return
+        _uiState.update { it.copy(tasteRating = value) }
+    }
 
     private fun publishDate() = _uiState.update { it.copy(dateMillis = currentMillis) }
 

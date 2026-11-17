@@ -576,6 +576,85 @@ class BackupServiceTest {
         // The two impossible lengths become the default hour; the sane 45 next to them is left alone.
         assertEquals(listOf(60, 60, 45), eat.state.value.sortedBy { it.time }.map { it.durationMinutes })
     }
+
+    @Test fun aMealsTasteRatingRoundTripsThroughABackup() = runTest {
+        val eat = FakeEatRecordRepository(
+            listOf(
+                EatRecord(1, 100L, null, null, emptyList(), tasteRating = 5),
+                EatRecord(2, 200L, null, null, emptyList()),
+                EatRecord(3, 300L, null, null, emptyList(), tasteRating = 1),
+            ),
+        )
+        val store = FakeBackupStore()
+        val service = service(eat, store)
+
+        val info = service.backup()
+        eat.state.value = emptyList()
+        service.restore(info.id)
+
+        // The two ratings survive, and the unrated meal in between is still unrated (not a middle value).
+        assertEquals(listOf(5, null, 1), eat.state.value.sortedBy { it.time }.map { it.tasteRating })
+    }
+
+    /** Additive on purpose: the rating rides along without a schema bump, like venues and durations did. */
+    @Test fun aSnapshotKeepsItsTasteRatingWithoutASchemaBump() = runTest {
+        val eat = FakeEatRecordRepository(listOf(EatRecord(1, 100L, null, null, emptyList(), tasteRating = 4)))
+        val store = FakeBackupStore()
+        service(eat, store).backup()
+
+        val doc = BackupJson.decodeFromString(BackupDocument.serializer(), store.uploads.last().manifestJson)
+
+        assertEquals(4, doc.meals.single().tasteRating)
+        assertEquals(2, doc.schemaVersion)
+    }
+
+    /** What the app wrote with durations and before taste ratings: schema 2, no tasteRating anywhere. */
+    @Test fun aSnapshotWithoutTasteRatings_restoresEveryMealUnrated() = runTest {
+        val json = """
+            {"schemaVersion":2,"createdAt":1,"appVersionName":"0.15.0",
+             "meals":[{"id":1,"time":100,"note":"first","location":null,"photos":[],"venueName":null,"venueKey":null,
+                       "durationMinutes":90},
+                      {"id":2,"time":200,"note":null,"location":null,"photos":[],"venueName":null,"venueKey":null,
+                       "durationMinutes":60}],
+             "fastingTypes":[],"dietSettings":{"fastingHours":16,"eatingHours":8},
+             "reminderPrefs":{"windowClosingEnabled":false,"fastCompleteEnabled":false,
+             "leadMinutes":30,"quietHoursEnabled":false,"quietStartMinutes":1320,"quietEndMinutes":480},
+             "venues":[]}
+        """.trimIndent()
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("before-ratings", 1L, "0.15.0", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("before-ratings")
+
+        val meals = eat.state.value.sortedBy { it.time }
+        assertEquals(listOf(null, null), meals.map { it.tasteRating })
+        assertEquals(listOf(90, 60), meals.map { it.durationMinutes }) // the rest of each meal is untouched
+    }
+
+    /** A snapshot is a file from outside: a rating that is not on the scale must never reach the database. */
+    @Test fun aTasteRatingOutsideTheScaleInASnapshot_restoresAsUnrated() = runTest {
+        val snapshot = BackupDocument(
+            schemaVersion = BackupDocument.SCHEMA_VERSION, createdAt = 1L, appVersionName = "0.15.0",
+            meals = listOf(
+                BackupMeal(1, 100L, null, null, emptyList(), tasteRating = 0),
+                BackupMeal(2, 200L, null, null, emptyList(), tasteRating = 6),
+                BackupMeal(3, 300L, null, null, emptyList(), tasteRating = 3),
+            ),
+            fastingTypes = emptyList(),
+            dietSettings = BackupDietSettings(16, 8),
+            reminderPrefs = BackupReminderPrefs(false, false, 30, false, 1320, 480),
+        )
+        val json = BackupJson.encodeToString(BackupDocument.serializer(), snapshot)
+        val store = FakeBackupStore()
+        store.seedSnapshot(SnapshotInfo("s", 1L, "0.15.0", json.length.toLong()), json)
+        val eat = FakeEatRecordRepository()
+
+        service(eat, store).restore("s")
+
+        // 0 and 6 are not levels, so those meals are unrated; the valid 3 beside them is kept.
+        assertEquals(listOf(null, null, 3), eat.state.value.sortedBy { it.time }.map { it.tasteRating })
+    }
 }
 
 /**

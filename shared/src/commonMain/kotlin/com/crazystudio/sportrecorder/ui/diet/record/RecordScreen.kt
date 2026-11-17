@@ -64,6 +64,7 @@ import com.crazystudio.sportrecorder.shared.resources.record_search_clear
 import com.crazystudio.sportrecorder.shared.resources.record_search_empty
 import com.crazystudio.sportrecorder.shared.resources.record_search_hint
 import com.crazystudio.sportrecorder.shared.resources.record_venue_search
+import com.crazystudio.sportrecorder.ui.shared.TasteFace
 import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -269,11 +270,16 @@ private fun RecordCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurface,
                 )
-                Text(
-                    text = formatClockRange(record.time, record.endTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurface,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = formatClockRange(record.time, record.endTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurface,
+                    )
+                    // How the meal tasted, when the user said: just a face after the time. An unrated meal
+                    // shows nothing, so its card looks exactly as it did before ratings existed.
+                    TasteFace(level = record.tasteRating, modifier = Modifier.padding(start = 8.dp))
+                }
                 record.venue?.let { venue ->
                     VenueLines(venue = venue, onClick = { onVenueClick(venue) }, onLongClick = onLongClick)
                 }

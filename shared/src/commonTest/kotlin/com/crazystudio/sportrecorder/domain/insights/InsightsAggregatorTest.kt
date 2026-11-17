@@ -5,6 +5,7 @@ import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.MealDuration
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.model.Venue
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -452,5 +453,35 @@ class InsightsAggregatorTest {
 
         val default = rec(at(2026, 3, 12, 23, 30)).copy(durationMinutes = MealDuration.DEFAULT_MINUTES)
         assertEquals(InsightsAggregator.compute(listOf(default), settings, now, Period.WEEK, now, zone), result)
+    }
+
+    /**
+     * How a meal tasted is the user's own note to themselves, never an input to what Insights shows: the same
+     * meals give the same result unrated, rated alike at any level, or rated differently from one another —
+     * and they fall on the same eating days. A later change that starts to weigh, count or rank by rating
+     * fails here, which is the point: that would be grading the user.
+     */
+    @Test fun compute_aRatingNeverChangesAnything() {
+        val now = at(2026, 3, 15, 12)
+        val unrated = listOf(
+            recFull(at(2026, 3, 14, 9), listOf("a.jpg"), 25.0330, 121.5654),
+            recFull(at(2026, 3, 14, 18), listOf("b.jpg", "c.jpg"), 25.0331, 121.5654),
+            recFull(at(2026, 3, 10, 12), emptyList(), 24.1477, 120.6736),
+        )
+        val expected = InsightsAggregator.compute(unrated, settings, now, Period.WEEK, now, zone)
+        val expectedDays = InsightsAggregator.mealsByEatingDay(unrated, settings, zone).mapValues { (_, meals) ->
+            meals.map { it.time }
+        }
+
+        val variants = TasteRating.LEVELS.map { level -> unrated.map { it.copy(tasteRating = level) } } +
+            listOf(unrated.mapIndexed { index, meal -> meal.copy(tasteRating = TasteRating.LEVELS[index]) })
+        for (rated in variants) {
+            val ratings = rated.map { it.tasteRating }
+            assertEquals(expected, InsightsAggregator.compute(rated, settings, now, Period.WEEK, now, zone), "$ratings")
+            val days = InsightsAggregator.mealsByEatingDay(rated, settings, zone).mapValues { (_, meals) ->
+                meals.map { it.time }
+            }
+            assertEquals(expectedDays, days, "$ratings")
+        }
     }
 }

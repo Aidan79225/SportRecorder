@@ -47,6 +47,27 @@ class EatRecordMappersTest {
         assertEquals(45, EatTime(id = 2, time = 0L, durationMinutes = 45).toDomain().durationMinutes)
     }
 
+    @Test fun aMealsTasteRatingIsCarriedFromTheRowToTheRecord() {
+        val entity = EatTimeWithPhotos(
+            eatTime = EatTime(id = 1, time = 100L, tasteRating = 4),
+            photos = emptyList(),
+        )
+        assertEquals(4, entity.toDomain().tasteRating)
+        assertEquals(1, EatTime(id = 2, time = 0L, tasteRating = 1).toDomain().tasteRating)
+        assertEquals(5, EatTime(id = 3, time = 0L, tasteRating = 5).toDomain().tasteRating)
+    }
+
+    @Test fun aRowWithoutARating_isAnUnratedMeal() {
+        assertNull(EatTime(id = 1, time = 100L).toDomain().tasteRating)
+    }
+
+    // A row is data too (a restored file, a future bug): a value off the scale reads as unrated, not as a crash.
+    @Test fun aStoredRatingOffTheScale_readsAsUnrated() {
+        listOf(0, 6, -1, 99).forEach { stored ->
+            assertNull("stored $stored", EatTime(id = 1, time = 100L, tasteRating = stored).toDomain().tasteRating)
+        }
+    }
+
     @Test fun aRecordReachesTheRowWithEveryFieldIntact() {
         val record = EatRecord(
             id = 4,
@@ -56,12 +77,28 @@ class EatRecordMappersTest {
             photos = emptyList(),
             venue = Venue(id = 7, name = "大戶屋", lat = 25.0, lng = 121.5, lastUsedAt = 9L),
             durationMinutes = 90,
+            tasteRating = 4,
         )
         assertEquals(
-            EatTime(id = 4, time = 100L, lat = 1.5, lng = 2.5, note = "hi", venueId = 7, durationMinutes = 90),
+            EatTime(
+                id = 4,
+                time = 100L,
+                lat = 1.5,
+                lng = 2.5,
+                note = "hi",
+                venueId = 7,
+                durationMinutes = 90,
+                tasteRating = 4,
+            ),
             record.toEntity(),
         )
         assertEquals(0, record.toEntity(id = 0).id)
+    }
+
+    @Test fun anUnratedRecordReachesTheRowUnrated() {
+        val record = EatRecord(id = 4, time = 100L, location = null, note = null, photos = emptyList())
+
+        assertNull(record.toEntity().tasteRating)
     }
 
     @Test fun nullLatLng_mapsToNullLocation() {

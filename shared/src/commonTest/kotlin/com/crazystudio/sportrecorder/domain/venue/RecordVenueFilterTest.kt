@@ -1,6 +1,7 @@
 package com.crazystudio.sportrecorder.domain.venue
 
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.model.Venue
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -182,5 +183,32 @@ class RecordVenueFilterTest {
     @Test fun canSearch_staysTrueWhileAQueryIsTyped_evenIfNoRecordHasAVenueAnymore() {
         assertEquals(true, RecordVenueFilter.canSearch(listOf(record(1, venue = null)), "shop"))
         assertEquals(true, RecordVenueFilter.canSearch(emptyList(), "shop"))
+    }
+
+    /**
+     * How a meal tasted is the user's own note: the search neither reads it nor lets it reorder anything. A
+     * rated and an unrated copy of the same list match the same records in the same order for every query, and
+     * the words of a rating are not something to search for.
+     */
+    @Test fun aRatingChangesNeitherWhatMatchesNorTheOrder() {
+        val mcdonalds = venue(1, "麥當勞", address = "臺北市信義路")
+        val unrated = listOf(
+            record(3, mcdonalds, time = 200L),
+            record(4, venue(2, "Ichiran"), time = 400L),
+            record(1, mcdonalds, time = 100L),
+        )
+        val variants = TasteRating.LEVELS.map { level -> unrated.map { it.copy(tasteRating = level) } } +
+            listOf(unrated.mapIndexed { index, record -> record.copy(tasteRating = TasteRating.LEVELS[index]) })
+
+        for (query in listOf("", "麥當勞", "ichiran", "信義", "麥當勞 信義")) {
+            for (rated in variants) {
+                assertEquals(idsMatching(unrated, query), idsMatching(rated, query), "query '$query'")
+            }
+        }
+        for (query in listOf("好吃", "Tasty", "不好吃", "5", "好吃程度")) {
+            for (rated in variants) {
+                assertEquals(emptyList(), idsMatching(rated, query), "query '$query'")
+            }
+        }
     }
 }

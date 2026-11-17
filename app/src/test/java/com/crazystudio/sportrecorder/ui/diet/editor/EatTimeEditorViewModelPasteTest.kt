@@ -40,9 +40,12 @@ class EatTimeEditorViewModelPasteTest {
         assertFalse(vm.uiState.value.resolvingLink)
         assertNull(vm.uiState.value.pasteDialog)
 
-        // A new meal made from a paste never asks how long it took: it saves the default hour.
+        // A new meal made from a paste never asks how long it took, or how it tasted: it saves the default hour,
+        // unrated.
         assertTrue(vm.save())
-        assertEquals(MealDuration.DEFAULT_MINUTES, editor.records.stored.single().durationMinutes)
+        val saved = editor.records.stored.single()
+        assertEquals(MealDuration.DEFAULT_MINUTES, saved.durationMinutes)
+        assertNull(saved.tasteRating)
     }
 
     @Test
@@ -100,7 +103,7 @@ class EatTimeEditorViewModelPasteTest {
 
     @Test
     fun pasteInEditMode_changesTheVenueButNotTheLocation() = runTest(mainRule.testDispatcher.scheduler) {
-        val editor = Editor(listOf(mealAt(venue = daHuWu).copy(durationMinutes = 90)), listOf(daHuWu))
+        val editor = Editor(listOf(mealAt(venue = daHuWu).copy(durationMinutes = 90, tasteRating = 4)), listOf(daHuWu))
         editor.clipboard.text = SHARE_TEXT
         val vm = editor.viewModel(eatTimeId = 1)
         advanceUntilIdle()
@@ -115,8 +118,10 @@ class EatTimeEditorViewModelPasteTest {
         // Two facts: the venue is where Maps says; the meal is still where you were.
         assertEquals(home, saved.location)
         assertEquals("鼎泰豐 信義店", saved.venue?.name)
-        // A paste changes the venue, not how long the meal took: it keeps its own duration.
+        // A paste changes the venue, not how long the meal took or how it tasted: it keeps its own duration, and
+        // the rating the user gave it.
         assertEquals(90, saved.durationMinutes)
+        assertEquals(4, saved.tasteRating)
     }
 
     @Test

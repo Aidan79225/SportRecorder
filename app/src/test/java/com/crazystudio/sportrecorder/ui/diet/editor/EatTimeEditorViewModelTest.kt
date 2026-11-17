@@ -532,8 +532,9 @@ class EatTimeEditorViewModelTest {
         // Two different facts: the venue is where Maps says; the record is where you were.
         assertEquals(home, saved.location)
         assertEquals(25.0335035, saved.venue?.lat)
-        // A shared link never asks how long the meal took: it gets the default hour.
+        // A shared link never asks how long the meal took: it gets the default hour. Nor how it tasted: unrated.
         assertEquals(MealDuration.DEFAULT_MINUTES, saved.durationMinutes)
+        assertNull(saved.tasteRating)
     }
 
     @Test

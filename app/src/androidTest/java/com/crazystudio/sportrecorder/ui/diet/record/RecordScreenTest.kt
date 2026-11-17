@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -50,6 +51,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -164,6 +166,65 @@ class RecordScreenTest {
             .toEpochMilliseconds()
         show(listOf(record(1).copy(time = noon, durationMinutes = 90)))
         compose.onNodeWithText("12:00 – 13:30").assertIsDisplayed()
+    }
+
+    /**
+     * A rated meal's face sits right after the time. It is a picture to the eye and a sentence to a screen
+     * reader: one node described "Taste: Tasty", and no text node that holds the emoji itself.
+     */
+    @Test
+    fun aRatedMealShowsItsFaceAfterTheTime_describedInWords() {
+        val noon = LocalDateTime(2026, 11, 7, 12, 0)
+            .toInstant(TimeZone.currentSystemDefault())
+            .toEpochMilliseconds()
+        show(listOf(record(1).copy(time = noon, durationMinutes = 90, tasteRating = 4)))
+
+        val face = compose.onNodeWithContentDescription("Taste: Tasty", useUnmergedTree = true)
+        face.assertIsDisplayed()
+        compose.onAllNodesWithText("🙂", useUnmergedTree = true).assertCountEquals(0)
+
+        val time = compose.onNodeWithText("12:00 – 13:30", useUnmergedTree = true).fetchSemanticsNode()
+        assertTrue(
+            "the face starts where the time ends",
+            face.fetchSemanticsNode().boundsInRoot.left >= time.boundsInRoot.right,
+        )
+        // What a screen reader gets for the card as a whole carries it too.
+        compose.onNodeWithContentDescription("Taste: Tasty").assertIsDisplayed()
+    }
+
+    @Test
+    fun aMealWithoutARatingShowsNoFace() {
+        show(listOf(record(1, note = "lunch")))
+        compose.onNodeWithText("lunch").assertIsDisplayed()
+        compose.onAllNodes(hasContentDescription("Taste", substring = true), useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    /** One record whose rating is changed in place, so every level is read in the same composition. */
+    @Test
+    fun eachLevelIsDescribedByItsOwnWord() {
+        val rating = mutableStateOf(1)
+        compose.setContent {
+            SportRecorderTheme {
+                RecordScreen(
+                    records = listOf(record(1).copy(tasteRating = rating.value)),
+                    onDelete = {},
+                    onEditRecord = {},
+                    photoModel = { null },
+                    onPhotoClick = { _, _ -> },
+                )
+            }
+        }
+        listOf("Not tasty", "Not very tasty", "Okay", "Tasty", "Very tasty").forEachIndexed { index, word ->
+            compose.runOnIdle { rating.value = index + 1 }
+            compose.onNodeWithContentDescription("Taste: $word", useUnmergedTree = true).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun inTraditionalChinese_aRatedMealIsDescribedInChinese() {
+        showInTraditionalChinese(listOf(record(1).copy(tasteRating = 5)))
+        compose.onNodeWithContentDescription("好吃程度：非常好吃", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test

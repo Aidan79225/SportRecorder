@@ -17,6 +17,7 @@ private const val VERSION_7 = 7
 private const val VERSION_8 = 8
 private const val VERSION_9 = 9
 private const val VERSION_10 = 10
+private const val VERSION_11 = 11
 
 // SQL is unchanged from the Android version — only the API moves from SupportSQLiteDatabase to the
 // multiplatform SQLiteConnection. Room runs each migrate() inside its own transaction.
@@ -107,6 +108,14 @@ object Migrations {
                     connection.execSQL(
                         "ALTER TABLE `${EatTime.tableName}` ADD COLUMN `duration_minutes` INTEGER NOT NULL DEFAULT 60"
                     )
+                }
+            },
+            // A meal can be rated for how it tasted; every meal recorded before reads as unrated. Nullable
+            // with no DEFAULT, to match the entity's `taste_rating` column (no `defaultValue`) — Room
+            // validates the column on open, and a stored middle value would make "unrated" read as "okay".
+            object : Migration(VERSION_10, VERSION_11) {
+                override fun migrate(connection: SQLiteConnection) {
+                    connection.execSQL("ALTER TABLE `${EatTime.tableName}` ADD COLUMN `taste_rating` INTEGER")
                 }
             },
         )

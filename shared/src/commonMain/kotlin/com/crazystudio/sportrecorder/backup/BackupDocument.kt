@@ -48,6 +48,13 @@ data class BackupMeal(
      * that is not positive (never a real length), restores as `MealDuration.DEFAULT_MINUTES`, one hour.
      */
     val durationMinutes: Int? = null,
+    /**
+     * How the meal tasted, a `TasteRating` level (1–5); null means not rated. Added without a
+     * [BackupDocument.SCHEMA_VERSION] bump, like [durationMinutes]: an older app skips the field (so a
+     * restore there drops the ratings), and a snapshot written before it carries none. A missing value,
+     * or one off the scale, restores as not rated.
+     */
+    val tasteRating: Int? = null,
 )
 
 @Serializable
