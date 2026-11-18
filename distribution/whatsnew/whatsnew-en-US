@@ -1,5 +1,3 @@
-New in 0.15.0
-• Every meal now has a length: 1 hour by default, adjustable in the editor. Record cards show "12:30 – 13:30". Earlier meals count as 1 hour; you can edit them.
-• Your fast now starts when your last meal ends. One-meal days are unchanged; with more meals in a day, the fast starts and ends later by the last meal's length.
-• The Record tab shows each meal's place and can be searched by name or address.
-• Better screen-reader labels, and more screens speak your app language.
+New in 0.16.0
+• Note how a meal tasted: five faces from "Not tasty" to "Very tasty". It's optional and starts empty — pick one in the meal editor (✕ clears it) and it shows on that meal's Record card.
+• Screen readers now read the Home add-meal button, meal photos and the fasting-type picker, and the buttons on the create-fasting-type sheet follow your app language.
