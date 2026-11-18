@@ -270,6 +270,16 @@
     <string name="photo_open">See this photo</string>
     <string name="diet_eat_create">CREATE</string>
     <string name="diet_eat_save">SAVE</string>
+    <!-- How a meal tasted, in the user's own words: five faces, each with one plain word. Nothing is chosen by default. -->
+    <string name="editor_taste">Taste</string>
+    <string name="editor_taste_clear">Clear taste</string>
+    <string name="taste_1">Not tasty</string>
+    <string name="taste_2">Not very tasty</string>
+    <string name="taste_3">Okay</string>
+    <string name="taste_4">Tasty</string>
+    <string name="taste_5">Very tasty</string>
+    <!-- A rated meal's face on the Record list, as a screen reader says it: "Taste: Tasty". -->
+    <string name="taste_described">Taste: %1$s</string>
     <string name="editor_venue">Place</string>
     <string name="editor_venue_none">Not set</string>
     <string name="editor_venue_pick">Choose a place</string>

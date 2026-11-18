@@ -1,18 +1,29 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.centerY
 import androidx.compose.ui.test.click
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -25,6 +36,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.width
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
@@ -45,13 +58,21 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.duration_hours
 import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
 import com.crazystudio.sportrecorder.shared.resources.duration_minutes
+import com.crazystudio.sportrecorder.shared.resources.editor_taste
+import com.crazystudio.sportrecorder.shared.resources.editor_taste_clear
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
+import com.crazystudio.sportrecorder.shared.resources.taste_1
+import com.crazystudio.sportrecorder.shared.resources.taste_2
+import com.crazystudio.sportrecorder.shared.resources.taste_3
+import com.crazystudio.sportrecorder.shared.resources.taste_4
+import com.crazystudio.sportrecorder.shared.resources.taste_5
 import com.crazystudio.sportrecorder.ui.theme.SportRecorderTheme
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,34 +99,47 @@ class EatTimeEditorSheetTest {
     private var recapture = 0
     private val notes = mutableListOf<String>()
     private val durations = mutableListOf<Int>()
+    private val ratings = mutableListOf<Int?>()
     private val removedPending = mutableListOf<String>()
     private val removedExisting = mutableListOf<EatPhoto>()
 
     private fun str(res: StringResource, vararg args: Any) = runBlocking { getString(res, *args) }
 
-    private fun show(state: EatTimeEditorUiState) {
+    private fun show(state: EatTimeEditorUiState) = showSheet { state }
+
+    // [state] is read inside the composition, so a test may hand it a mutable one and change it in place.
+    // [around] wraps the sheet, for a test that needs a different density or font scale.
+    private fun showSheet(
+        modifier: Modifier = Modifier,
+        around: @Composable (@Composable () -> Unit) -> Unit = { content -> content() },
+        state: () -> EatTimeEditorUiState,
+    ) {
         compose.setContent {
             SportRecorderTheme {
-                EatTimeEditorSheet(
-                    state = state,
-                    photoModel = { null },
-                    onPickDate = { pickDate++ },
-                    onPickTime = { pickTime++ },
-                    onDurationChange = { durations.add(it) },
-                    onNoteChange = { notes.add(it) },
-                    onAddPhoto = { addPhoto++ },
-                    onSelectPhoto = { selectPhoto++ },
-                    onRemovePendingPhoto = { removedPending.add(it) },
-                    onRemoveExistingPhoto = { removedExisting.add(it) },
-                    onRecaptureLocation = { recapture++ },
-                    onClearLocation = { clearLocation++ },
-                    onOpenVenuePicker = {},
-                    onClearVenue = {},
-                    onAnswerAnotherBranch = {},
-                    onAnswerSameStoreMove = {},
-                    onAnswerSameStoreKeep = {},
-                    onConfirm = { confirm++ },
-                )
+                around {
+                    EatTimeEditorSheet(
+                        state = state(),
+                        modifier = modifier,
+                        photoModel = { null },
+                        onPickDate = { pickDate++ },
+                        onPickTime = { pickTime++ },
+                        onDurationChange = { durations.add(it) },
+                        onTasteRatingChange = { ratings.add(it) },
+                        onNoteChange = { notes.add(it) },
+                        onAddPhoto = { addPhoto++ },
+                        onSelectPhoto = { selectPhoto++ },
+                        onRemovePendingPhoto = { removedPending.add(it) },
+                        onRemoveExistingPhoto = { removedExisting.add(it) },
+                        onRecaptureLocation = { recapture++ },
+                        onClearLocation = { clearLocation++ },
+                        onOpenVenuePicker = {},
+                        onClearVenue = {},
+                        onAnswerAnotherBranch = {},
+                        onAnswerSameStoreMove = {},
+                        onAnswerSameStoreKeep = {},
+                        onConfirm = { confirm++ },
+                    )
+                }
             }
         }
     }
@@ -271,6 +305,172 @@ class EatTimeEditorSheetTest {
         show(EatTimeEditorUiState(durationMinutes = 15))
         compose.onNodeWithText(str(Res.string.duration_minutes, 15)).assertIsDisplayed()
         compose.onNodeWithText(str(Res.string.duration_hours_minutes, 0, 15)).assertDoesNotExist()
+    }
+
+    // ---- How the meal tasted: five faces, none chosen until the user taps one ----------------------------------
+
+    private val tasteWords = listOf(
+        Res.string.taste_1,
+        Res.string.taste_2,
+        Res.string.taste_3,
+        Res.string.taste_4,
+        Res.string.taste_5,
+    )
+
+    private fun word(level: Int) = str(tasteWords[level - 1])
+
+    // A face is found by its word: that is its description for a screen reader, and all it exposes.
+    private fun face(level: Int) = compose.onNode(hasContentDescription(word(level)))
+
+    private val isRadioButton = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+
+    @Test
+    fun theTasteRowStartsEmpty_withFiveFacesAndNoneChosen() {
+        show(EatTimeEditorUiState())
+
+        compose.onNodeWithText(str(Res.string.editor_taste)).assertIsDisplayed()
+        (1..5).forEach { level -> face(level).assertIsDisplayed().assertIsNotSelected() }
+        // Nothing is said about being empty, and there is nothing to take back yet.
+        (1..5).forEach { level -> compose.onNodeWithText(word(level)).assertDoesNotExist() }
+        compose.onNodeWithContentDescription(str(Res.string.editor_taste_clear)).assertDoesNotExist()
+    }
+
+    @Test
+    fun theFacesAreOneRadioGroup_eachDescribedByItsWord() {
+        show(EatTimeEditorUiState())
+
+        compose.onAllNodes(isRadioButton).assertCountEquals(5)
+        compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.SelectableGroup)).assertCountEquals(1)
+        (1..5).forEach { level -> face(level).assertHasClickAction().assert(isRadioButton) }
+    }
+
+    // The emoji is hidden from a screen reader (the word is its description), so no face is announced twice.
+    @Test
+    fun noEmojiIsAStopOfItsOwn() {
+        show(EatTimeEditorUiState(tasteRating = 5))
+
+        val anEmoji = SemanticsMatcher("text made of emoji") { node ->
+            val texts = node.config.getOrNull(SemanticsProperties.Text).orEmpty()
+            texts.any { text -> text.text.any(Character::isSurrogate) }
+        }
+        compose.onAllNodes(anEmoji, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun tappingAFace_reportsItsLevel() {
+        show(EatTimeEditorUiState())
+
+        (1..5).forEach { level -> face(level).performClick() }
+
+        assertEquals(listOf<Int?>(1, 2, 3, 4, 5), ratings)
+    }
+
+    // The ✕ is the only way to take a rating back. A face that is already chosen is not a toggle: tapping it
+    // again chooses it again ("tap again to clear" would also have no name for a screen reader).
+    @Test
+    fun tappingTheChosenFace_keepsIt_onlyTheClearButtonTakesItBack() {
+        show(EatTimeEditorUiState(tasteRating = 4))
+
+        face(4).performClick()
+
+        assertEquals(listOf<Int?>(4), ratings)
+    }
+
+    @Test
+    fun theChosenFaceIsSelected_andItsWordSitsBesideTheLabel() {
+        show(EatTimeEditorUiState(tasteRating = 4))
+
+        face(4).assertIsSelected()
+        listOf(1, 2, 3, 5).forEach { level -> face(level).assertIsNotSelected() }
+        // The label and the word are one stop, "Taste, Tasty", like the other rows' "title, value".
+        compose.onNode(hasText(str(Res.string.editor_taste)) and hasText(word(4))).assertIsDisplayed()
+    }
+
+    @Test
+    fun theClearButtonTakesTheRatingBack() {
+        show(EatTimeEditorUiState(tasteRating = 2))
+
+        compose.onNodeWithContentDescription(str(Res.string.editor_taste_clear)).performClick()
+
+        assertEquals(listOf<Int?>(null), ratings)
+    }
+
+    @Test
+    fun everyFaceIsAtLeastAFingerTipWide() {
+        show(EatTimeEditorUiState())
+
+        (1..5).forEach { level -> face(level).assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp) }
+    }
+
+    // Choosing a face puts a word on the label's line and a clear button at the end of the faces' line. Neither
+    // changes a height or moves a face, so the faces and everything under them stay where the finger just was.
+    @Test
+    fun choosingAFace_movesNothing() {
+        val state = mutableStateOf(EatTimeEditorUiState())
+        showSheet { state.value }
+        fun noteTop() = compose.onNodeWithText(str(Res.string.diet_eat_note)).getUnclippedBoundsInRoot().top.value
+        fun faceBounds() = face(3).getUnclippedBoundsInRoot()
+        val (noteBefore, faceBefore) = noteTop() to faceBounds()
+
+        state.value = EatTimeEditorUiState(tasteRating = 3)
+        compose.waitForIdle()
+
+        assertEquals(noteBefore, noteTop(), 0.01f)
+        assertEquals(faceBefore.top.value, faceBounds().top.value, 0.01f)
+        assertEquals(faceBefore.left.value, faceBounds().left.value, 0.01f)
+        assertEquals(faceBefore.right.value, faceBounds().right.value, 0.01f)
+    }
+
+    /** The editor [width] wide at twice the normal font, with a face chosen so the word and the ✕ are showing. */
+    private fun showNarrow(width: Dp) = showSheet(
+        modifier = Modifier.width(width),
+        around = { content ->
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
+                content()
+            }
+        },
+    ) { EatTimeEditorUiState(tasteRating = 5) }
+
+    private fun clearButton() = compose.onNodeWithContentDescription(str(Res.string.editor_taste_clear))
+
+    // JUnit's assertTrue, not Kotlin's assert(): on Android assertions are off, so assert() checks nothing.
+    private fun assertWithin(node: SemanticsNodeInteraction, width: Dp, what: String) {
+        val bounds = node.getUnclippedBoundsInRoot()
+        assertTrue("$what runs past the right edge: ${bounds.right} > $width", bounds.right <= width + 0.5.dp)
+        assertTrue("$what starts left of the sheet: ${bounds.left}", bounds.left >= (-0.5).dp)
+    }
+
+    // An icon button is drawn 40 dp wide but takes touches over 48 dp, and the second is what a finger meets.
+    private fun touchWidth(node: SemanticsNodeInteraction): Float =
+        with(compose.density) { node.fetchSemanticsNode().touchBoundsInRoot.width.toDp().value }
+
+    // A 360 dp phone is the smallest in common use, at the largest font setting: every face keeps a fingertip's
+    // width and all five stay on the sheet, and the clear button's touch area is a full 48 dp.
+    @Test
+    fun onASmallPhoneAtALargeFont_everyFaceKeepsItsFingerTip() {
+        showNarrow(360.dp)
+
+        (1..5).forEach { level ->
+            face(level).assertIsDisplayed().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+            assertWithin(face(level), 360.dp, "face $level")
+        }
+        clearButton().assertIsDisplayed()
+        assertTrue("the clear button's touch area is under 48 dp", touchWidth(clearButton()) >= 47.5f)
+        assertWithin(clearButton(), 360.dp, "the clear button")
+    }
+
+    // 320 dp is the narrowest phone there is: the faces share what the clear button leaves and shrink a little,
+    // yet none runs off the sheet and the clear button is not pushed out of reach.
+    @Test
+    fun onTheNarrowestPhone_theFacesShrinkALittle_butAllStayOnTheSheet() {
+        showNarrow(320.dp)
+
+        (1..5).forEach { level ->
+            face(level).assertIsDisplayed().assertWidthIsAtLeast(44.dp)
+            assertWithin(face(level), 320.dp, "face $level")
+        }
+        clearButton().assertIsDisplayed()
+        assertWithin(clearButton(), 320.dp, "the clear button")
     }
 
     @Test

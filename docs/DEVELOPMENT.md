@@ -103,7 +103,7 @@
   備份引擎在 `:shared` 的 `commonTest`,ViewModel / mapper / repository 測試在 `:app` 的 `test`;
   instrumented tests 現在也涵蓋 Room migration 與 repository 契約、餐點編輯器 UI、照片管線、
   提醒(AlarmManager slot 與 receiver)。
-- `AppDatabase` 已開啟 `exportSchema`(目前 schema 版本 8,`7 → 8` 加入店家),`shared/schemas/` 下的 JSON 必須隨每次 schema 變更一起
+- `AppDatabase` 已開啟 `exportSchema`(目前 schema 版本 11,最近一次 `10 → 11` 為餐點加入好吃程度),`shared/schemas/` 下的 JSON 必須隨每次 schema 變更一起
   commit;migration 測試在 `app/src/androidTest/.../database/`。
 - **Instrumented tests(本機、不進 CI)**:`app/src/androidTest/.../backup/` 用真的 Room、真的
   `BackupForegroundService` 與通知、真的 `BackupScreen`,只假造雲端。跑法:先開一台模擬器,然後
@@ -173,6 +173,7 @@
 | 10-28 | Google 地圖 app 產生的連結(貼上、分享與「貼上地圖連結更新」帶入正確的店名、地址與位置,啟動時修復黏著地址的店名) | ✓(10-18 spec 的 Addendum) | ✓ | 已實作(`claude/maps-app-links`,PR 待開) |
 | 11-07 | 紀錄頁店家與搜尋、用餐時長(Part A:每筆紀錄顯示店名與地址、依店名/地址搜尋紀錄;Part B:餐點用餐時長) | ✓ | ✓ | Part A 已實作(PR #92,`claude/record-venue-search`);Part B 已實作(PR #93,`claude/meal-duration`,疊在 #92 之上):用餐時長預設 1 小時、斷食從最後一餐結束起算、Room 9→10 |
 | 11-11 | 發行版開啟 R8(Play「DEX 程式碼最佳化」警示:模糊化 1%;DEX 33.6 → 4.5 MB,三項約 97%) | ✓ | — | 已實作(`claude/enable-r8`,隨下一版發布) |
+| 11-18 | 每餐的好吃程度(編輯器選一張臉記下當下好不好吃,預設空白、可不填;只在紀錄卡顯示,回顧不用它) | ✓ | — | 已實作(PR #101,`claude/meal-rating`):Room 10→11,備份不升 `SCHEMA_VERSION`(舊版 App 還原會丟掉評分) |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

@@ -85,7 +85,7 @@ class RoomMigrationTest {
         assertNull(records[0].eatTime.note)
         assertTrue(records[0].photos.isEmpty())
         assertTrue(migrated.getFastingTypeDao().flowLast(10).first().isEmpty())
-        assertEquals(10, migrated.userVersion())
+        assertEquals(11, migrated.userVersion())
     }
 
     @Test fun v3_toCurrent_dropsFoodRecord_andAddsFastingTypeName() = runBlocking {
@@ -118,7 +118,7 @@ class RoomMigrationTest {
         assertEquals(18L, types[0].fastingHours)
         assertNull(types[0].name)
         assertEquals(2000L, migrated.getEatTimeDao().flowAll().first().single().time)
-        assertEquals(10, migrated.userVersion())
+        assertEquals(11, migrated.userVersion())
     }
 
     @Test fun v4_toCurrent_keepsPhotoRelation() = runBlocking {
@@ -153,7 +153,7 @@ class RoomMigrationTest {
         assertNull(record.eatTime.note)
         assertEquals(listOf("a.webp"), record.photos.map { it.fileName })
         assertEquals(7L, record.photos.single().createdAt)
-        assertEquals(10, migrated.userVersion())
+        assertEquals(11, migrated.userVersion())
     }
 
     @Test fun migrates7to8_keepsRowsAndAcceptsTheNewSchema() = runBlocking {
@@ -181,7 +181,7 @@ class RoomMigrationTest {
         assertNull(records.single().venueId)
         // And the new table is there and usable.
         assertTrue(opened.getVenueDao().flowAll().first().isEmpty())
-        assertEquals(10, opened.userVersion())
+        assertEquals(11, opened.userVersion())
     }
 
     @Test fun migrates8to9_keepsVenuesAndAllowsSameNames() = runBlocking {
@@ -218,7 +218,7 @@ class RoomMigrationTest {
         val second = opened.getVenueDao().insert(VenueEntity(name = "麥當勞", lastUsedAt = 6L))
         assertTrue(second > 1L)
         assertEquals(2, opened.getVenueDao().flowAll().first().size)
-        assertEquals(10, opened.userVersion())
+        assertEquals(11, opened.userVersion())
     }
 
     @Test fun migrates9to10_keepsEveryMealAndReadsItAsOneHour() = runBlocking {
@@ -256,6 +256,77 @@ class RoomMigrationTest {
         assertEquals("大戶屋", meals[0].venue?.name)
         assertEquals(setOf("a.webp", "b.webp"), meals[0].photos.map { it.fileName }.toSet())
         assertNull(meals[1].venue)
-        assertEquals(10, opened.userVersion())
+        assertEquals(11, opened.userVersion())
+    }
+
+    @Test fun migrates10to11_keepsEveryMealAndReadsItAsUnrated() = runBlocking {
+        createLegacy(
+            version = 10,
+            // The createSql statements of schemas/.../10.json, as Room created them.
+            ddl = listOf(
+                "CREATE TABLE IF NOT EXISTS `eat_time` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`time` INTEGER NOT NULL, `lat` REAL, `lng` REAL, `note` TEXT, `venue_id` INTEGER, " +
+                    "`duration_minutes` INTEGER NOT NULL DEFAULT 60)",
+                "CREATE TABLE IF NOT EXISTS `fasting_type` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`fasting_hours` INTEGER NOT NULL, `eating_hours` INTEGER NOT NULL, `name` TEXT, " +
+                    "`timestamp` INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS `photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`eat_time_id` INTEGER NOT NULL, `file_name` TEXT NOT NULL, `created_at` INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS `venue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `lat` REAL, `lng` REAL, `last_used_at` INTEGER NOT NULL, `address` TEXT)",
+                "CREATE INDEX IF NOT EXISTS `index_venue_name` ON `venue` (`name`)",
+            ),
+            seed = listOf(
+                "INSERT INTO `venue` (`id`, `name`, `lat`, `lng`, `last_used_at`, `address`) " +
+                    "VALUES (1, '大戶屋', 25.0, 121.5, 5, '信義路 1 號')",
+                "INSERT INTO `eat_time` (`id`, `time`, `note`, `venue_id`, `duration_minutes`) " +
+                    "VALUES (1, 111, 'lunch', 1, 90)",
+                "INSERT INTO `eat_time` (`id`, `time`, `note`) VALUES (2, 222, 'snack')",
+                "INSERT INTO `photo` (`eat_time_id`, `file_name`, `created_at`) VALUES (1, 'a.webp', 7)",
+            ),
+        )
+
+        val opened = openMigrated()
+
+        val meals = opened.getEatTimeDao().flowAllWithPhotos().first().sortedBy { it.eatTime.id }
+        assertEquals(listOf("lunch", "snack"), meals.map { it.eatTime.note })
+        // Every meal recorded before ratings existed is unrated: NULL, not a middle value.
+        assertEquals(listOf<Int?>(null, null), meals.map { it.eatTime.tasteRating })
+        // And nothing else about it moved: its length, venue and photos are as they were.
+        assertEquals(listOf(90, 60), meals.map { it.eatTime.durationMinutes })
+        assertEquals("大戶屋", meals[0].venue?.name)
+        assertEquals(listOf("a.webp"), meals[0].photos.map { it.fileName })
+        assertEquals(11, opened.userVersion())
+    }
+
+    /** The new column accepts a rating and gives it back, and clearing it writes NULL again. */
+    @Test fun migrates10to11_theNewColumnStoresARatingAndTakesItBack() = runBlocking {
+        createLegacy(
+            version = 10,
+            ddl = listOf(
+                "CREATE TABLE IF NOT EXISTS `eat_time` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`time` INTEGER NOT NULL, `lat` REAL, `lng` REAL, `note` TEXT, `venue_id` INTEGER, " +
+                    "`duration_minutes` INTEGER NOT NULL DEFAULT 60)",
+                "CREATE TABLE IF NOT EXISTS `fasting_type` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`fasting_hours` INTEGER NOT NULL, `eating_hours` INTEGER NOT NULL, `name` TEXT, " +
+                    "`timestamp` INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS `photo` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`eat_time_id` INTEGER NOT NULL, `file_name` TEXT NOT NULL, `created_at` INTEGER NOT NULL)",
+                "CREATE TABLE IF NOT EXISTS `venue` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `lat` REAL, `lng` REAL, `last_used_at` INTEGER NOT NULL, `address` TEXT)",
+                "CREATE INDEX IF NOT EXISTS `index_venue_name` ON `venue` (`name`)",
+            ),
+            seed = listOf("INSERT INTO `eat_time` (`id`, `time`, `note`) VALUES (1, 111, 'old meal')"),
+        )
+
+        val opened = openMigrated()
+        val dao = opened.getEatTimeDao()
+        val old = dao.findWithPhotosById(1)!!.eatTime
+
+        dao.update(old.copy(tasteRating = 5))
+        assertEquals(5, dao.findWithPhotosById(1)!!.eatTime.tasteRating)
+
+        dao.update(old.copy(tasteRating = null))
+        assertNull(dao.findWithPhotosById(1)!!.eatTime.tasteRating)
     }
 }

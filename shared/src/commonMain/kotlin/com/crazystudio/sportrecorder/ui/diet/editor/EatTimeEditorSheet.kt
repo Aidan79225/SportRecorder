@@ -7,16 +7,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -38,8 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.MealDuration
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.venue.RoundedDistance
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.diet_create_eating_date_pick
@@ -79,6 +89,8 @@ import com.crazystudio.sportrecorder.shared.resources.editor_store_keep
 import com.crazystudio.sportrecorder.shared.resources.editor_store_move
 import com.crazystudio.sportrecorder.shared.resources.editor_store_move_none
 import com.crazystudio.sportrecorder.shared.resources.editor_store_title
+import com.crazystudio.sportrecorder.shared.resources.editor_taste
+import com.crazystudio.sportrecorder.shared.resources.editor_taste_clear
 import com.crazystudio.sportrecorder.shared.resources.editor_venue
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_clear
 import com.crazystudio.sportrecorder.shared.resources.editor_venue_none
@@ -95,6 +107,7 @@ import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_camera_2
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_photo_library_24
 import com.crazystudio.sportrecorder.shared.resources.photo_add
 import com.crazystudio.sportrecorder.shared.resources.photo_select
+import com.crazystudio.sportrecorder.ui.shared.tasteLook
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.DrawableResource
@@ -113,6 +126,7 @@ fun EatTimeEditorSheet(
     onPickDate: () -> Unit,
     onPickTime: () -> Unit,
     onDurationChange: (Int) -> Unit,
+    onTasteRatingChange: (Int?) -> Unit,
     onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
     onSelectPhoto: () -> Unit,
@@ -161,6 +175,8 @@ fun EatTimeEditorSheet(
         )
         // DURATION row: already reads 1 小時, so a quick capture needs no tap here.
         DurationRow(minutes = state.durationMinutes, onDurationChange = onDurationChange)
+        // TASTE row: how the meal tasted, in the moment. Nothing is chosen until the user taps a face.
+        TasteRatingRow(rating = state.tasteRating, onRatingChange = onTasteRatingChange)
         // NOTE field
         OutlinedTextField(
             value = state.note,
@@ -495,6 +511,100 @@ private fun durationText(minutes: Int): String {
         hours == 0 -> stringResource(Res.string.duration_minutes, minutes)
         rest == 0 -> stringResource(Res.string.duration_hours, hours)
         else -> stringResource(Res.string.duration_hours_minutes, hours, rest)
+    }
+}
+
+private val TASTE_TARGET = 48.dp
+
+/**
+ * How the meal tasted: the label, and five faces to choose from. It starts empty and says nothing about
+ * being empty (no "Not set", no hint). A chosen face puts its word on the label's line and a ✕ at the end of
+ * the faces' line to take it back. Neither changes a height, and the ✕ has its place whether or not it is
+ * shown, so choosing a face moves nothing: not what is below it, not the faces under the finger. (The one
+ * exception is the largest font on the narrowest phones: the word wraps rather than clips, and a word that no
+ * longer fits on the label's line takes a second one, moving everything below it, the faces included, down.)
+ * For a screen reader the label and the word are one stop ("Taste, Very tasty"), the faces are one radio group
+ * each described by its word, and the ✕ is a button after them.
+ *
+ * It is two lines, no more: the editor is one scrolling column, and a taller row here pushes the confirm
+ * button off a phone-sized screen.
+ */
+@Composable
+private fun TasteRatingRow(rating: Int?, onRatingChange: (Int?) -> Unit) {
+    val chosenLook = tasteLook(rating)
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.editor_taste),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (chosenLook != null) {
+                // Wraps rather than clips at a large font: the word is the meaning.
+                Text(
+                    text = stringResource(chosenLook.word),
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // The faces share the width that is left, so on the narrowest phones they shrink a little rather
+            // than run off the sheet or push the ✕ away.
+            Row(modifier = Modifier.weight(1f).selectableGroup()) {
+                TasteRating.LEVELS.forEach { level ->
+                    TasteFaceChoice(level = level, chosen = level == rating, onChoose = { onRatingChange(level) })
+                }
+            }
+            Box(modifier = Modifier.width(TASTE_TARGET), contentAlignment = Alignment.Center) {
+                if (chosenLook != null) {
+                    IconButton(onClick = { onRatingChange(null) }) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_baseline_close_24),
+                            contentDescription = stringResource(Res.string.editor_taste_clear),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * One face of the row: a radio button described by its word, at least 48 dp wide and tall wherever the row has
+ * the width for it. The emoji alone is hidden from the screen reader (not the button, which keeps its role,
+ * state and action) so the word is heard once. Its size is a type role, so it follows the font setting inside
+ * the fixed target, and the chosen face sits on a soft container.
+ */
+@Composable
+private fun RowScope.TasteFaceChoice(level: Int, chosen: Boolean, onChoose: () -> Unit) {
+    val look = tasteLook(level) ?: return
+    val word = stringResource(look.word)
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .height(TASTE_TARGET)
+            .selectable(selected = chosen, role = Role.RadioButton, onClick = onChoose)
+            .semantics { contentDescription = word },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(TASTE_TARGET)
+                .clip(CircleShape)
+                .background(if (chosen) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = look.face,
+                modifier = Modifier.clearAndSetSemantics {},
+                style = MaterialTheme.typography.headlineMedium,
+            )
+        }
     }
 }
 

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -129,5 +130,35 @@ class EatRecordRepositoryRoomTest {
 
         h.eatRepo.replaceAll(listOf(EatRecord(0, 2_000, null, "restored", emptyList(), durationMinutes = 120)))
         assertEquals(listOf(120), h.eatRepo.observeAll().first().map { it.durationMinutes })
+    }
+
+    @Test fun aTasteRatingRoundTrips_onInsertUpdateClearWindowAndReplaceAll() = runBlocking {
+        val id = h.eatRepo.save(
+            EatRecord(0, 1_000, null, "lunch", emptyList(), tasteRating = 4),
+            emptyList(),
+            emptyList(),
+        )
+        assertEquals(4, h.eatRepo.findById(id)!!.tasteRating)
+
+        h.eatRepo.save(h.eatRepo.findById(id)!!.copy(tasteRating = 2), emptyList(), emptyList())
+        assertEquals(2, h.eatRepo.findById(id)!!.tasteRating)
+        // The window query (Home's clock) is its own read of the row, so pin that it maps the rating like the rest.
+        assertEquals(
+            listOf<Int?>(2),
+            h.eatRepo.observeInWindow(after = 999, before = 1_001).first().map { it.tasteRating },
+        )
+
+        // Taking the rating back writes NULL: the meal is unrated again, not rated "something".
+        h.eatRepo.save(h.eatRepo.findById(id)!!.copy(tasteRating = null), emptyList(), emptyList())
+        assertNull(h.eatRepo.findById(id)!!.tasteRating)
+
+        h.eatRepo.replaceAll(
+            listOf(
+                EatRecord(0, 2_000, null, "restored", emptyList(), tasteRating = 5),
+                EatRecord(0, 3_000, null, "never rated", emptyList()),
+            ),
+        )
+        // Newest first: the unrated meal stays unrated and the rated one keeps its 5.
+        assertEquals(listOf<Int?>(null, 5), h.eatRepo.observeAll().first().map { it.tasteRating })
     }
 }

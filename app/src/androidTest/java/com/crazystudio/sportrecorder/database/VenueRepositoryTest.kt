@@ -313,8 +313,8 @@ class VenueRepositoryTest {
         repo.edit(typo.id, "大戶屋 信義店", address = "舊地址", now = 1L)
         val good = repo.create("大戶屋", lat = 25.1, lng = 121.1, now = 2L)
         repo.edit(good.id, "大戶屋", address = "好地址", now = 2L)
-        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id))
-        db.getEatTimeDao().insert(EatTime(time = 200L, venueId = good.id))
+        db.getEatTimeDao().insert(EatTime(time = 100L, venueId = typo.id, tasteRating = 4))
+        db.getEatTimeDao().insert(EatTime(time = 200L, venueId = good.id, tasteRating = 2))
 
         val survivor = requireNotNull(repo.merge(fromId = typo.id, intoId = good.id, now = 3L))
 
@@ -327,6 +327,9 @@ class VenueRepositoryTest {
         assertEquals(2, repo.recordCount(good.id))
         assertNull(db.getVenueDao().findById(typo.id))
         assertEquals(listOf(survivor), repo.observeAll().first())
+        // Merging repoints the venue and writes nothing else of a meal: each keeps the rating it had.
+        val meals = db.getEatTimeDao().flowAll().first().sortedBy { it.time }
+        assertEquals(listOf<Int?>(4, 2), meals.map { it.tasteRating })
     }
 
     @Test fun merge_survivorAdoptingAPosition_losesItsAddress() = runBlocking {
@@ -425,16 +428,17 @@ class VenueRepositoryTest {
     @Test fun delete_clearsRecordsVenueAndRemovesIt() = runBlocking {
         val v = repo.create("麥當勞", null, null, now = 1L)
         val kept = repo.create("摩斯", null, null, now = 2L)
-        db.getEatTimeDao().insert(EatTime(time = 100L, note = "lunch", venueId = v.id))
+        db.getEatTimeDao().insert(EatTime(time = 100L, note = "lunch", venueId = v.id, tasteRating = 5))
         db.getEatTimeDao().insert(EatTime(time = 200L, venueId = kept.id))
 
         repo.delete(v.id)
 
         assertNull(db.getVenueDao().findById(v.id))
         val records = db.getEatTimeDao().flowAll().first().sortedBy { it.time }
-        // The meal survives; only its venue is gone.
+        // The meal survives; only its venue is gone: it keeps its note and the rating it had.
         assertEquals(2, records.size)
         assertEquals("lunch", records[0].note)
+        assertEquals(5, records[0].tasteRating)
         assertNull(records[0].venueId)
         assertEquals(kept.id, records[1].venueId)
     }

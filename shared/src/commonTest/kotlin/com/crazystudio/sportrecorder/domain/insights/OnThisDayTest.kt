@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.domain.insights
 import com.crazystudio.sportrecorder.domain.model.DietSettings
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -110,5 +111,26 @@ class OnThisDayTest {
         val records = listOf(rec(at(2026, 10, 4, 12)))
 
         assertNull(find(records, now = at(2026, 10, 4, 15), yearsAgo = 0))
+    }
+
+    // How a meal tasted is the user's own note, never a reason to show or hide a day: the memory is the same
+    // whatever the day's meals were rated, and a day rated at the very bottom is remembered like any other.
+    @Test
+    fun aRatingNeverChangesWhichMemorySurfaces() {
+        val lunch = rec(at(2025, 10, 4, 12), note = "午餐", photos = listOf("lunch.webp"))
+        val dinner = rec(at(2025, 10, 4, 19), note = "晚餐", photos = listOf("dinner.webp"))
+        val now = at(2026, 10, 4, 9)
+        val expected = assertNotNull(find(listOf(lunch, dinner), now))
+
+        for (rating in TasteRating.LEVELS) {
+            val variants = listOf(
+                listOf(lunch.copy(tasteRating = rating), dinner),
+                listOf(lunch, dinner.copy(tasteRating = rating)),
+                listOf(lunch.copy(tasteRating = rating), dinner.copy(tasteRating = rating)),
+            )
+            for (records in variants) {
+                assertEquals(expected, find(records, now), "rated $rating")
+            }
+        }
     }
 }

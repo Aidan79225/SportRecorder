@@ -3,6 +3,7 @@ package com.crazystudio.sportrecorder.data.mapper
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.entity.EatTime
 import com.crazystudio.sportrecorder.entity.EatTimeWithPhotos
@@ -22,6 +23,7 @@ fun EatTime.toDomain(photos: List<EatPhoto> = emptyList(), venue: Venue? = null)
     photos = photos,
     venue = venue,
     durationMinutes = durationMinutes,
+    tasteRating = TasteRating.sanitize(tasteRating),
 )
 
 /**
@@ -36,6 +38,7 @@ fun EatRecord.toEntity(id: Int = this.id): EatTime = EatTime(
     note = note,
     venueId = venue?.id,
     durationMinutes = durationMinutes,
+    tasteRating = tasteRating,
 )
 
 fun EatTimeWithPhotos.toDomain(): EatRecord = eatTime.toDomain(photos.map { it.toDomain() }, venue?.toDomain())

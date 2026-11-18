@@ -75,7 +75,8 @@ class BottomSheetHostTest {
                             Button(onClick = { taps++ }) { Text("taps $taps") }
                             EatTimeEditorSheet(
                                 state = EatTimeEditorUiState(), photoModel = { null },
-                                onPickDate = {}, onPickTime = {}, onDurationChange = {}, onNoteChange = {},
+                                onPickDate = {}, onPickTime = {}, onDurationChange = {}, onTasteRatingChange = {},
+                                onNoteChange = {},
                                 onAddPhoto = {}, onSelectPhoto = {}, onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
                                 onClearLocation = {}, onOpenVenuePicker = {}, onClearVenue = {},
                                 onAnswerAnotherBranch = {},

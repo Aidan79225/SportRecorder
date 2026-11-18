@@ -270,6 +270,16 @@
     <string name="photo_open">看這張照片</string>
     <string name="diet_eat_create">新增</string>
     <string name="diet_eat_save">儲存</string>
+    <!-- How a meal tasted, in the user's own words: five faces, each with one plain word. Nothing is chosen by default. -->
+    <string name="editor_taste">好吃程度</string>
+    <string name="editor_taste_clear">清除好吃程度</string>
+    <string name="taste_1">不好吃</string>
+    <string name="taste_2">不太好吃</string>
+    <string name="taste_3">還可以</string>
+    <string name="taste_4">好吃</string>
+    <string name="taste_5">非常好吃</string>
+    <!-- A rated meal's face on the Record list, as a screen reader says it: "好吃程度：好吃". -->
+    <string name="taste_described">好吃程度：%1$s</string>
     <string name="editor_venue">店家</string>
     <string name="editor_venue_none">未設定</string>
     <string name="editor_venue_pick">選擇店家</string>

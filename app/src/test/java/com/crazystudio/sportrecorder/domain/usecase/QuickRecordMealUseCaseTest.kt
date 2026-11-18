@@ -41,6 +41,14 @@ class QuickRecordMealUseCaseTest {
         assertEquals(60, repo.stored.single().durationMinutes)
     }
 
+    /** A tap asks nothing either, so the meal is unrated: how it tasted is for the user to say, in the editor. */
+    @Test
+    fun aQuickRecord_isUnrated() = runTest {
+        quickRecord(now)
+
+        assertNull(repo.stored.single().tasteRating)
+    }
+
     /** A meal shifts the eating window, so the reminders must be re-armed — same as in-app saves. */
     @Test
     fun remindersAreRescheduled() = runTest {

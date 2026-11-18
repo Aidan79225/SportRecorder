@@ -11,6 +11,8 @@ data class EatTimeEditorUiState(
     val isEditMode: Boolean = false,
     /** How long the meal took; a stored length that is not one of the menu's choices is kept as is. */
     val durationMinutes: Int = MealDuration.DEFAULT_MINUTES,
+    /** How the meal tasted, a `TasteRating` level; null — the start of every new meal — means not rated. */
+    val tasteRating: Int? = null,
     val note: String = "",
     val existingPhotos: List<EatPhoto> = emptyList(), // already-saved photos (edit mode)
     val pendingPhotos: List<String> = emptyList(), // newly captured webp file names
