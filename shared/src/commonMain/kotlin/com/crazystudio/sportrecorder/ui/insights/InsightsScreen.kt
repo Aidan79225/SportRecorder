@@ -51,6 +51,7 @@ import com.crazystudio.sportrecorder.domain.insights.LocationCount
 import com.crazystudio.sportrecorder.domain.insights.OnThisDayMemory
 import com.crazystudio.sportrecorder.domain.insights.Period
 import com.crazystudio.sportrecorder.domain.insights.PeriodSummary
+import com.crazystudio.sportrecorder.domain.insights.TastyMemoryPick
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.day_today
 import com.crazystudio.sportrecorder.shared.resources.ic_arrow_left_24dp
@@ -75,6 +76,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_map_summary
 import com.crazystudio.sportrecorder.shared.resources.insights_next_period
 import com.crazystudio.sportrecorder.shared.resources.insights_on_this_day_hint
 import com.crazystudio.sportrecorder.shared.resources.insights_on_this_day_title
+import com.crazystudio.sportrecorder.shared.resources.insights_on_this_day_title_years
 import com.crazystudio.sportrecorder.shared.resources.insights_period_month
 import com.crazystudio.sportrecorder.shared.resources.insights_period_range
 import com.crazystudio.sportrecorder.shared.resources.insights_period_summary
@@ -88,6 +90,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_stat_first
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_last
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_meals
 import com.crazystudio.sportrecorder.shared.resources.insights_stat_window
+import com.crazystudio.sportrecorder.shared.resources.insights_tasty_title
 import com.crazystudio.sportrecorder.shared.resources.insights_value_none
 import com.crazystudio.sportrecorder.shared.resources.insights_weekday_initials
 import com.crazystudio.sportrecorder.shared.resources.photo_open
@@ -96,6 +99,7 @@ import com.crazystudio.sportrecorder.ui.insights.map.FullScreenPlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.PlacesMap
 import com.crazystudio.sportrecorder.ui.insights.map.placesMapDescription
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
+import com.crazystudio.sportrecorder.ui.shared.TasteFace
 import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
@@ -167,6 +171,9 @@ fun InsightsScreen(
         // that scopes every card below. Absent entirely when that day holds nothing.
         state.onThisDay?.let { memory ->
             item { Spaced { OnThisDayCard(memory, photoModel, onDayClick) } }
+        }
+        state.tastyMemory?.let { memory ->
+            item { Spaced { TastyMemoryCard(memory, photoModel, onDayClick) } }
         }
         item {
             Spaced {
@@ -249,7 +256,11 @@ private fun OnThisDayCard(
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(Res.string.insights_on_this_day_title),
+                    text = if (memory.yearsAgo == 1) {
+                        stringResource(Res.string.insights_on_this_day_title)
+                    } else {
+                        stringResource(Res.string.insights_on_this_day_title_years, memory.yearsAgo)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
@@ -262,6 +273,57 @@ private fun OnThisDayCard(
             }
         }
     }
+}
+
+/**
+ * 「還記得這一餐嗎？」 A meal the user once rated well: its photo, where and what (or the note), and the face they
+ * gave it. Tapping opens that meal's day like the card above. A question to look back on, never a prompt to repeat.
+ */
+@Composable
+private fun TastyMemoryCard(
+    memory: TastyMemoryPick,
+    photoModel: (String) -> Any?,
+    onDayClick: (Long) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = stringResource(Res.string.insights_day_open)) { onDayClick(memory.dayStart) },
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            memory.photoFileName?.let { fileName ->
+                PhotoThumbnail(model = photoModel(fileName), modifier = Modifier.size(MEMORY_THUMB))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(Res.string.insights_tasty_title),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = tastyMemoryBody(memory) ?: stringResource(Res.string.insights_on_this_day_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TasteFace(level = memory.level)
+        }
+    }
+}
+
+/** "<venue> · <dishes>" from what the meal has, else its note, else null. */
+private fun tastyMemoryBody(memory: TastyMemoryPick): String? {
+    val where = listOfNotNull(
+        memory.venueName,
+        memory.dishes.takeIf { it.isNotEmpty() }?.joinToString(" · "),
+    )
+    return where.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+        ?: memory.meal.note?.takeIf { it.isNotBlank() }
 }
 
 /** Week / Month chips plus the pager: the one control every card below answers to. */

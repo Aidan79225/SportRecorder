@@ -182,4 +182,61 @@ class InsightsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    private fun tasty(id: Int, time: Long, rating: Int? = 5) =
+        record(id, time).copy(note = "好吃", tasteRating = rating)
+
+    @Test
+    fun onThisDay_reachesBackSeveralYears() = runTest(mainRule.testDispatcher.scheduler) {
+        val zone = TimeZone.currentSystemDefault()
+        val threeYearsAgo = Instant.fromEpochMilliseconds(fixedNow).toLocalDateTime(zone).date
+            .minus(3, DateTimeUnit.YEAR).atStartOfDayIn(zone).toEpochMilliseconds()
+        val vm = viewModel(FakeEatRecordRepository(initial = listOf(record(1, threeYearsAgo + h(12)))))
+
+        vm.uiState.test {
+            awaitItem()
+            val memory = awaitItem().onThisDay
+            assertEquals(threeYearsAgo, memory?.dayStart)
+            assertEquals(3, memory?.yearsAgo)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun tastyMemory_carriesAWellRatedMealFromAMonthOrMoreAgo() = runTest(mainRule.testDispatcher.scheduler) {
+        val vm = viewModel(FakeEatRecordRepository(initial = listOf(tasty(1, fixedNow - d(45)))))
+
+        vm.uiState.test {
+            awaitItem()
+            assertEquals(1, awaitItem().tastyMemory?.meal?.id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun tastyMemory_isNullForRecentOrLowRatedMeals() = runTest(mainRule.testDispatcher.scheduler) {
+        val recent = tasty(1, fixedNow - d(10))
+        val lowRated = tasty(2, fixedNow - d(45), rating = 3)
+        val vm = viewModel(FakeEatRecordRepository(initial = listOf(recent, lowRated)))
+
+        vm.uiState.test {
+            awaitItem()
+            assertNull(awaitItem().tastyMemory)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun tastyMemory_yieldsToOnThisDayWhenBothOpenTheSameDay() = runTest(mainRule.testDispatcher.scheduler) {
+        val anniversary = oneYearAgo(fixedNow)
+        val vm = viewModel(FakeEatRecordRepository(initial = listOf(tasty(1, anniversary + h(12)))))
+
+        vm.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertEquals(anniversary, state.onThisDay?.dayStart)
+            assertNull(state.tastyMemory)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

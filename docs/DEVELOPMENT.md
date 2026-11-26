@@ -174,6 +174,7 @@
 | 11-07 | 紀錄頁店家與搜尋、用餐時長(Part A:每筆紀錄顯示店名與地址、依店名/地址搜尋紀錄;Part B:餐點用餐時長) | ✓ | ✓ | Part A 已實作(PR #92,`claude/record-venue-search`);Part B 已實作(PR #93,`claude/meal-duration`,疊在 #92 之上):用餐時長預設 1 小時、斷食從最後一餐結束起算、Room 9→10 |
 | 11-11 | 發行版開啟 R8(Play「DEX 程式碼最佳化」警示:模糊化 1%;DEX 33.6 → 4.5 MB,三項約 97%) | ✓ | — | 已實作(`claude/enable-r8`,隨下一版發布) |
 | 11-18 | 每餐的好吃程度(編輯器選一張臉記下當下好不好吃,預設空白、可不填;只在紀錄卡顯示,回顧不用它) | ✓ | — | 已實作(PR #101,`claude/meal-rating`):Room 10→11,備份不升 `SCHEMA_VERSION`(舊版 App 還原會丟掉評分) |
+| 11-26 | 品項、紀錄搜尋與店家摘要、好吃的回憶(每餐可記吃了什麼;紀錄頁依店家/品項/備註搜尋並可用臉篩選;搜到單一店家時顯示摘要卡;回顧「N 年前的今天」最多回看 5 年,另有「還記得這一餐嗎？」只翻出自己評 4 分以上、30 天前的一餐) | ✓ | — | 已實作(PR 待開,`claude/diary-dishes-memories`):Room 11→12 |
 
 > Phase 3b(Room → commonMain)、Phase 4(Compose Multiplatform UI)、Phase 5(use case + VM)
 > 是照著 KMP roadmap 一路以 PR #34–#53 逐步落地的,沒有各自獨立的 spec 檔。

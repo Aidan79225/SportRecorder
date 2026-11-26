@@ -39,6 +39,8 @@
     <string name="insights_photos_collapse">Show fewer</string>
     <string name="insights_on_this_day_title">A year ago today</string>
     <string name="insights_on_this_day_hint">See what you ate that day</string>
+    <string name="insights_on_this_day_title_years">%1$d years ago today</string>
+    <string name="insights_tasty_title">Remember this meal?</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>
