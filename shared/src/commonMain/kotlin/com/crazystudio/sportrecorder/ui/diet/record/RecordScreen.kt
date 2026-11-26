@@ -56,6 +56,7 @@ import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.record.RecordSearch
 import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
+import com.crazystudio.sportrecorder.domain.venue.VenueSummary
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_edit_24
@@ -102,7 +103,11 @@ fun RecordScreen(
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var faces by rememberSaveable(stateSaver = FacesSaver) { mutableStateOf(emptySet<Int>()) }
-    val shown = remember(records, query, faces) { RecordSearch.matching(records, query, faces) }
+    val textMatched = remember(records, query) { RecordSearch.textMatching(records, query) }
+    // The faces narrow what the text already matched (a blank query adds no text condition), so the text runs once.
+    val shown = remember(textMatched, faces) { RecordSearch.matching(textMatched, "", faces) }
+    // From the text matches, before the faces: the face spread stays meaningful while faces are chosen.
+    val summary = remember(textMatched, query) { VenueSummary.of(textMatched, query) }
     val showSearch = remember(records, query, faces) { RecordSearch.canSearch(records, query, faces) }
     // Chosen faces keep their chips even once the last rated meal is gone, so they can always be taken back.
     val showFaces = remember(records, faces) { RecordSearch.hasRated(records) || faces.isNotEmpty() }
@@ -146,6 +151,7 @@ fun RecordScreen(
         } else {
             RecordList(
                 records = shown,
+                summary = summary,
                 listState = listState,
                 onLongClick = { recordToDelete = it },
                 onVenueClick = { venue -> search(RecordVenueFilter.queryFor(venue)) },
@@ -239,6 +245,7 @@ private fun TasteFaceFilter(chosen: Set<Int>, onChange: (Set<Int>) -> Unit) {
 @Composable
 private fun RecordList(
     records: List<EatRecord>,
+    summary: VenueSummary?,
     listState: LazyListState,
     onLongClick: (EatRecord) -> Unit,
     onVenueClick: (Venue) -> Unit,
@@ -252,6 +259,7 @@ private fun RecordList(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(12.dp),
     ) {
+        summary?.let { item(key = "venue-summary") { VenueSummaryCard(it) } }
         items(records, key = { it.id }) { record ->
             RecordCard(
                 record = record,
@@ -466,7 +474,7 @@ private fun VenueLines(venue: Venue, onClick: () -> Unit, onLongClick: () -> Uni
 private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
 /** "yyyy/MM/dd" in the system timezone (kotlinx-datetime; no java SimpleDateFormat on Native). */
-private fun formatDate(millis: Long): String {
+internal fun formatDate(millis: Long): String {
     val dt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
     return "${dt.year}/${pad2(dt.month.ordinal + 1)}/${pad2(dt.day)}"
 }

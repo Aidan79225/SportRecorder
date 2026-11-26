@@ -361,6 +361,62 @@ class RecordScreenTest {
     }
 
     @Test
+    fun narrowedToOnePlaceVisitedTwice_aSummaryCardTellsWhatItHasBeen() {
+        val ramen = venue(1, "Ramen Ya", address = "Taipei")
+        show(
+            listOf(
+                record(1, ramen).copy(dishes = listOf("Shoyu"), tasteRating = 5),
+                record(2, ramen).copy(dishes = listOf("Shoyu", "Gyoza"), tasteRating = 4),
+                record(3, venue(2, "Sushi Bar")),
+            ),
+        )
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+
+        searchField().performTextInput("ramen")
+
+        compose.onNodeWithText("Visited 2 times · last ", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Shoyu ×2").assertIsDisplayed()
+        compose.onNodeWithText("Gyoza ×1").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Very tasty ×1").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Tasty ×1").assertIsDisplayed()
+    }
+
+    @Test
+    fun theSummaryCardStaysWhileFacesNarrowTheList() {
+        val ramen = venue(1, "Ramen Ya")
+        show(listOf(rated(1, 5, "a").copy(venue = ramen), rated(2, 2, "b").copy(venue = ramen)))
+
+        searchField().performTextInput("ramen")
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+
+        compose.onNodeWithText("Visited 2 times · last ", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Not very tasty ×1").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSingleVisit_orSeveralPlaces_getNoSummaryCard() {
+        val ramen = venue(1, "Ramen Ya")
+        show(listOf(record(1, ramen), record(2, venue(2, "Ramen House")), record(3, venue(3, "Sushi Bar"))))
+
+        searchField().performTextInput("sushi")
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+
+        searchField().performTextReplacement("ramen")
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun inTraditionalChinese_theSummaryCardReadsInChinese() {
+        val ramen = venue(1, "拉麵屋")
+        showInTraditionalChinese(listOf(record(1, ramen).copy(tasteRating = 5), record(2, ramen)))
+
+        searchField().performTextInput("拉麵")
+
+        compose.onNodeWithText("去過 2 次 · 最近 ", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("非常好吃 ×1").assertIsDisplayed()
+    }
+
+    @Test
     fun theClearButtonResetsTheTextAndTheFaces() {
         show(listOf(rated(1, 5, "ramen great"), rated(2, 2, "ramen meh")))
         compose.onAllNodesWithContentDescription(str(Res.string.record_search_clear)).assertCountEquals(0)
