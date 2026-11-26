@@ -568,7 +568,7 @@ private fun DishesRow(
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         OutlinedTextField(
             value = draft,
-            onValueChange = { onDraftChange(it.take(Dishes.MAX_LENGTH)) },
+            onValueChange = { onDraftChange(Dishes.cut(it)) },
             modifier = Modifier.fillMaxWidth(),
             enabled = dishes.size < Dishes.MAX_PER_MEAL,
             label = { Text(stringResource(Res.string.editor_dishes)) },

@@ -29,6 +29,14 @@ class DishesTest {
         assertEquals(30, Dishes.MAX_LENGTH)
     }
 
+    @Test fun normalizeNeverSplitsASurrogatePair() {
+        val emoji = "😋"
+        // 29 BMP characters then an emoji (two UTF-16 units): the pair goes whole, never a lone high surrogate.
+        assertEquals("x".repeat(29), Dishes.normalize("x".repeat(29) + emoji))
+        // An emoji that fits whole stays.
+        assertEquals("x".repeat(28) + emoji, Dishes.normalize("x".repeat(28) + emoji + "zz"))
+    }
+
     @Test fun normalizeTrimsAgainAfterTheCut() {
         // The 30th character is a space: the cut must not leave it trailing.
         val name = "x".repeat(29) + " yyy"

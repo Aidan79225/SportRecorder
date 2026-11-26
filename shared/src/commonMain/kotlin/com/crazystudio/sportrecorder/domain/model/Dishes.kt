@@ -31,7 +31,17 @@ object Dishes {
                 }
             }
         }
-        return folded.toString().take(MAX_LENGTH).trimEnd().ifEmpty { null }
+        return cut(folded.toString()).trimEnd().ifEmpty { null }
+    }
+
+    /**
+     * [text] cut to at most [MAX_LENGTH] UTF-16 units, backing up one when the cut would fall between the two
+     * halves of a surrogate pair, so a name never ends in half an emoji.
+     */
+    fun cut(text: String): String {
+        if (text.length <= MAX_LENGTH) return text
+        val splitsPair = text[MAX_LENGTH - 1].isHighSurrogate() && text[MAX_LENGTH].isLowSurrogate()
+        return text.substring(0, if (splitsPair) MAX_LENGTH - 1 else MAX_LENGTH)
     }
 
     /**
