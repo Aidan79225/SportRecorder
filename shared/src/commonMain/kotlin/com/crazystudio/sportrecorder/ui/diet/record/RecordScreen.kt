@@ -106,8 +106,9 @@ fun RecordScreen(
     val textMatched = remember(records, query) { RecordSearch.textMatching(records, query) }
     // The faces narrow what the text already matched (a blank query adds no text condition), so the text runs once.
     val shown = remember(textMatched, faces) { RecordSearch.matching(textMatched, "", faces) }
-    // From the text matches, before the faces: the face spread stays meaningful while faces are chosen.
-    val summary = remember(textMatched, query) { VenueSummary.of(textMatched, query) }
+    // Judged from the text matches (before the faces) but told from the whole venue's history, so neither a
+    // dish search nor a face filter shrinks the visit count or the face spread.
+    val summary = remember(records, textMatched, query) { VenueSummary.of(textMatched, query, records) }
     val showSearch = remember(records, query, faces) { RecordSearch.canSearch(records, query, faces) }
     // Chosen faces keep their chips even once the last rated meal is gone, so they can always be taken back.
     val showFaces = remember(records, faces) { RecordSearch.hasRated(records) || faces.isNotEmpty() }

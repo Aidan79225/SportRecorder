@@ -24,21 +24,25 @@ class VenueSummary private constructor(
         const val MAX_DISHES = 5
 
         /**
-         * The summary of [textMatched] (the records matching the text [query], before any taste filter, so the
-         * face spread stays meaningful), or null unless the user is plainly looking at one place: [query] is not
-         * blank, there are at least [MIN_VISITS] records, and all of them share one venue. A single visit has
-         * no history to repeat, and a search that mixes places is not about any one of them.
+         * The summary of one place, or null unless the user is plainly looking at it: [query] is not blank, there
+         * are at least [MIN_VISITS] [textMatched] records (those matching the text [query], before any taste
+         * filter), and all of them share one venue. A single visit has no history to repeat, and a search that
+         * mixes places is not about any one of them.
+         *
+         * The history itself comes from every meal at that venue in [allRecords] (the whole diary), not only the
+         * matches: searching a dish or a note must not turn "2 meals with this dish" into "visited 2 times".
          */
-        fun of(textMatched: List<EatRecord>, query: String): VenueSummary? {
+        fun of(textMatched: List<EatRecord>, query: String, allRecords: List<EatRecord> = textMatched): VenueSummary? {
             if (query.isBlank() || textMatched.size < MIN_VISITS) return null
             val venue = textMatched.first().venue ?: return null
             if (textMatched.any { it.venue?.id != venue.id }) return null
+            val atVenue = allRecords.filter { it.venue?.id == venue.id }
             return VenueSummary(
                 venue = venue,
-                visits = textMatched.size,
-                lastVisit = textMatched.maxOf { it.time },
-                dishes = topDishes(textMatched),
-                tasteCounts = tasteCounts(textMatched),
+                visits = atVenue.size,
+                lastVisit = atVenue.maxOf { it.time },
+                dishes = topDishes(atVenue),
+                tasteCounts = tasteCounts(atVenue),
             )
         }
 

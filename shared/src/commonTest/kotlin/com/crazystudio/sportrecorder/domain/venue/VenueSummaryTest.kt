@@ -47,6 +47,24 @@ class VenueSummaryTest {
         assertEquals(900L, summary.lastVisit)
     }
 
+    @Test fun aDishSearch_summarisesTheWholePlace_notOnlyTheMatchingMeals() {
+        val all = listOf(
+            record(1, time = 100, dishes = listOf("Rice")),
+            record(2, time = 200),
+            record(3, time = 300, dishes = listOf("Rice")),
+            record(4, time = 400),
+        )
+        val matched = all.filter { it.dishes.isNotEmpty() }
+        val summary = assertNotNull(VenueSummary.of(matched, "rice", all))
+        assertEquals(4, summary.visits)
+        assertEquals(400L, summary.lastVisit)
+    }
+
+    @Test fun otherPlacesInTheDiary_doNotCountTowardThisOne() {
+        val all = listOf(record(1), record(2), record(3, venue = sushi))
+        assertEquals(2, assertNotNull(VenueSummary.of(all.take(2), "ramen", all)).visits)
+    }
+
     @Test fun twoBranchesWithTheSameName_areNotOnePlace() {
         val other = ramen.copy(id = 9)
         assertNull(VenueSummary.of(listOf(record(1), record(2, venue = other)), "ramen"))
