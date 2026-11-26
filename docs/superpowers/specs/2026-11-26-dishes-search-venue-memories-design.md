@@ -40,7 +40,7 @@ answer "what did I eat, where, and how was it?":
   accessible name) appears under the field only when at least one record is rated; clearing search also clears it.
 - **Venue summary** (`VenueSummary.of(textMatched: List<EatRecord>, query: String): VenueSummary?`): non-null only when
   the query is non-blank, the text-matched records all share one non-null venue id, and there are at least 2 of them.
-  Computed from the text-matched records (before the taste filter) so the face spread stays meaningful. Fields: venue,
+  The text match only decides whether the user is looking at one place; visits, dishes and faces then count every meal at that place (before the taste filter), so searching a dish never understates the visits. Fields: venue,
   `visits`, `lastVisit` (newest `time`), `dishes: List<Pair<String, Int>>` top 5 by count then recency, `tasteCounts`
   (levels 5..1 with a non-zero count). Card at the top of the Record list: name + address, 「去過 N 次 · 最近 2026/11/18」,
   dish chips 「滷肉飯 ×3」, faces 「😋×2 🙂×1」 (screen-reader text spells the words).
