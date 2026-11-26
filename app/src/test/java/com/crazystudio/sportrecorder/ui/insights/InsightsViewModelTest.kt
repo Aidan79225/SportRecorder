@@ -239,4 +239,23 @@ class InsightsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun tastyMemory_andOnThisDayBothShowWhenTheirDaysDiffer() = runTest(mainRule.testDispatcher.scheduler) {
+        val anniversary = oneYearAgo(fixedNow)
+        val vm = viewModel(
+            FakeEatRecordRepository(
+                // The anniversary meal is not a tasty candidate, so the pick is the 45-day-old one whatever the date.
+                initial = listOf(tasty(1, anniversary + h(12), rating = 3), tasty(2, fixedNow - d(45))),
+            ),
+        )
+
+        vm.uiState.test {
+            awaitItem()
+            val state = awaitItem()
+            assertEquals(anniversary, state.onThisDay?.dayStart)
+            assertEquals(2, state.tastyMemory?.meal?.id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

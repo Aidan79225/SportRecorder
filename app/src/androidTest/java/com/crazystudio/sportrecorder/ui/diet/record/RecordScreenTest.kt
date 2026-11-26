@@ -206,7 +206,12 @@ class RecordScreenTest {
     @Test
     fun aMealWithoutDishesShowsNoDishesLine() {
         show(listOf(record(1, note = "lunch")))
-        compose.onAllNodesWithText(" · ", substring = true).assertCountEquals(0)
+        // A dishes line with nothing in it would still be a Text node, just an empty one (and a one-dish line has
+        // no " · " to find), so look for any empty text on the card.
+        val emptyText = SemanticsMatcher("has empty text") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.all { it.text.isEmpty() } == true
+        }
+        compose.onAllNodes(emptyText, useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
