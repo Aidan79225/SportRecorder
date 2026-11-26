@@ -24,6 +24,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,13 +44,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.crazystudio.sportrecorder.domain.model.EatRecord
+import com.crazystudio.sportrecorder.domain.model.TasteRating
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.model.VenueAddress
+import com.crazystudio.sportrecorder.domain.record.RecordSearch
 import com.crazystudio.sportrecorder.domain.venue.RecordVenueFilter
 import com.crazystudio.sportrecorder.shared.resources.Res
 import com.crazystudio.sportrecorder.shared.resources.ic_baseline_close_24
@@ -67,6 +73,7 @@ import com.crazystudio.sportrecorder.shared.resources.record_venue_search
 import com.crazystudio.sportrecorder.ui.shared.DishesLine
 import com.crazystudio.sportrecorder.ui.shared.TasteFace
 import com.crazystudio.sportrecorder.ui.shared.photoButton
+import com.crazystudio.sportrecorder.ui.shared.tasteLook
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.painterResource
@@ -76,11 +83,12 @@ import kotlin.math.roundToLong
 import kotlin.time.Instant
 
 /**
- * The Record tab: every record, newest first, with a venue search above them.
+ * The Record tab: every record, newest first, with a search above them: words (place, dish, note) and, once
+ * some meal is rated, the faces to keep.
  *
- * The search text is this screen's own state — the one place it lives. Typing, the ✕ and tapping a card's
- * venue all go through one `search` path, so the field and the list can never disagree, and a new
- * search always starts at the newest match.
+ * The search text and the chosen faces are this screen's own state — the one place they live. Typing, the
+ * faces, the ✕ and tapping a card's venue all go through one path, so the field and the list can never
+ * disagree, and a new search always starts at the newest match.
  */
 @Composable
 fun RecordScreen(
@@ -93,12 +101,19 @@ fun RecordScreen(
 ) {
     var recordToDelete by remember { mutableStateOf<EatRecord?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
-    val shown = remember(records, query) { RecordVenueFilter.matching(records, query) }
-    val showSearch = remember(records, query) { RecordVenueFilter.canSearch(records, query) }
+    var faces by rememberSaveable(stateSaver = FacesSaver) { mutableStateOf(emptySet<Int>()) }
+    val shown = remember(records, query, faces) { RecordSearch.matching(records, query, faces) }
+    val showSearch = remember(records, query, faces) { RecordSearch.canSearch(records, query, faces) }
+    // Chosen faces keep their chips even once the last rated meal is gone, so they can always be taken back.
+    val showFaces = remember(records, faces) { RecordSearch.hasRated(records) || faces.isNotEmpty() }
     // Outside the branch below, so the list keeps its place while the no-match line stands in for it.
     val listState = rememberLazyListState()
     val search: (String) -> Unit = { value ->
         query = value
+        listState.requestScrollToItem(0)
+    }
+    val chooseFaces: (Set<Int>) -> Unit = { value ->
+        faces = value
         listState.requestScrollToItem(0)
     }
 
@@ -110,11 +125,23 @@ fun RecordScreen(
             .imePadding(),
     ) {
         if (showSearch) {
-            RecordSearchField(text = query, onTextChange = search)
+            RecordSearchField(
+                text = query,
+                canClear = query.isNotEmpty() || faces.isNotEmpty(),
+                onTextChange = search,
+                onClear = {
+                    query = ""
+                    faces = emptySet()
+                    listState.requestScrollToItem(0)
+                },
+            )
+            if (showFaces) {
+                TasteFaceFilter(chosen = faces, onChange = chooseFaces)
+            }
         }
         // Only when there are records to miss: after process death the query comes back before the
         // records do, and an empty list then must not flash (and announce) "no matching records".
-        if (records.isNotEmpty() && shown.isEmpty() && query.isNotBlank()) {
+        if (records.isNotEmpty() && shown.isEmpty() && (query.isNotBlank() || faces.isNotEmpty())) {
             NoMatchingRecords()
         } else {
             RecordList(
@@ -141,11 +168,19 @@ fun RecordScreen(
     }
 }
 
-/** The venue search field; [RecordScreen] owns its text. The ✕ clears it through [onTextChange]. */
+/** Saves the chosen faces as a plain list: a `Set` is not something every saved-state store accepts. */
+private val FacesSaver = listSaver<Set<Int>, Int>(save = { it.sorted() }, restore = { it.toSet() })
+
+/**
+ * The search field; [RecordScreen] owns its text and the chosen faces. The ✕ ([onClear]) takes back both, and
+ * is there while either is set.
+ */
 @Composable
 private fun RecordSearchField(
     text: String,
+    canClear: Boolean,
     onTextChange: (String) -> Unit,
+    onClear: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     OutlinedTextField(
@@ -154,9 +189,9 @@ private fun RecordSearchField(
         // A label rather than a placeholder: it stays the field's accessible name while it holds text.
         label = { Text(stringResource(Res.string.record_search_hint)) },
         singleLine = true,
-        trailingIcon = if (text.isNotEmpty()) {
+        trailingIcon = if (canClear) {
             {
-                IconButton(onClick = { onTextChange("") }) {
+                IconButton(onClick = onClear) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_baseline_close_24),
                         contentDescription = stringResource(Res.string.record_search_clear),
@@ -170,6 +205,35 @@ private fun RecordSearchField(
             .fillMaxWidth()
             .padding(start = 12.dp, end = 12.dp, top = 8.dp),
     )
+}
+
+/**
+ * The five faces as chips under the field: tap to keep only meals rated so, any number at once. Each chip is
+ * named by its taste word (the emoji is hidden from a screen reader) and exposes whether it is chosen. Nothing
+ * is counted or ranked here, and no face is chosen by default.
+ */
+@Composable
+private fun TasteFaceFilter(chosen: Set<Int>, onChange: (Set<Int>) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        TasteRating.LEVELS.forEach { level ->
+            val look = tasteLook(level) ?: return@forEach
+            val word = stringResource(look.word)
+            val selected = level in chosen
+            FilterChip(
+                selected = selected,
+                onClick = { onChange(if (selected) chosen - level else chosen + level) },
+                label = { Text(text = look.face, modifier = Modifier.clearAndSetSemantics {}) },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = word },
+            )
+        }
+    }
 }
 
 @Composable

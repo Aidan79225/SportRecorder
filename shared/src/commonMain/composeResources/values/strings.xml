@@ -346,7 +346,7 @@
     </plurals>
     <string name="editor_venue_merge_keep">Keep both</string>
     <string name="editor_venue_merge_where">That one is at %1$s.</string>
-    <string name="record_search_hint">Search places (name or address)</string>
+    <string name="record_search_hint">Search records (place, dish, note)</string>
     <string name="record_search_clear">Clear search</string>
     <string name="record_search_empty">No matching records</string>
     <string name="record_venue_search">Show this place's records</string>
