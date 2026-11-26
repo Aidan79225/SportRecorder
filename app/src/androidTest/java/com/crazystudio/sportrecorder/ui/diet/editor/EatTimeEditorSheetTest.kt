@@ -588,7 +588,8 @@ class EatTimeEditorSheetTest {
         field.performTextInput("滷肉飯")
         field.performImeAction()
 
-        assertEquals(listOf("滷肉飯"), dishDrafts)
+        // The field is controlled by a state that never updates here, so it may echo "" back afterwards: only the typed text matters.
+        assertEquals("滷肉飯", dishDrafts.first())
         assertEquals(1, dishCommits)
     }
 

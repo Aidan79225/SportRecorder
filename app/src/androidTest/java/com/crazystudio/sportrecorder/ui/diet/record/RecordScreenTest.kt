@@ -356,6 +356,8 @@ class RecordScreenTest {
         compose.onAllNodesWithText("ramen meh").assertCountEquals(0)
         compose.onAllNodesWithText("sushi great").assertCountEquals(0)
 
+        // Faces are any-of: put the matching face back down before choosing one nothing carries.
+        compose.onNodeWithContentDescription("Very tasty").performClick()
         compose.onNodeWithContentDescription("Okay").performClick()
         compose.onNodeWithText(str(Res.string.record_search_empty)).assertIsDisplayed()
     }
