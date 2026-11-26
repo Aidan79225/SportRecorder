@@ -820,7 +820,14 @@ class EatTimeEditorViewModel constructor(
     }
 
     private fun EatTimeEditorUiState.withDishSuggestions() =
-        copy(dishSuggestions = Dishes.suggestions(allRecords, dishDraft, dishes))
+        copy(
+            // A full meal takes no more dishes, so offering chips that do nothing would only mislead.
+            dishSuggestions = if (dishes.size >= Dishes.MAX_PER_MEAL) {
+                emptyList()
+            } else {
+                Dishes.suggestions(allRecords, dishDraft, dishes)
+            },
+        )
 
     private fun publishDate() = _uiState.update { it.copy(dateMillis = currentMillis) }
 

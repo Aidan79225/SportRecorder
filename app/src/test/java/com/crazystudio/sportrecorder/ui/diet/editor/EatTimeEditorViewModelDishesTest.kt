@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.ui.diet.editor
 
+import com.crazystudio.sportrecorder.domain.model.Dishes
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -151,5 +152,18 @@ class EatTimeEditorViewModelDishesTest {
         assertEquals(listOf("Rice"), vm.uiState.value.dishes)
         assertEquals("", vm.uiState.value.dishDraft)
         assertEquals(emptyList<String>(), vm.uiState.value.dishSuggestions)
+    }
+
+    @Test
+    fun suggestions_areEmptyOnceTheMealHasTheMostDishes() = runTest(mainRule.testDispatcher.scheduler) {
+        val (_, vm) = newMeal(earlier(1, 1_000L, "Extra"))
+        advanceUntilIdle()
+        assertEquals(listOf("Extra"), vm.uiState.value.dishSuggestions)
+
+        repeat(Dishes.MAX_PER_MEAL) { vm.addDish("Dish $it") }
+
+        assertEquals(emptyList<String>(), vm.uiState.value.dishSuggestions)
+        vm.removeDish("Dish 0")
+        assertEquals(listOf("Extra"), vm.uiState.value.dishSuggestions)
     }
 }
