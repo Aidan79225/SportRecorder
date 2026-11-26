@@ -101,6 +101,41 @@ class EatRecordMappersTest {
         assertNull(record.toEntity().tasteRating)
     }
 
+    @Test fun aMealsDishesAreStoredOnePerLine_andReadBack() {
+        val record = EatRecord(
+            id = 4,
+            time = 100L,
+            location = null,
+            note = null,
+            photos = emptyList(),
+            dishes = listOf("滷肉飯", "Soup"),
+        )
+
+        assertEquals("滷肉飯\nSoup", record.toEntity().dishes)
+        assertEquals(listOf("滷肉飯", "Soup"), record.toEntity().toDomain().dishes)
+    }
+
+    @Test fun aMealWithNoDishes_storesNull_andAColumnWithNoneReadsAsEmpty() {
+        val record = EatRecord(id = 4, time = 100L, location = null, note = null, photos = emptyList())
+
+        assertNull(record.toEntity().dishes)
+        assertEquals(emptyList<String>(), EatTime(id = 1, time = 0L).toDomain().dishes)
+    }
+
+    // A row is data too: an unclean stored value is cleaned on the way out, and on the way in.
+    @Test fun dishesAreSanitizedBothWays() {
+        assertEquals(listOf("a", "b"), EatTime(id = 1, time = 0L, dishes = " a \n\nA\nb").toDomain().dishes)
+        val record = EatRecord(
+            id = 4,
+            time = 100L,
+            location = null,
+            note = null,
+            photos = emptyList(),
+            dishes = listOf("a\nb", "A B", " "),
+        )
+        assertEquals("a b", record.toEntity().dishes)
+    }
+
     @Test fun nullLatLng_mapsToNullLocation() {
         val record = EatTime(id = 3, time = 0L, lat = null, lng = null, note = null).toDomain()
         assertNull(record.location)

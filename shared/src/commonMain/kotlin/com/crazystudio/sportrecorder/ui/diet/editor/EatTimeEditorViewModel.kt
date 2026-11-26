@@ -146,6 +146,7 @@ class EatTimeEditorViewModel constructor(
                         dateMillis = currentMillis,
                         durationMinutes = record.durationMinutes,
                         tasteRating = TasteRating.sanitize(record.tasteRating),
+                        dishes = record.dishes,
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         venue = record.venue,
@@ -751,6 +752,8 @@ class EatTimeEditorViewModel constructor(
             durationMinutes = state.durationMinutes,
             // And the rating, for the same reason: an edit of the note alone must not clear what the user chose.
             tasteRating = state.tasteRating,
+            // And the dishes: an edit of the note alone must not clear what the meal had.
+            dishes = state.dishes,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {

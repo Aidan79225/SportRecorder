@@ -18,6 +18,8 @@ data class EatRecord(
     val durationMinutes: Int = MealDuration.DEFAULT_MINUTES,
     /** How the meal tasted, a [TasteRating] level. Null means not rated — the default, and never required. */
     val tasteRating: Int? = null,
+    /** What the meal had, as clean names ([Dishes.sanitize]). Empty by default, and never required. */
+    val dishes: List<String> = emptyList(),
 ) {
     /** Epoch millis when the meal ended: [time] plus [durationMinutes]. */
     val endTime: Long get() = time + durationMinutes * MealDuration.MILLIS_PER_MINUTE

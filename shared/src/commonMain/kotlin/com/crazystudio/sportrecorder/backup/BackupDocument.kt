@@ -55,6 +55,12 @@ data class BackupMeal(
      * or one off the scale, restores as not rated.
      */
     val tasteRating: Int? = null,
+    /**
+     * What the meal had, one name per entry. Added without a [BackupDocument.SCHEMA_VERSION] bump, like
+     * [tasteRating]: an older app skips the field (so a restore there drops the dishes), and a snapshot
+     * written before it carries none. A restore sanitizes the list (clean names, no repeats, at most ten).
+     */
+    val dishes: List<String> = emptyList(),
 )
 
 @Serializable

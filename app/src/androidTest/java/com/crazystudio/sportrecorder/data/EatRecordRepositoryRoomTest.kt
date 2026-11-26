@@ -161,4 +161,33 @@ class EatRecordRepositoryRoomTest {
         // Newest first: the unrated meal stays unrated and the rated one keeps its 5.
         assertEquals(listOf<Int?>(null, 5), h.eatRepo.observeAll().first().map { it.tasteRating })
     }
+
+    @Test fun dishesRoundTrip_onInsertUpdateClearWindowAndReplaceAll() = runBlocking {
+        val id = h.eatRepo.save(
+            EatRecord(0, 1_000, null, "lunch", emptyList(), dishes = listOf("滷肉飯", "Soup")),
+            emptyList(),
+            emptyList(),
+        )
+        assertEquals(listOf("滷肉飯", "Soup"), h.eatRepo.findById(id)!!.dishes)
+
+        h.eatRepo.save(h.eatRepo.findById(id)!!.copy(dishes = listOf("Tea")), emptyList(), emptyList())
+        assertEquals(listOf("Tea"), h.eatRepo.findById(id)!!.dishes)
+        // The window query (Home's clock) is its own read of the row, so pin that it maps the dishes too.
+        assertEquals(
+            listOf(listOf("Tea")),
+            h.eatRepo.observeInWindow(after = 999, before = 1_001).first().map { it.dishes },
+        )
+
+        // Taking them all back stores NULL again: the meal has no dishes.
+        h.eatRepo.save(h.eatRepo.findById(id)!!.copy(dishes = emptyList()), emptyList(), emptyList())
+        assertEquals(emptyList<String>(), h.eatRepo.findById(id)!!.dishes)
+
+        h.eatRepo.replaceAll(
+            listOf(
+                EatRecord(0, 2_000, null, "restored", emptyList(), dishes = listOf("Cake")),
+                EatRecord(0, 3_000, null, "plain", emptyList()),
+            ),
+        )
+        assertEquals(listOf(emptyList(), listOf("Cake")), h.eatRepo.observeAll().first().map { it.dishes })
+    }
 }
