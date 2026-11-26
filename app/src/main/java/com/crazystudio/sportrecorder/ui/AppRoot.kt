@@ -312,6 +312,10 @@ fun AppRoot(
                     },
                     onDurationChange = vm::setDuration,
                     onTasteRatingChange = vm::setTasteRating,
+                    onDishDraftChange = vm::setDishDraft,
+                    onCommitDish = vm::commitDishDraft,
+                    onAddDish = vm::addDish,
+                    onRemoveDish = vm::removeDish,
                     onNoteChange = vm::setNote,
                     onAddPhoto = {
                         val (file, uri) = PhotoStorage.newCaptureTarget(context)

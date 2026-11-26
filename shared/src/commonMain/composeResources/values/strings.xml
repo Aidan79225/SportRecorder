@@ -280,6 +280,11 @@
     <string name="taste_5">Very tasty</string>
     <!-- A rated meal's face on the Record list, as a screen reader says it: "Taste: Tasty". -->
     <string name="taste_described">Taste: %1$s</string>
+    <!-- What a meal had: free text from the user's own history, never classified. The field's label, its hint, and what the chips announce. -->
+    <string name="editor_dishes">What you ate</string>
+    <string name="editor_dish_add">Add a dish</string>
+    <string name="editor_dish_remove">Remove %1$s</string>
+    <string name="editor_dish_suggested">Add %1$s</string>
     <string name="editor_venue">Place</string>
     <string name="editor_venue_none">Not set</string>
     <string name="editor_venue_pick">Choose a place</string>

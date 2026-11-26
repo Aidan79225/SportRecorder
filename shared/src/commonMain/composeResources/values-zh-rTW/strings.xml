@@ -280,6 +280,11 @@
     <string name="taste_5">非常好吃</string>
     <!-- A rated meal's face on the Record list, as a screen reader says it: "好吃程度：好吃". -->
     <string name="taste_described">好吃程度：%1$s</string>
+    <!-- What a meal had: free text from the user's own history, never classified. The field's label, its hint, and what the chips announce. -->
+    <string name="editor_dishes">吃了什麼</string>
+    <string name="editor_dish_add">新增品項</string>
+    <string name="editor_dish_remove">移除%1$s</string>
+    <string name="editor_dish_suggested">新增%1$s</string>
     <string name="editor_venue">店家</string>
     <string name="editor_venue_none">未設定</string>
     <string name="editor_venue_pick">選擇店家</string>

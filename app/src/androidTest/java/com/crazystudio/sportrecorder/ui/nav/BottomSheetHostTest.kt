@@ -76,6 +76,7 @@ class BottomSheetHostTest {
                             EatTimeEditorSheet(
                                 state = EatTimeEditorUiState(), photoModel = { null },
                                 onPickDate = {}, onPickTime = {}, onDurationChange = {}, onTasteRatingChange = {},
+                                onDishDraftChange = {}, onCommitDish = {}, onAddDish = {}, onRemoveDish = {},
                                 onNoteChange = {},
                                 onAddPhoto = {}, onSelectPhoto = {}, onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
                                 onClearLocation = {}, onOpenVenuePicker = {}, onClearVenue = {},

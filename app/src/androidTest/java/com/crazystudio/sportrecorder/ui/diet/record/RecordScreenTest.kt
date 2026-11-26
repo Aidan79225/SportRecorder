@@ -193,6 +193,18 @@ class RecordScreenTest {
     }
 
     @Test
+    fun aMealsDishesAreOneQuietLine() {
+        show(listOf(record(1).copy(dishes = listOf("滷肉飯", "燙青菜", "貢丸湯"))))
+        compose.onNodeWithText("滷肉飯 · 燙青菜 · 貢丸湯").assertIsDisplayed()
+    }
+
+    @Test
+    fun aMealWithoutDishesShowsNoDishesLine() {
+        show(listOf(record(1, note = "lunch")))
+        compose.onAllNodesWithText(" · ", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun aMealWithoutARatingShowsNoFace() {
         show(listOf(record(1, note = "lunch")))
         compose.onNodeWithText("lunch").assertIsDisplayed()

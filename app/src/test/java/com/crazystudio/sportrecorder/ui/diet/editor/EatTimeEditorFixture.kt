@@ -6,6 +6,7 @@ import com.crazystudio.sportrecorder.domain.model.GeoPoint
 import com.crazystudio.sportrecorder.domain.model.Venue
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.venue.MapsPlaceReader
 import com.crazystudio.sportrecorder.domain.venue.VenueAddressFiller
@@ -107,5 +108,6 @@ internal class Editor(records: List<EatRecord> = emptyList(), venues: List<Venue
         mapsPlaceReader = MapsPlaceReader(resolver, lookup),
         venueAddressFiller = VenueAddressFiller(lookup, venues),
         clipboardReader = clipboard,
+        observeEatRecords = ObserveEatRecordsUseCase(records),
     )
 }

@@ -64,6 +64,7 @@ import com.crazystudio.sportrecorder.shared.resources.record_search_clear
 import com.crazystudio.sportrecorder.shared.resources.record_search_empty
 import com.crazystudio.sportrecorder.shared.resources.record_search_hint
 import com.crazystudio.sportrecorder.shared.resources.record_venue_search
+import com.crazystudio.sportrecorder.ui.shared.DishesLine
 import com.crazystudio.sportrecorder.ui.shared.TasteFace
 import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
@@ -293,6 +294,9 @@ private fun RecordCard(
                     .clickable { onEditRecord(record.id) },
             )
         }
+
+        // What the meal had, when the user said: one quiet line.
+        DishesLine(dishes = record.dishes)
 
         // Note (local val: cross-module smart-cast doesn't apply to :shared properties)
         val note = record.note
