@@ -60,7 +60,8 @@ object RecordSearch {
     /** Whether any of [records] is rated: the face chips are offered only then, since otherwise they match nothing. */
     fun hasRated(records: List<EatRecord>): Boolean = records.any { it.tasteRating != null }
 
-    private fun byFaces(records: List<EatRecord>, faces: Set<Int>): List<EatRecord> =
+    /** The [records] rated with one of [faces]; an empty set keeps them all, an unrated record never matches a non-empty one. */
+    fun byFaces(records: List<EatRecord>, faces: Set<Int>): List<EatRecord> =
         if (faces.isEmpty()) records else records.filter { it.tasteRating in faces }
 
     private fun EatRecord.isSearchable(): Boolean =

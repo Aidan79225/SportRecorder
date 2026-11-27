@@ -104,8 +104,8 @@ fun RecordScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var faces by rememberSaveable(stateSaver = FacesSaver) { mutableStateOf(emptySet<Int>()) }
     val textMatched = remember(records, query) { RecordSearch.textMatching(records, query) }
-    // The faces narrow what the text already matched (a blank query adds no text condition), so the text runs once.
-    val shown = remember(textMatched, faces) { RecordSearch.matching(textMatched, "", faces) }
+    // The faces narrow what the text already matched so the text runs once.
+    val shown = remember(textMatched, faces) { RecordSearch.byFaces(textMatched, faces) }
     // Judged from the text matches (before the faces) but told from the whole venue's history, so neither a
     // dish search nor a face filter shrinks the visit count or the face spread.
     val summary = remember(records, textMatched, query) { VenueSummary.of(textMatched, query, records) }
