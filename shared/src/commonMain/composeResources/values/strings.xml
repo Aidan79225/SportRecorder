@@ -39,6 +39,8 @@
     <string name="insights_photos_collapse">Show fewer</string>
     <string name="insights_on_this_day_title">A year ago today</string>
     <string name="insights_on_this_day_hint">See what you ate that day</string>
+    <string name="insights_on_this_day_title_years">%1$d years ago today</string>
+    <string name="insights_tasty_title">Remember this meal?</string>
     <string name="insights_empty_locations">No places recorded in this period</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d places · %2$d meals with a location</string>
@@ -280,6 +282,11 @@
     <string name="taste_5">Very tasty</string>
     <!-- A rated meal's face on the Record list, as a screen reader says it: "Taste: Tasty". -->
     <string name="taste_described">Taste: %1$s</string>
+    <!-- What a meal had: free text from the user's own history, never classified. The field's label, its hint, and what the chips announce. -->
+    <string name="editor_dishes">What you ate</string>
+    <string name="editor_dish_add">Add a dish</string>
+    <string name="editor_dish_remove">Remove %1$s</string>
+    <string name="editor_dish_suggested">Add %1$s</string>
     <string name="editor_venue">Place</string>
     <string name="editor_venue_none">Not set</string>
     <string name="editor_venue_pick">Choose a place</string>
@@ -341,9 +348,12 @@
     </plurals>
     <string name="editor_venue_merge_keep">Keep both</string>
     <string name="editor_venue_merge_where">That one is at %1$s.</string>
-    <string name="record_search_hint">Search places (name or address)</string>
+    <string name="record_search_hint">Search records (place, dish, note)</string>
     <string name="record_search_clear">Clear search</string>
     <string name="record_search_empty">No matching records</string>
+    <string name="venue_summary_visits">Visited %1$d times · last %2$s</string>
+    <string name="venue_summary_dish">%1$s ×%2$d</string>
+    <string name="venue_summary_taste">%1$s ×%2$d</string>
     <string name="record_venue_search">Show this place's records</string>
     <string name="record_edit">Edit</string>
     <string name="record_delete_title">Delete</string>

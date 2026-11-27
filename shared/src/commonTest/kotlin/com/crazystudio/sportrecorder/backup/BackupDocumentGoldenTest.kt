@@ -5,9 +5,9 @@ import kotlin.test.assertEquals
 
 /**
  * Pins the on-disk shape of the manifests. Schema 2 (the current one) adds venue keys and addresses;
- * each meal's durationMinutes and then its tasteRating came after it, without a bump. If this test
+ * each meal's durationMinutes, then its tasteRating, then its dishes came after it, without a bump. If this test
  * fails, the wire format changed: decide whether the change is additive (a new field WITH a default,
- * which an older app ignores — no bump, as venues, durations and taste ratings were) or breaking (bump
+ * which an older app ignores — no bump, as venues, durations, taste ratings and dishes were) or breaking (bump
  * BackupDocument.SCHEMA_VERSION). Either way keep decoding the old fixtures (older backups must
  * restore) and add a new one.
  *
@@ -15,7 +15,8 @@ import kotlin.test.assertEquals
  * had venues but no keys or addresses; both must keep decoding forever (restoring by name).
  * [goldenV2BeforeDurations] is the schema-2 shape written before meals had a duration; it must keep
  * decoding too, and every meal in it restores as one hour. [goldenV2BeforeTasteRatings] is the shape
- * written before meals had a taste rating; every meal in it restores as unrated. [goldenV2] is what
+ * written before meals had a taste rating; every meal in it restores as unrated. [goldenV2BeforeDishes]
+ * is the shape written before meals had dishes; every meal in it restores with none. [goldenV2] is what
  * the app writes today.
  */
 class BackupDocumentGoldenTest {
@@ -99,10 +100,11 @@ class BackupDocumentGoldenTest {
         ),
     )
 
-    // What the app writes today: the schema-2 shape, still without a bump, plus each meal's taste rating.
-    // The first meal was rated; the second was not, and its "tasteRating":null is written too (the field is
-    // never left out), which restores as unrated.
-    private val goldenV2 = """{"schemaVersion":2,"createdAt":1700000000000,"appVersionName":"0.7.1",""" +
+    // Exactly what the app wrote after taste ratings and before dishes: each meal's taste rating and no
+    // dishes key. Never edit it: it is the proof that a backup taken by that version still restores (every
+    // meal in it restores with no dishes). The first meal was rated; the second was not, and its
+    // "tasteRating":null is written too (the field is never left out), which restores as unrated.
+    private val goldenV2BeforeDishes = """{"schemaVersion":2,"createdAt":1700000000000,"appVersionName":"0.7.1",""" +
         """"meals":[{"id":1,"time":1699999000000,"note":"lunch","location":{"lat":25.03,"lng":121.56},""" +
         """"photos":[{"id":7,"fileName":"a.webp","createdAt":1699999001000}],"venueName":"大戶屋","venueKey":"12",""" +
         """"durationMinutes":90,"tasteRating":4},""" +
@@ -115,10 +117,23 @@ class BackupDocumentGoldenTest {
         """"venues":[{"name":"大戶屋","lat":25.03,"lng":121.56,"lastUsedAt":1699999000000,""" +
         """"address":"台北市信義區","key":"12"}]}"""
 
-    private val expectedV2 = expectedV2BeforeTasteRatings.copy(
+    private val expectedV2BeforeDishes = expectedV2BeforeTasteRatings.copy(
         meals = listOf(
             expectedV2BeforeTasteRatings.meals[0].copy(tasteRating = 4),
             expectedV2BeforeTasteRatings.meals[1],
+        ),
+    )
+
+    // What the app writes today: the schema-2 shape, still without a bump, plus each meal's dishes. The
+    // first meal has two, the second none, and its "dishes":[] is written too (the field is never left out).
+    private val goldenV2 = goldenV2BeforeDishes
+        .replace(""""tasteRating":4}""", """"tasteRating":4,"dishes":["滷肉飯","Soup"]}""")
+        .replace(""""tasteRating":null}""", """"tasteRating":null,"dishes":[]}""")
+
+    private val expectedV2 = expectedV2BeforeDishes.copy(
+        meals = listOf(
+            expectedV2BeforeDishes.meals[0].copy(dishes = listOf("滷肉飯", "Soup")),
+            expectedV2BeforeDishes.meals[1],
         ),
     )
 
@@ -139,6 +154,9 @@ class BackupDocumentGoldenTest {
         expectedV2BeforeTasteRatings,
         BackupJson.decodeFromString(BackupDocument.serializer(), goldenV2BeforeTasteRatings),
     )
+
+    @Test fun goldenV2BeforeDishes_decodes() =
+        assertEquals(expectedV2BeforeDishes, BackupJson.decodeFromString(BackupDocument.serializer(), goldenV2BeforeDishes))
 
     @Test fun goldenV2_decodes() =
         assertEquals(expectedV2, BackupJson.decodeFromString(BackupDocument.serializer(), goldenV2))

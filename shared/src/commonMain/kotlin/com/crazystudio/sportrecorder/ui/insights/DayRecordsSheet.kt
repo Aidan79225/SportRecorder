@@ -28,6 +28,7 @@ import com.crazystudio.sportrecorder.shared.resources.insights_day_title
 import com.crazystudio.sportrecorder.shared.resources.insights_next_day_time
 import com.crazystudio.sportrecorder.shared.resources.photo_open
 import com.crazystudio.sportrecorder.shared.resources.photo_position
+import com.crazystudio.sportrecorder.ui.shared.DishesLine
 import com.crazystudio.sportrecorder.ui.shared.PhotoThumbnail
 import com.crazystudio.sportrecorder.ui.shared.photoButton
 import kotlinx.datetime.TimeZone
@@ -104,6 +105,7 @@ private fun MealRow(
             text = if (afterMidnight) stringResource(Res.string.insights_next_day_time, clock) else clock,
             style = MaterialTheme.typography.bodyMedium,
         )
+        DishesLine(dishes = record.dishes)
         // Local val: cross-module smart-cast doesn't apply to :shared properties.
         val note = record.note
         if (!note.isNullOrBlank()) {

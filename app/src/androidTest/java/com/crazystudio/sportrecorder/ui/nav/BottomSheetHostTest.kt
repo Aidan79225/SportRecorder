@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
@@ -76,6 +77,7 @@ class BottomSheetHostTest {
                             EatTimeEditorSheet(
                                 state = EatTimeEditorUiState(), photoModel = { null },
                                 onPickDate = {}, onPickTime = {}, onDurationChange = {}, onTasteRatingChange = {},
+                                onDishDraftChange = {}, onCommitDish = {}, onAddDish = {}, onRemoveDish = {},
                                 onNoteChange = {},
                                 onAddPhoto = {}, onSelectPhoto = {}, onRemovePendingPhoto = {}, onRemoveExistingPhoto = {}, onRecaptureLocation = {},
                                 onClearLocation = {}, onOpenVenuePicker = {}, onClearVenue = {},
@@ -115,7 +117,8 @@ class BottomSheetHostTest {
 
     @Test fun tallSheet_opensWithConfirmButtonOnScreen() {
         setUpGraph(); openEditor()
-        compose.onNodeWithText(createLabel()).assertIsDisplayed()
+        // The editor outgrows the window now (dishes row), so it scrolls; the button must be reachable and land on screen.
+        compose.onNodeWithText(createLabel()).performScrollTo().assertIsDisplayed()
         val confirm = compose.onNodeWithText(createLabel()).fetchSemanticsNode()
         // The sheet's own window root: the M3 sheet window spans the screen.
         val rootHeight = confirm.layoutInfo.coordinates.findRootCoordinates().size.height

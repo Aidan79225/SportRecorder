@@ -65,6 +65,30 @@ class BackupMappersTest {
         assertNull(beforeRatings.toDomain().tasteRating)
     }
 
+    @Test fun aMealsDishes_areWrittenToTheBackupAndReadBack() {
+        val meal = EatRecord(1, 1_700L, null, null, emptyList(), dishes = listOf("滷肉飯", "Soup"))
+
+        assertEquals(listOf("滷肉飯", "Soup"), meal.toBackup().dishes)
+        assertEquals(meal, meal.toBackup().toDomain())
+    }
+
+    @Test fun aMealWithoutDishes_comesBackWithNone() {
+        val beforeDishes = BackupMeal(1, 1_700L, null, null, emptyList(), tasteRating = 4)
+
+        assertEquals(emptyList(), beforeDishes.dishes)
+        assertEquals(emptyList(), beforeDishes.toDomain().dishes)
+    }
+
+    // A backup is a file from outside: an over-long or repetitive list must never reach the database.
+    @Test fun restoredDishesAreSanitized() {
+        val many = (1..15).map { "d$it" }
+        val meal = BackupMeal(1, 1_700L, null, null, emptyList(),
+            dishes = listOf(" a ", "A", "", "b\nc") + many)
+
+        assertEquals(listOf("a", "b c") + (1..8).map { "d$it" }, meal.toDomain().dishes)
+        assertEquals(10, BackupMeal(1, 1L, null, null, emptyList(), dishes = many).toDomain().dishes.size)
+    }
+
     // A backup is a file from outside: a rating that is not on the scale must never reach the database.
     @Test fun aTasteRatingThatIsNotOnTheScale_comesBackUnrated() {
         listOf(0, 6, -1, 99).forEach { rating ->

@@ -7,6 +7,7 @@ import com.crazystudio.sportrecorder.domain.insights.InsightsAggregator
 import com.crazystudio.sportrecorder.domain.insights.InsightsRange
 import com.crazystudio.sportrecorder.domain.insights.OnThisDay
 import com.crazystudio.sportrecorder.domain.insights.Period
+import com.crazystudio.sportrecorder.domain.insights.TastyMemory
 import com.crazystudio.sportrecorder.domain.repository.DietSettingsRepository
 import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,12 +45,16 @@ class InsightsViewModel(
             period,
             anchor,
         ) { records, settings, selectedPeriod, selectedAnchor ->
+            val onThisDay = OnThisDay.find(records, settings, now())
             InsightsUiState(
                 isLoaded = true,
                 period = selectedPeriod,
                 anchor = selectedAnchor,
                 result = InsightsAggregator.compute(records, settings, now(), selectedPeriod, selectedAnchor),
-                onThisDay = OnThisDay.find(records, settings, now()),
+                onThisDay = onThisDay,
+                // Two cards for one day would say the same thing twice: On-this-day wins.
+                tastyMemory = TastyMemory.pick(records, settings, now())
+                    ?.takeUnless { it.dayStart == onThisDay?.dayStart },
             )
         }.stateIn(
             viewModelScope,

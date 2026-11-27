@@ -14,6 +14,8 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -30,6 +32,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
@@ -97,6 +100,8 @@ class RecordScreenTest {
         photos = emptyList(),
         venue = venue,
     )
+
+    private fun rated(id: Int, level: Int?, note: String) = record(id, note = note).copy(tasteRating = level)
 
     private fun recordWithPhotos(vararg fileNames: String) = record(1).copy(
         photos = fileNames.mapIndexed { index, name -> EatPhoto(id = index, fileName = name, createdAt = 0L) },
@@ -193,6 +198,23 @@ class RecordScreenTest {
     }
 
     @Test
+    fun aMealsDishesAreOneQuietLine() {
+        show(listOf(record(1).copy(dishes = listOf("滷肉飯", "燙青菜", "貢丸湯"))))
+        compose.onNodeWithText("滷肉飯 · 燙青菜 · 貢丸湯").assertIsDisplayed()
+    }
+
+    @Test
+    fun aMealWithoutDishesShowsNoDishesLine() {
+        show(listOf(record(1, note = "lunch")))
+        // A dishes line with nothing in it would still be a Text node, just an empty one (and a one-dish line has
+        // no " · " to find), so look for any empty text on the card.
+        val emptyText = SemanticsMatcher("has empty text") { node ->
+            node.config.getOrNull(SemanticsProperties.Text)?.all { it.text.isEmpty() } == true
+        }
+        compose.onAllNodes(emptyText, useUnmergedTree = true).assertCountEquals(0)
+    }
+
+    @Test
     fun aMealWithoutARatingShowsNoFace() {
         show(listOf(record(1, note = "lunch")))
         compose.onNodeWithText("lunch").assertIsDisplayed()
@@ -245,9 +267,178 @@ class RecordScreenTest {
     }
 
     @Test
-    fun theSearchFieldIsHiddenWhenNoRecordHasAVenue() {
-        show(listOf(record(1, note = "just a note")))
+    fun theSearchFieldIsHiddenWhenNoRecordHasAVenueADishOrANote() {
+        show(listOf(record(1)))
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+    }
+
+    @Test
+    fun aNoteAloneOffersTheSearchField() {
+        show(listOf(record(1, note = "just a note")))
+        compose.onAllNodes(hasSetTextAction()).assertCountEquals(1)
+    }
+
+    @Test
+    fun theHintNamesWhatIsSearched() {
+        show(listOf(record(1, note = "lunch")))
+        searchField().assert(hasText("Search records (place, dish, note)"))
+    }
+
+    @Test
+    fun inTraditionalChinese_theHintNamesWhatIsSearched() {
+        showInTraditionalChinese(listOf(record(1, note = "lunch")))
+        searchField().assert(hasText("搜尋紀錄（店家、品項、備註）"))
+    }
+
+    @Test
+    fun searchFindsADishAndANote() {
+        show(
+            listOf(
+                record(1, note = "first").copy(dishes = listOf("Braised pork rice")),
+                record(2, note = "second meal with soup"),
+                record(3, note = "third"),
+            ),
+        )
+
+        searchField().performTextInput("pork")
+        compose.onNodeWithText("first").assertIsDisplayed()
+        compose.onAllNodesWithText("second meal with soup").assertCountEquals(0)
+
+        searchField().performTextReplacement("soup")
+        compose.onNodeWithText("second meal with soup").assertIsDisplayed()
+        compose.onAllNodesWithText("first").assertCountEquals(0)
+    }
+
+    @Test
+    fun theFaceChipsAreHiddenWhileNoRecordIsRated() {
+        show(listOf(record(1, venue(1, "Ramen Ya"))))
+        compose.onAllNodesWithContentDescription("Tasty").assertCountEquals(0)
+        compose.onAllNodesWithContentDescription("Very tasty").assertCountEquals(0)
+    }
+
+    @Test
+    fun theFaceChipsAreNamedByTheirWords_andAllFiveShowOnceSomethingIsRated() {
+        show(listOf(rated(1, 4, "lunch")))
+        for (word in listOf("Not tasty", "Not very tasty", "Okay", "Tasty", "Very tasty")) {
+            compose.onNodeWithContentDescription(word).assertIsDisplayed().assertIsNotSelected()
+        }
+    }
+
+    @Test
+    fun choosingFacesKeepsOnlyThoseMeals_andSelectionIsExposed() {
+        show(
+            listOf(
+                rated(1, 5, "very good meal"),
+                rated(2, 3, "okay meal"),
+                rated(3, 4, "good meal"),
+                rated(4, null, "unrated meal"),
+            ),
+        )
+
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+        compose.onNodeWithContentDescription("Very tasty").assertIsSelected()
+        compose.onNodeWithText("very good meal").assertIsDisplayed()
+        compose.onAllNodesWithText("okay meal").assertCountEquals(0)
+        compose.onAllNodesWithText("unrated meal").assertCountEquals(0)
+
+        compose.onNodeWithContentDescription("Tasty").performClick()
+        compose.onNodeWithText("good meal").assertIsDisplayed()
+        compose.onNodeWithText("very good meal").assertIsDisplayed()
+        compose.onAllNodesWithText("okay meal").assertCountEquals(0)
+
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+        compose.onNodeWithContentDescription("Very tasty").assertIsNotSelected()
+        compose.onAllNodesWithText("very good meal").assertCountEquals(0)
+    }
+
+    @Test
+    fun facesCombineWithTheText_andAFaceWithNoMatchSaysSo() {
+        show(listOf(rated(1, 5, "ramen great"), rated(2, 2, "ramen meh"), rated(3, 5, "sushi great")))
+
+        searchField().performTextInput("ramen")
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+        compose.onNodeWithText("ramen great").assertIsDisplayed()
+        compose.onAllNodesWithText("ramen meh").assertCountEquals(0)
+        compose.onAllNodesWithText("sushi great").assertCountEquals(0)
+
+        // Faces are any-of: put the matching face back down before choosing one nothing carries.
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+        compose.onNodeWithContentDescription("Okay").performClick()
+        compose.onNodeWithText(str(Res.string.record_search_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun narrowedToOnePlaceVisitedTwice_aSummaryCardTellsWhatItHasBeen() {
+        val ramen = venue(1, "Ramen Ya", address = "Taipei")
+        show(
+            listOf(
+                record(1, ramen).copy(dishes = listOf("Shoyu"), tasteRating = 5),
+                record(2, ramen).copy(dishes = listOf("Shoyu", "Gyoza"), tasteRating = 4),
+                record(3, venue(2, "Sushi Bar")),
+            ),
+        )
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+
+        searchField().performTextInput("ramen")
+
+        compose.onNodeWithText("Visited 2 times · last ", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Shoyu ×2").assertIsDisplayed()
+        compose.onNodeWithText("Gyoza ×1").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Very tasty ×1").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Tasty ×1").assertIsDisplayed()
+    }
+
+    @Test
+    fun theSummaryCardStaysWhileFacesNarrowTheList() {
+        val ramen = venue(1, "Ramen Ya")
+        show(listOf(rated(1, 5, "a").copy(venue = ramen), rated(2, 2, "b").copy(venue = ramen)))
+
+        searchField().performTextInput("ramen")
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+
+        compose.onNodeWithText("Visited 2 times · last ", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Not very tasty ×1").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSingleVisit_orSeveralPlaces_getNoSummaryCard() {
+        val ramen = venue(1, "Ramen Ya")
+        show(listOf(record(1, ramen), record(2, venue(2, "Ramen House")), record(3, venue(3, "Sushi Bar"))))
+
+        searchField().performTextInput("sushi")
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+
+        searchField().performTextReplacement("ramen")
+        compose.onAllNodesWithText("Visited", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun inTraditionalChinese_theSummaryCardReadsInChinese() {
+        val ramen = venue(1, "拉麵屋")
+        showInTraditionalChinese(listOf(record(1, ramen).copy(tasteRating = 5), record(2, ramen)))
+
+        searchField().performTextInput("拉麵")
+
+        compose.onNodeWithText("去過 2 次 · 最近 ", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("非常好吃 ×1").assertIsDisplayed()
+    }
+
+    @Test
+    fun theClearButtonResetsTheTextAndTheFaces() {
+        show(listOf(rated(1, 5, "ramen great"), rated(2, 2, "ramen meh")))
+        compose.onAllNodesWithContentDescription(str(Res.string.record_search_clear)).assertCountEquals(0)
+
+        compose.onNodeWithContentDescription("Very tasty").performClick()
+        // A chosen face alone is something to take back, so the ✕ is there.
+        compose.onNodeWithContentDescription(str(Res.string.record_search_clear)).assertIsDisplayed()
+        searchField().performTextInput("great")
+        compose.onNodeWithContentDescription(str(Res.string.record_search_clear)).performClick()
+
+        searchField().assert(hasText(""))
+        compose.onNodeWithContentDescription("Very tasty").assertIsNotSelected()
+        compose.onNodeWithText("ramen great").assertIsDisplayed()
+        compose.onNodeWithText("ramen meh").assertIsDisplayed()
+        compose.onAllNodesWithContentDescription(str(Res.string.record_search_clear)).assertCountEquals(0)
     }
 
     @Test

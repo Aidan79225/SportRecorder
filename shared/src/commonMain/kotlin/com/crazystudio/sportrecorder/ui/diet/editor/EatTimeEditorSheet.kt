@@ -3,9 +3,12 @@ package com.crazystudio.sportrecorder.ui.diet.editor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +25,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -31,9 +36,12 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -49,12 +57,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.crazystudio.sportrecorder.domain.model.Dishes
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.MealDuration
 import com.crazystudio.sportrecorder.domain.model.TasteRating
@@ -80,6 +92,10 @@ import com.crazystudio.sportrecorder.shared.resources.distance_meters
 import com.crazystudio.sportrecorder.shared.resources.duration_hours
 import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
 import com.crazystudio.sportrecorder.shared.resources.duration_minutes
+import com.crazystudio.sportrecorder.shared.resources.editor_dish_add
+import com.crazystudio.sportrecorder.shared.resources.editor_dish_remove
+import com.crazystudio.sportrecorder.shared.resources.editor_dish_suggested
+import com.crazystudio.sportrecorder.shared.resources.editor_dishes
 import com.crazystudio.sportrecorder.shared.resources.editor_link_unreadable
 import com.crazystudio.sportrecorder.shared.resources.editor_not_map_link
 import com.crazystudio.sportrecorder.shared.resources.editor_store_body
@@ -127,6 +143,10 @@ fun EatTimeEditorSheet(
     onPickTime: () -> Unit,
     onDurationChange: (Int) -> Unit,
     onTasteRatingChange: (Int?) -> Unit,
+    onDishDraftChange: (String) -> Unit,
+    onCommitDish: () -> Unit,
+    onAddDish: (String) -> Unit,
+    onRemoveDish: (String) -> Unit,
     onNoteChange: (String) -> Unit,
     onAddPhoto: () -> Unit,
     onSelectPhoto: () -> Unit,
@@ -177,6 +197,16 @@ fun EatTimeEditorSheet(
         DurationRow(minutes = state.durationMinutes, onDurationChange = onDurationChange)
         // TASTE row: how the meal tasted, in the moment. Nothing is chosen until the user taps a face.
         TasteRatingRow(rating = state.tasteRating, onRatingChange = onTasteRatingChange)
+        // DISHES row: what the meal had. Optional, starts empty, never blocks the confirm button.
+        DishesRow(
+            dishes = state.dishes,
+            draft = state.dishDraft,
+            suggestions = state.dishSuggestions,
+            onDraftChange = onDishDraftChange,
+            onCommit = onCommitDish,
+            onAdd = onAddDish,
+            onRemove = onRemoveDish,
+        )
         // NOTE field
         OutlinedTextField(
             value = state.note,
@@ -515,6 +545,95 @@ private fun durationText(minutes: Int): String {
 }
 
 private val TASTE_TARGET = 48.dp
+
+/**
+ * What the meal had: a one-line field (its label names the row, the keyboard's Done adds the dish), the chosen
+ * dishes as chips that go away on a tap, and a few earlier dishes one tap away. Chips wrap, so the row is as
+ * tall as the dishes need and no taller: with none yet it is just the field. The field is full at
+ * [Dishes.MAX_PER_MEAL] dishes.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+@Suppress("LongParameterList") // Compose event slots
+private fun DishesRow(
+    dishes: List<String>,
+    draft: String,
+    suggestions: List<String>,
+    onDraftChange: (String) -> Unit,
+    onCommit: () -> Unit,
+    onAdd: (String) -> Unit,
+    onRemove: (String) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        OutlinedTextField(
+            value = draft,
+            onValueChange = { onDraftChange(Dishes.cut(it)) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = dishes.size < Dishes.MAX_PER_MEAL,
+            label = { Text(stringResource(Res.string.editor_dishes)) },
+            placeholder = { Text(stringResource(Res.string.editor_dish_add)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onCommit() }),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface,
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.onSurfaceVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                cursorColor = colorScheme.primary,
+            ),
+        )
+        if (dishes.isNotEmpty() || suggestions.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                dishes.forEach { dish ->
+                    val remove = stringResource(Res.string.editor_dish_remove, dish)
+                    InputChip(
+                        selected = true,
+                        onClick = { onRemove(dish) },
+                        label = { Text(dish, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        trailingIcon = {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_baseline_close_24),
+                                contentDescription = null,
+                                modifier = Modifier.size(InputChipDefaults.IconSize),
+                            )
+                        },
+                        // One stop that says what a tap does ("Remove 滷肉飯"), not the dish and an unnamed icon.
+                        modifier = Modifier.clearAndSetSemantics {
+                            contentDescription = remove
+                            role = Role.Button
+                            onClick {
+                                onRemove(dish)
+                                true
+                            }
+                        },
+                    )
+                }
+                suggestions.forEach { dish ->
+                    val add = stringResource(Res.string.editor_dish_suggested, dish)
+                    SuggestionChip(
+                        onClick = { onAdd(dish) },
+                        label = { Text(dish, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        modifier = Modifier.clearAndSetSemantics {
+                            contentDescription = add
+                            role = Role.Button
+                            onClick {
+                                onAdd(dish)
+                                true
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
 
 /**
  * How the meal tasted: the label, and five faces to choose from. It starts empty and says nothing about

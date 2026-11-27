@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.crazystudio.sportrecorder.data.PhotoFileStore
 import com.crazystudio.sportrecorder.data.PhotoImageSource
+import com.crazystudio.sportrecorder.domain.model.Dishes
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
@@ -14,6 +15,7 @@ import com.crazystudio.sportrecorder.domain.model.VenueAddress
 import com.crazystudio.sportrecorder.domain.model.VenueName
 import com.crazystudio.sportrecorder.domain.repository.VenueRepository
 import com.crazystudio.sportrecorder.domain.usecase.LoadEatRecordUseCase
+import com.crazystudio.sportrecorder.domain.usecase.ObserveEatRecordsUseCase
 import com.crazystudio.sportrecorder.domain.usecase.SaveEatRecordUseCase
 import com.crazystudio.sportrecorder.domain.venue.MapsLink
 import com.crazystudio.sportrecorder.domain.venue.MapsPlace
@@ -82,6 +84,7 @@ class EatTimeEditorViewModel constructor(
     private val mapsPlaceReader: MapsPlaceReader,
     private val venueAddressFiller: VenueAddressFiller,
     private val clipboardReader: ClipboardReader,
+    private val observeEatRecords: ObserveEatRecordsUseCase,
 ) : ViewModel(), VenuePickerActions {
 
     /** Resolves a stored photo's file name into a Coil-loadable model for the editor's thumbnails. */
@@ -124,6 +127,9 @@ class EatTimeEditorViewModel constructor(
     // Every venue, as last emitted; the picker's order is derived from it and the live note.
     private var allVenues: List<Venue> = emptyList()
 
+    // Every meal, as last emitted: where the dish suggestions come from.
+    private var allRecords: List<EatRecord> = emptyList()
+
     // The venue the record already had when it was opened; saving it back is not a new use.
     private var loadedVenueId: Int? = null
 
@@ -133,6 +139,12 @@ class EatTimeEditorViewModel constructor(
                 allVenues = venues
                 _uiState.update { it.withVenueOptions().withFreshVenue() }
                 followVanishedVenues()
+            }
+        }
+        viewModelScope.launch {
+            observeEatRecords().collect { records ->
+                allRecords = records
+                _uiState.update { it.withDishSuggestions() }
             }
         }
         if (isEditMode) {
@@ -146,6 +158,7 @@ class EatTimeEditorViewModel constructor(
                         dateMillis = currentMillis,
                         durationMinutes = record.durationMinutes,
                         tasteRating = TasteRating.sanitize(record.tasteRating),
+                        dishes = record.dishes,
                         note = record.note.orEmpty(),
                         existingPhotos = record.photos,
                         venue = record.venue,
@@ -155,7 +168,7 @@ class EatTimeEditorViewModel constructor(
                         } else {
                             EatTimeEditorUiState.LocationStatus.IDLE
                         },
-                    ).withVenueOptions().withFreshVenue()
+                    ).withVenueOptions().withFreshVenue().withDishSuggestions()
                 }
                 // Read before a merge the list has already shown: catch up with it.
                 followVanishedVenues()
@@ -734,6 +747,8 @@ class EatTimeEditorViewModel constructor(
         // Saving takes the venue as it is now: a share still resolving must not change it during or
         // after the write (it would create a venue the saved meal never gets).
         dropSharedPlace()
+        // Text still in the dish field is a dish: nothing typed is ever lost.
+        commitDishDraft()
         val state = _uiState.value
         // As stored now, asked for by id: one merged away meanwhile by another writer (before the list
         // showed it) is saved as the venue its records went to, never as an id that is gone.
@@ -751,6 +766,8 @@ class EatTimeEditorViewModel constructor(
             durationMinutes = state.durationMinutes,
             // And the rating, for the same reason: an edit of the note alone must not clear what the user chose.
             tasteRating = state.tasteRating,
+            // And the dishes: an edit of the note alone must not clear what the meal had.
+            dishes = state.dishes,
         )
         val ok = saveEatRecord(record, state.pendingPhotos, photosToDelete)
         if (ok) {
@@ -786,6 +803,31 @@ class EatTimeEditorViewModel constructor(
         if (value != null && value !in TasteRating.LEVELS) return
         _uiState.update { it.copy(tasteRating = value) }
     }
+
+    /** Follows the dish field: what is typed so far narrows the suggestions. */
+    fun setDishDraft(value: String) = _uiState.update { it.copy(dishDraft = value).withDishSuggestions() }
+
+    /** Adds [name] to the meal's dishes (cleaned, no repeats, at most [Dishes.MAX_PER_MEAL]) and empties the field. */
+    fun addDish(name: String) = _uiState.update {
+        it.copy(dishes = Dishes.sanitize(it.dishes + name), dishDraft = "").withDishSuggestions()
+    }
+
+    /** Adds what is typed in the dish field as a dish (the keyboard's Done, or saving); a blank field adds nothing. */
+    fun commitDishDraft() = addDish(_uiState.value.dishDraft)
+
+    fun removeDish(name: String) = _uiState.update {
+        it.copy(dishes = it.dishes - name).withDishSuggestions()
+    }
+
+    private fun EatTimeEditorUiState.withDishSuggestions() =
+        copy(
+            // A full meal takes no more dishes, so offering chips that do nothing would only mislead.
+            dishSuggestions = if (dishes.size >= Dishes.MAX_PER_MEAL) {
+                emptyList()
+            } else {
+                Dishes.suggestions(allRecords, dishDraft, dishes)
+            },
+        )
 
     private fun publishDate() = _uiState.update { it.copy(dateMillis = currentMillis) }
 

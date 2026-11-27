@@ -32,6 +32,10 @@ data class EatTime(
     // NULL = not rated, so no defaultValue: a meal nobody rated must never read as a middle value.
     @ColumnInfo(name = "taste_rating")
     val tasteRating: Int? = null,
+
+    // One dish per line (see Dishes.encode); NULL = none, so no defaultValue.
+    @ColumnInfo(name = "dishes")
+    val dishes: String? = null,
 ) {
     companion object {
         const val tableName = "eat_time"

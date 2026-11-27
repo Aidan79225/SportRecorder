@@ -39,6 +39,8 @@
     <string name="insights_photos_collapse">收起</string>
     <string name="insights_on_this_day_title">去年的今天</string>
     <string name="insights_on_this_day_hint">看看那天吃了什麼</string>
+    <string name="insights_on_this_day_title_years">%1$d 年前的今天</string>
+    <string name="insights_tasty_title">還記得這一餐嗎？</string>
     <string name="insights_empty_locations">這段期間沒有地點紀錄</string>
     <string name="insights_value_none">—</string>
     <string name="insights_map_summary">%1$d 個地點 · %2$d 餐記了位置</string>
@@ -280,6 +282,11 @@
     <string name="taste_5">非常好吃</string>
     <!-- A rated meal's face on the Record list, as a screen reader says it: "好吃程度：好吃". -->
     <string name="taste_described">好吃程度：%1$s</string>
+    <!-- What a meal had: free text from the user's own history, never classified. The field's label, its hint, and what the chips announce. -->
+    <string name="editor_dishes">吃了什麼</string>
+    <string name="editor_dish_add">新增品項</string>
+    <string name="editor_dish_remove">移除%1$s</string>
+    <string name="editor_dish_suggested">新增%1$s</string>
     <string name="editor_venue">店家</string>
     <string name="editor_venue_none">未設定</string>
     <string name="editor_venue_pick">選擇店家</string>
@@ -336,9 +343,12 @@
     </plurals>
     <string name="editor_venue_merge_keep">兩家都保留</string>
     <string name="editor_venue_merge_where">那一家在 %1$s。</string>
-    <string name="record_search_hint">搜尋店家（名稱或地址）</string>
+    <string name="record_search_hint">搜尋紀錄（店家、品項、備註）</string>
     <string name="record_search_clear">清除搜尋</string>
     <string name="record_search_empty">沒有符合的紀錄</string>
+    <string name="venue_summary_visits">去過 %1$d 次 · 最近 %2$s</string>
+    <string name="venue_summary_dish">%1$s ×%2$d</string>
+    <string name="venue_summary_taste">%1$s ×%2$d</string>
     <string name="record_venue_search">看這家店的紀錄</string>
     <string name="record_edit">編輯</string>
     <string name="record_delete_title">刪除</string>

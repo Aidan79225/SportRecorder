@@ -30,8 +30,8 @@ class OnThisDayTest {
             photos = photos.mapIndexed { i, name -> EatPhoto(id = i, fileName = name, createdAt = time) },
         )
 
-    private fun find(records: List<EatRecord>, now: Long, yearsAgo: Int = 1) =
-        OnThisDay.find(records, settings, now, yearsAgo, zone)
+    private fun find(records: List<EatRecord>, now: Long) =
+        OnThisDay.find(records, settings, now, zone)
 
     @Test
     fun findsLastYearsSameDay_withItsPhotoAndNote() {
@@ -40,6 +40,7 @@ class OnThisDayTest {
         val memory = assertNotNull(find(records, now = at(2026, 10, 4, 9)))
 
         assertEquals(at(2025, 10, 4, 0), memory.dayStart)
+        assertEquals(1, memory.yearsAgo)
         assertEquals("a.webp", memory.photoFileName)
         assertEquals("和家人吃火鍋", memory.note)
     }
@@ -96,21 +97,38 @@ class OnThisDayTest {
     }
 
     @Test
-    fun yearsAgoReachesFurtherBack() {
-        val records = listOf(rec(at(2024, 10, 4, 12), photos = listOf("old.webp")))
+    fun looksBackUpToFiveYears_reportingHowFar() {
+        val records = listOf(rec(at(2021, 10, 4, 12), photos = listOf("old.webp")))
 
-        assertNull(find(records, now = at(2026, 10, 4, 9)))
-        assertEquals(
-            at(2024, 10, 4, 0),
-            assertNotNull(find(records, now = at(2026, 10, 4, 9), yearsAgo = 2)).dayStart,
-        )
+        val memory = assertNotNull(find(records, now = at(2026, 10, 4, 9)))
+
+        assertEquals(at(2021, 10, 4, 0), memory.dayStart)
+        assertEquals(5, memory.yearsAgo)
     }
 
     @Test
-    fun yearsAgoBelowOneIsNotAMemory() {
-        val records = listOf(rec(at(2026, 10, 4, 12)))
+    fun sixYearsBackIsTooFar() {
+        val records = listOf(rec(at(2020, 10, 4, 12)))
 
-        assertNull(find(records, now = at(2026, 10, 4, 15), yearsAgo = 0))
+        assertNull(find(records, now = at(2026, 10, 4, 9)))
+    }
+
+    @Test
+    fun theNearestYearWins() {
+        val records = listOf(rec(at(2022, 10, 4, 12)), rec(at(2024, 10, 4, 12)), rec(at(2025, 10, 5, 12)))
+
+        val memory = assertNotNull(find(records, now = at(2026, 10, 4, 9)))
+
+        assertEquals(2, memory.yearsAgo)
+        assertEquals(at(2024, 10, 4, 0), memory.dayStart)
+    }
+
+    @Test
+    fun anEmptyNearestYearFallsThroughToAnOlderOne() {
+        // Last year's day holds nothing, three years ago does: silence is only for "nothing in any year".
+        val records = listOf(rec(at(2023, 10, 4, 12)))
+
+        assertEquals(3, assertNotNull(find(records, now = at(2026, 10, 4, 9))).yearsAgo)
     }
 
     // How a meal tasted is the user's own note, never a reason to show or hide a day: the memory is the same

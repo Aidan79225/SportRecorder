@@ -1,5 +1,6 @@
 package com.crazystudio.sportrecorder.data.mapper
 
+import com.crazystudio.sportrecorder.domain.model.Dishes
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
@@ -24,6 +25,7 @@ fun EatTime.toDomain(photos: List<EatPhoto> = emptyList(), venue: Venue? = null)
     venue = venue,
     durationMinutes = durationMinutes,
     tasteRating = TasteRating.sanitize(tasteRating),
+    dishes = Dishes.decode(dishes),
 )
 
 /**
@@ -39,6 +41,7 @@ fun EatRecord.toEntity(id: Int = this.id): EatTime = EatTime(
     venueId = venue?.id,
     durationMinutes = durationMinutes,
     tasteRating = tasteRating,
+    dishes = Dishes.encode(dishes),
 )
 
 fun EatTimeWithPhotos.toDomain(): EatRecord = eatTime.toDomain(photos.map { it.toDomain() }, venue?.toDomain())

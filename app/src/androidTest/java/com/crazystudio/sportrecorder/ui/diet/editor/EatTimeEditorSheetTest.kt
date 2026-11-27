@@ -25,6 +25,7 @@ import androidx.compose.ui.test.centerY
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
@@ -33,6 +34,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.width
@@ -58,6 +60,9 @@ import com.crazystudio.sportrecorder.shared.resources.diet_eat_remove_photo
 import com.crazystudio.sportrecorder.shared.resources.duration_hours
 import com.crazystudio.sportrecorder.shared.resources.duration_hours_minutes
 import com.crazystudio.sportrecorder.shared.resources.duration_minutes
+import com.crazystudio.sportrecorder.shared.resources.editor_dish_remove
+import com.crazystudio.sportrecorder.shared.resources.editor_dish_suggested
+import com.crazystudio.sportrecorder.shared.resources.editor_dishes
 import com.crazystudio.sportrecorder.shared.resources.editor_taste
 import com.crazystudio.sportrecorder.shared.resources.editor_taste_clear
 import com.crazystudio.sportrecorder.shared.resources.photo_add
@@ -100,6 +105,10 @@ class EatTimeEditorSheetTest {
     private val notes = mutableListOf<String>()
     private val durations = mutableListOf<Int>()
     private val ratings = mutableListOf<Int?>()
+    private val dishDrafts = mutableListOf<String>()
+    private var dishCommits = 0
+    private val addedDishes = mutableListOf<String>()
+    private val removedDishes = mutableListOf<String>()
     private val removedPending = mutableListOf<String>()
     private val removedExisting = mutableListOf<EatPhoto>()
 
@@ -125,6 +134,10 @@ class EatTimeEditorSheetTest {
                         onPickTime = { pickTime++ },
                         onDurationChange = { durations.add(it) },
                         onTasteRatingChange = { ratings.add(it) },
+                        onDishDraftChange = { dishDrafts.add(it) },
+                        onCommitDish = { dishCommits++ },
+                        onAddDish = { addedDishes.add(it) },
+                        onRemoveDish = { removedDishes.add(it) },
                         onNoteChange = { notes.add(it) },
                         onAddPhoto = { addPhoto++ },
                         onSelectPhoto = { selectPhoto++ },
@@ -554,6 +567,57 @@ class EatTimeEditorSheetTest {
         show(EatTimeEditorUiState())
         compose.onNodeWithText(str(Res.string.diet_eat_create)).performClick()
         assertEquals(1, confirm)
+    }
+
+    // ---- What the meal had: a field, removable chips, suggestions -------------------------------------------------
+
+    @Test
+    fun theDishesRowStartsAsJustTheField_nothingElseShown() {
+        show(EatTimeEditorUiState())
+
+        compose.onNodeWithText(str(Res.string.editor_dishes)).assertIsDisplayed()
+        compose.onAllNodes(hasContentDescription(str(Res.string.editor_dish_remove, ""), substring = true))
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun typingInTheField_reportsTheText_andDoneAddsTheDish() {
+        show(EatTimeEditorUiState())
+        val field = compose.onNodeWithText(str(Res.string.editor_dishes))
+
+        field.performTextInput("滷肉飯")
+        field.performImeAction()
+
+        // The field is controlled by a state that never updates here, so it may echo "" back afterwards: only the typed text matters.
+        assertEquals("滷肉飯", dishDrafts.first())
+        assertEquals(1, dishCommits)
+    }
+
+    @Test
+    fun aChosenDish_isAChipWhoseTapRemovesIt_describedAsRemoving() {
+        show(EatTimeEditorUiState(dishes = listOf("滷肉飯", "Soup")))
+
+        compose.onNodeWithContentDescription(str(Res.string.editor_dish_remove, "Soup")).performClick()
+
+        assertEquals(listOf("Soup"), removedDishes)
+        compose.onNodeWithContentDescription(str(Res.string.editor_dish_remove, "滷肉飯")).assertIsDisplayed()
+    }
+
+    @Test
+    fun aSuggestion_isOneTapToAdd() {
+        show(EatTimeEditorUiState(dishSuggestions = listOf("Tea", "Rice")))
+
+        compose.onNodeWithContentDescription(str(Res.string.editor_dish_suggested, "Rice")).performClick()
+
+        assertEquals(listOf("Rice"), addedDishes)
+    }
+
+    @Test
+    fun withTenDishes_theFieldIsFull() {
+        show(EatTimeEditorUiState(dishes = (1..10).map { "dish $it" }))
+
+        compose.onNodeWithText(str(Res.string.editor_dishes))
+            .assertIsNotEnabled()
     }
 
     private companion object {

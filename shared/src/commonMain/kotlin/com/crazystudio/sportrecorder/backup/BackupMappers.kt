@@ -2,6 +2,7 @@ package com.crazystudio.sportrecorder.backup
 
 import com.crazystudio.sportrecorder.domain.model.CustomFastingType
 import com.crazystudio.sportrecorder.domain.model.DietSettings
+import com.crazystudio.sportrecorder.domain.model.Dishes
 import com.crazystudio.sportrecorder.domain.model.EatPhoto
 import com.crazystudio.sportrecorder.domain.model.EatRecord
 import com.crazystudio.sportrecorder.domain.model.GeoPoint
@@ -15,7 +16,8 @@ fun EatRecord.toBackup() = BackupMeal(id, time, note,
     photos.map { BackupPhoto(it.id, it.fileName, it.createdAt) },
     venueName = venue?.name, venueKey = venue?.id?.toString(),
     durationMinutes = durationMinutes,
-    tasteRating = tasteRating)
+    tasteRating = tasteRating,
+    dishes = dishes)
 
 fun Venue.toBackup() = BackupVenue(name, lat, lng, lastUsedAt, address, key = id.toString())
 
@@ -26,13 +28,15 @@ fun Venue.toBackup() = BackupVenue(name, lat, lng, lastUsedAt, address, key = id
  * The duration comes back as the default hour when the snapshot has none (written before durations)
  * or has one that is not positive: a snapshot is a file from outside, and a meal with no length, or
  * one that ends before it starts, must never be stored. The taste rating comes back unrated when the
- * snapshot has none (written before ratings) or has a value off the scale, for the same reason.
+ * snapshot has none (written before ratings) or has a value off the scale, for the same reason. The
+ * dishes are sanitized the same way: clean names, no repeats, at most ten.
  */
 fun BackupMeal.toDomain() = EatRecord(id, time,
     location?.let { GeoPoint(it.lat, it.lng) }, note,
     photos.map { EatPhoto(it.id, it.fileName, it.createdAt) },
     durationMinutes = durationMinutes?.takeIf { it > 0 } ?: MealDuration.DEFAULT_MINUTES,
-    tasteRating = TasteRating.sanitize(tasteRating))
+    tasteRating = TasteRating.sanitize(tasteRating),
+    dishes = Dishes.sanitize(dishes))
 
 fun CustomFastingType.toBackup() = BackupFastingType(fastingHours, eatingHours, name)
 fun BackupFastingType.toDomain() = CustomFastingType(fastingHours, eatingHours, name)
